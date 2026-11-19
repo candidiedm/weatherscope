@@ -214,7 +214,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       if (!g || !g[3] || !this._J) { if (!this._clw) { this._clw = 1; this._geo().then(() => { this._clw = 0; this._draw(); }); } return null; }
       const cj = g[3], J = this._J, li = cj.langs.indexOf(this._lang), out = [];
       for (const r of cj.c) {
-        const [lo, la] = r;
+        const [lo, la, popk] = r;
+        if (popk < 30) break; // list is sorted by population; skip villages
         if (lo < J.lo0 || lo > J.lo1 || la < J.la0 || la > J.la1) continue;
         out.push([(li >= 0 && r[5 + li]) || r[4], lo, la]);
         if (out.length >= 400) break;
@@ -233,23 +234,27 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         P = []; const boxes = [], xr = g.W - 46 * D, yb = Hv - 6 * D;
         for (let i = 0; i < cl.length && P.length < 60; i++) {
           const [n, lo, la] = cl[i], px = g.ox + J.nx(lo) * g.dw, py = g.oy + J.ny(la) * g.dh;
-          if (px < 4 * D || py < 16 * D || px > xr || py > yb) continue;
+          if (px < 4 * D || py < 16 * D || px > xr + 30 * D || py > yb) continue;
           const big = P.length < 6; x.font = big ? fB : fN;
-          const tw = x.measureText(n).width, bx = [px - 4 * D, py - 14 * D, px + 8 * D + tw, py + (temps ? 17 : 5) * D];
-          if (bx[2] > xr) continue;
-          if (boxes.some((b) => !(bx[2] < b[0] || bx[0] > b[2] || bx[3] < b[1] || bx[1] > b[3]))) continue;
-          boxes.push(bx); P.push([n, lo, la, px, py, big]);
+          const tw = Math.max(x.measureText(n).width, temps ? 24 * D : 0), top = py - 14 * D, bot = py + (temps ? 17 : 5) * D;
+          const free = (bx) => bx[0] >= 2 * D && bx[2] <= xr && !boxes.some((b) => !(bx[2] < b[0] || bx[0] > b[2] || bx[3] < b[1] || bx[1] > b[3]));
+          // text right of the dot, or left of it if there is no room
+          const R = [px - 4 * D, top, px + 8 * D + tw, bot], L = [px - 8 * D - tw, top, px + 4 * D, bot];
+          const side = free(R) ? 1 : free(L) ? -1 : 0;
+          if (!side) continue;
+          boxes.push(side > 0 ? R : L); P.push([n, lo, la, px, py, big, side]);
         }
         this._lp = { k: key, v: P };
       }
       const GR = this._GR, T = temps ? this._G.T[si] : null;
       x.save(); x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.lineJoin = 'round'; x.lineWidth = 3 * D; x.strokeStyle = 'rgba(0,0,0,.6)'; x.fillStyle = '#fff';
-      for (const [n, lo, la, px, py, big] of P) {
+      for (const [n, lo, la, px, py, big, side] of P) {
         x.beginPath(); x.arc(px, py, 2.2 * D, 0, 7); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 1.2 * D; x.stroke(); x.lineWidth = 3 * D;
-        x.font = big ? fB : fN; x.strokeText(n, px + 5 * D, py - 3 * D); x.fillText(n, px + 5 * D, py - 3 * D);
+        x.textAlign = side > 0 ? 'left' : 'right'; const tx = px + side * 5 * D;
+        x.font = big ? fB : fN; x.strokeText(n, tx, py - 3 * D); x.fillText(n, tx, py - 3 * D);
         if (T) {
           const v = this._samp(T, (la - GR.la0) / GR.dla, (lo - GR.lo0) / GR.dlo);
-          if (!isNaN(v)) { const t = `${Math.round(v)}°`; x.font = fT; x.strokeText(t, px + 5 * D, py + 11 * D); x.fillText(t, px + 5 * D, py + 11 * D); }
+          if (!isNaN(v)) { const t = `${Math.round(v)}°`; x.font = fT; x.strokeText(t, tx, py + 11 * D); x.fillText(t, tx, py + 11 * D); }
         }
       }
       x.restore();
