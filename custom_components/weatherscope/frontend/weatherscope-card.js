@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.1.1';
+  const VERSION = '0.1.2';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -162,7 +162,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       // map box changed (or first time): reset geometry and caches
       const key = a.bbox.join('_');
       if (key !== (this._J && this._J.key)) {
-        this._J = proj(a.bbox); this._GR = a.grid; this._bc = {}; this._bi = {}; this._PM = null; this._cities = null; this._G = null; this._gk = null; this._FF = {};
+        this._J = proj(a.bbox); this._GR = a.grid; this._bc = {}; this._bi = {}; this._PM = null; this._cl = null; this._lp = null; this._G = null; this._gk = null; this._FF = {};
         this._seen.clear();
       }
       const home = h.states['zone.home'];
@@ -207,25 +207,52 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       return window.__wsGeo;
     }
 
-    // Pick city labels that fit the map without overlapping (largest cities first)
-    _pickCities(cj) {
-      if (this._cities) return this._cities;
-      const J = this._J; if (!J || !cj) return [];
-      const li = cj.langs.indexOf(this._lang), out = [], boxes = [];
+    // Cities inside the map box, largest first, names in the dashboard language
+    _cityList() {
+      if (this._cl) return this._cl;
+      const g = window.__wsGeoData;
+      if (!g || !g[3] || !this._J) { if (!this._clw) { this._clw = 1; this._geo().then(() => { this._clw = 0; this._draw(); }); } return null; }
+      const cj = g[3], J = this._J, li = cj.langs.indexOf(this._lang), out = [];
       for (const r of cj.c) {
-        const [lo, la, , , name] = r;
+        const [lo, la] = r;
         if (lo < J.lo0 || lo > J.lo1 || la < J.la0 || la > J.la1) continue;
-        const x = J.nx(lo), y = J.ny(la);
-        if (x < 0.01 || x > 0.97 || y < 0.02 || y > 0.99) continue;
-        const n = (li >= 0 && r[5 + li]) || name;
-        const big = out.length < 10;
-        const w = (n.length * (big ? 0.0105 : 0.009)) + 0.008, hgt = big ? 0.016 : 0.014;
-        const bx = [x - 0.004, y - hgt - 0.004, x + w + 0.004, y + 0.012];
-        if (boxes.some((b) => !(bx[2] < b[0] || bx[0] > b[2] || bx[3] < b[1] || bx[1] > b[3]))) continue;
-        boxes.push(bx); out.push([n, lo, la, big ? 1 : 0]);
-        if (out.length >= 45) break;
+        out.push([(li >= 0 && r[5 + li]) || r[4], lo, la]);
+        if (out.length >= 400) break;
       }
-      return (this._cities = out);
+      return (this._cl = out);
+    }
+
+    // City names (and temperatures) in a fixed, readable size: as many as fit without overlapping
+    _labels(x, g, D, Hv, si) {
+      const cl = this._cityList(); if (!cl) return;
+      const J = this._J, temps = si != null && this._G;
+      const ff = 'Roboto, "Segoe UI", sans-serif', fN = `500 ${11 * D}px ${ff}`, fB = `600 ${12 * D}px ${ff}`, fT = `700 ${12 * D}px ${ff}`;
+      const key = `${g.W}x${g.H}x${Math.round(g.ox)}x${Math.round(g.oy)}x${Math.round(g.dw)}x${Math.round(Hv)}x${temps ? 1 : 0}`;
+      let P = this._lp && this._lp.k === key ? this._lp.v : null;
+      if (!P) {
+        P = []; const boxes = [], xr = g.W - 46 * D, yb = Hv - 6 * D;
+        for (let i = 0; i < cl.length && P.length < 60; i++) {
+          const [n, lo, la] = cl[i], px = g.ox + J.nx(lo) * g.dw, py = g.oy + J.ny(la) * g.dh;
+          if (px < 4 * D || py < 16 * D || px > xr || py > yb) continue;
+          const big = P.length < 6; x.font = big ? fB : fN;
+          const tw = x.measureText(n).width, bx = [px - 4 * D, py - 14 * D, px + 8 * D + tw, py + (temps ? 17 : 5) * D];
+          if (bx[2] > xr) continue;
+          if (boxes.some((b) => !(bx[2] < b[0] || bx[0] > b[2] || bx[3] < b[1] || bx[1] > b[3]))) continue;
+          boxes.push(bx); P.push([n, lo, la, px, py, big]);
+        }
+        this._lp = { k: key, v: P };
+      }
+      const GR = this._GR, T = temps ? this._G.T[si] : null;
+      x.save(); x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.lineJoin = 'round'; x.lineWidth = 3 * D; x.strokeStyle = 'rgba(0,0,0,.6)'; x.fillStyle = '#fff';
+      for (const [n, lo, la, px, py, big] of P) {
+        x.beginPath(); x.arc(px, py, 2.2 * D, 0, 7); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 1.2 * D; x.stroke(); x.lineWidth = 3 * D;
+        x.font = big ? fB : fN; x.strokeText(n, px + 5 * D, py - 3 * D); x.fillText(n, px + 5 * D, py - 3 * D);
+        if (T) {
+          const v = this._samp(T, (la - GR.la0) / GR.dla, (lo - GR.lo0) / GR.dlo);
+          if (!isNaN(v)) { const t = `${Math.round(v)}°`; x.font = fT; x.strokeText(t, px + 5 * D, py + 11 * D); x.fillText(t, px + 5 * D, py + 11 * D); }
+        }
+      }
+      x.restore();
     }
 
     _baseImg(kind) {
@@ -233,7 +260,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const B = window.__wsB || (window.__wsB = {}), id = `${kind}_${J.key}_${this._lang}`;
       if (B[id]) return B[id];
       B[id] = (async () => {
-        const KEY = `wsB_${id}_v1`;
+        const KEY = `wsB_${id}_v2`;
         let url = null;
         try { url = localStorage.getItem(KEY); } catch (e) {}
         if (!url) {
@@ -276,20 +303,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const rivers = (col, wf) => RV.forEach((f) => { const sr = f.properties.scalerank == null ? 10 : f.properties.scalerank; if (sr > 7) return; x.beginPath(); lines(f.geometry).forEach((l) => l.forEach((p, i) => { const q = px(p[0], p[1]); i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]); })); x.strokeStyle = col; x.lineWidth = Math.max(0.5, 1.6 - sr * 0.15) * k * wf; x.stroke(); });
       const borders = (col, w1, w2) => C.forEach((f) => { x.beginPath(); polys(f.geometry).forEach((p) => ring(p[0])); x.strokeStyle = col; x.lineWidth = (f === homeC ? w1 : w2) * k; x.stroke(); });
       const fnt = (s, b) => `${b ? '600 ' : ''}${s * k}px Roboto, "Segoe UI", sans-serif`;
-      const labels = (dot, halo, txt) => {
-        this._pickCities(cj).forEach(([n, lo, la2, big]) => {
-          const [cx, cy] = px(lo, la2);
-          x.fillStyle = dot; x.beginPath(); x.arc(cx, cy, (big ? 1.8 : 1.4) * k, 0, 7); x.fill();
-          x.font = fnt(big ? 14 : 12); x.lineWidth = 3 * k; x.strokeStyle = halo; x.fillStyle = txt;
-          x.strokeText(n, cx + 5 * k, cy - 2.5 * k); x.fillText(n, cx + 5 * k, cy - 2.5 * k);
-        });
-      };
       if (kind === 'grey') {
         x.fillStyle = '#858585'; x.fillRect(0, 0, W, H);
         C.forEach((f) => { x.beginPath(); polys(f.geometry).forEach((p) => p.forEach(ring)); x.fillStyle = '#868686'; x.fill('evenodd'); });
         L.forEach((f) => { x.beginPath(); polys(f.geometry).forEach((p) => p.forEach(ring)); x.fillStyle = '#7e7e7e'; x.fill('evenodd'); x.strokeStyle = '#6a6a6a'; x.lineWidth = 0.7 * k; x.stroke(); });
         rivers('#7f7f7f', 1); borders('#484848', 1.3, 1.0);
-        labels('#3c3c3c', 'rgba(133,133,133,.85)', '#383838');
         x.font = fnt(10); x.fillStyle = '#505050'; x.textAlign = 'right'; x.fillText(this._attrib(), W - 8 * k, H - 8 * k);
       } else if (kind === 'land') {
         x.fillStyle = '#28497e'; x.fillRect(0, 0, W, H);
@@ -298,7 +316,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         rivers('#3a5f8a', 0.8);
       } else {
         borders('rgba(15,15,15,.85)', 1.3, 1.0);
-        labels('#f2f2f2', 'rgba(0,0,0,.55)', '#f4f4f4');
         x.font = fnt(10); x.fillStyle = 'rgba(255,255,255,.7)'; x.textAlign = 'right'; x.fillText(this._attrib(), W - 8 * k, H - 8 * k);
       }
       return cv;
@@ -604,12 +621,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         if (f && f.th) f.th.forEach(([tx, ty]) => this._bolt(x, ox + tx * dw, oy + ty * dh, 9 * D, '#f0b4f5', 0.95));
         if (this._pc && this._pl) x.drawImage(this._pc, 0, 0);
         if (map !== 'rain') { const LN = layer('lines'); if (LN) x.drawImage(LN, 0, 0); }
-        if (map === 'temp' && f && this._G) this._cityT(x, f.si, ox, oy, dw, dh);
         this._geom = g;
       } else {
         x.fillStyle = '#858585'; x.fillRect(0, 0, W, H); const G = layer('grey'); if (G) x.drawImage(G, 0, 0);
         if (map === 'radar') f = frame(this._fr, this._i, this._pi, this._a);
       }
+      this._labels(x, g, D, Hv, map === 'temp' && f ? f.si : null);
       const a = this._A || {};
       if (map === 'blitz') this._drawStrikes(x, g, D, this._now2(), c.bzlive, true);
       else if (o.bz && f && !f.f && !FMAPS.includes(map) && this._avail.blitz) this._drawStrikes(x, g, D, f.t.getTime() + ((map === 'sat' ? a.satellite : a.radar) || { step: 5 }).step * 6e4 - 1, c.bzfilm, false);
@@ -789,20 +806,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         else if (v < mn && mx - v >= 2) out.push([GR.lo0 + j * GR.dlo, GR.la0 + i * GR.dla, v, false]);
       }
       return (C[si] = out);
-    }
-
-    // temperature under the city names (temperature map only)
-    _cityT(x, si, ox, oy, dw, dh) {
-      const T = this._G.T[si], s = dw / 800, GR = this._GR, J = this._J;
-      x.save(); x.textAlign = 'left'; x.lineWidth = 3 * s; x.strokeStyle = 'rgba(0,0,0,.55)'; x.fillStyle = '#ffffff'; x.lineJoin = 'round';
-      const cs = this._cities || (window.__wsGeoData ? this._pickCities(window.__wsGeoData[3]) : (this._geo(), []));
-      cs.forEach(([, lo, la, big]) => {
-        const v = this._samp(T, (la - GR.la0) / GR.dla, (lo - GR.lo0) / GR.dlo); if (isNaN(v)) return;
-        const cx = ox + J.nx(lo) * dw, cy = oy + J.ny(la) * dh, t = `${Math.round(v)}°`;
-        x.font = `600 ${(big ? 13 : 11.5) * s}px Roboto, "Segoe UI", sans-serif`;
-        x.strokeText(t, cx + 5 * s, cy + (big ? 12 : 10.5) * s); x.fillText(t, cx + 5 * s, cy + (big ? 12 : 10.5) * s);
-      });
-      x.restore();
     }
 
     _isoDraw(x, si, ox, oy, dw, dh, W, H, D) {
