@@ -9,6 +9,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
@@ -21,7 +22,10 @@ ATTRS = ("version", "url", "bbox", "size", "center", "grid", "radar", "satellite
 
 async def async_setup_entry(hass: HomeAssistant, entry: WeatherScopeConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Add the status sensor."""
-    async_add_entities([WeatherScopeSensor(entry.runtime_data)])
+    sensor = WeatherScopeSensor(entry.runtime_data)
+    # Same entity id in every language, so the card example in the README always fits.
+    sensor.entity_id = async_generate_entity_id("sensor.{}", f"{entry.title} map data", hass=hass)
+    async_add_entities([sensor])
 
 
 class WeatherScopeSensor(SensorEntity):
