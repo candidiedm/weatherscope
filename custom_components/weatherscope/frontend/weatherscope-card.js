@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.1.0';
+  const VERSION = '0.1.1';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -186,7 +186,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 
     _hasBlitz(h) {
       if (this._bzk && Date.now() - this._bzk.t < 60000) return this._bzk.v;
-      const v = Object.keys(h.states).some((k) => (k.startsWith('geo_location.') && h.states[k].attributes.source === 'blitzortung') || k.startsWith('sensor.blitzortung'));
+      // geo_location entities of the Blitzortung integration, or its sensors (their attribution names blitzortung.org)
+      const v = Object.keys(h.states).some((k) => { const a = h.states[k].attributes || {}; return (k.startsWith('geo_location.') && a.source === 'blitzortung') || (k.startsWith('sensor.') && /blitzortung/i.test(a.attribution || '')); });
       this._bzk = { t: Date.now(), v };
       return v;
     }

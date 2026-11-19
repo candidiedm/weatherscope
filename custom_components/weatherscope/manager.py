@@ -63,7 +63,8 @@ OM_VARS = "temperature_2m,wind_speed_10m,wind_direction_10m,snowfall,weather_cod
 DWD_COVERAGE = (1.5, 45.5, 18.8, 56.3)
 EUMETSAT_COVERAGE = (-75.0, -75.0, 75.0, 75.0)
 
-TIMEOUT = aiohttp.ClientTimeout(total=40)
+TIMEOUT = aiohttp.ClientTimeout(total=25)
+TIMEOUT_FC = aiohttp.ClientTimeout(total=90)
 USER_AGENT = f"WeatherScope/{VERSION} (Home Assistant integration)"
 
 
@@ -94,7 +95,8 @@ class WeatherScopeManager:
         self.errors: dict[str, str] = {}
         self._unsubs: list[Callable[[], None]] = []
         self._locks = {k: asyncio.Lock() for k in ("radar", "sat", "fc")}
-        self._sem = asyncio.Semaphore(4)
+        # one queue per provider, so a slow radar server never holds up satellite or forecast downloads
+        self._sem = {DWD_WMS: asyncio.Semaphore(3), EUMETSAT_WMS: asyncio.Semaphore(4), OPEN_METEO: asyncio.Semaphore(1)}
         self._session = async_get_clientsession(hass)
 
     def _pick(self, choice: str, provider: str, coverage: tuple[float, ...]) -> str | None:
@@ -152,9 +154,10 @@ class WeatherScopeManager:
     # ------------------------------------------------------------- helpers
     async def _get(self, url: str, params: dict[str, Any], kind: str) -> bytes | None:
         """GET with timeout; returns the body only if it has the expected type."""
-        async with self._sem:
+        async with self._sem[url]:
             try:
-                async with self._session.get(url, params=params, timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}) as resp:
+                timeout = TIMEOUT_FC if url == OPEN_METEO else TIMEOUT
+                async with self._session.get(url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT}) as resp:
                     ctype = resp.headers.get("Content-Type", "")
                     body = await resp.read()
                     if resp.status != 200 or not ctype.startswith(kind):
