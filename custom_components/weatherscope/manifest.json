@@ -1,0 +1,13 @@
+{
+  "domain": "weatherscope",
+  "name": "WeatherScope",
+  "codeowners": ["@candidiedm"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http"],
+  "documentation": "https://github.com/candidiedm/weatherscope",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/candidiedm/weatherscope/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

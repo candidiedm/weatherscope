@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "WeatherScope",
+        "description": "Wähle Mittelpunkt und Breite der Karte. Home Assistant lädt alle Kartendaten selbst, deine Dashboards brauchen keinen Internetzugang.",
+        "data": {
+          "name": "Name",
+          "location": "Kartenmittelpunkt",
+          "width_km": "Kartenbreite",
+          "radar": "Regenradar",
+          "satellite": "Satellitenbilder"
+        },
+        "data_description": {
+          "location": "Klicke auf die Karte, um den Mittelpunkt zu verschieben. Dein Zuhause wird in jedem Fall angezeigt.",
+          "width_km": "Echte Entfernung vom linken bis zum rechten Rand, z. B. 1000 km für Deutschland.",
+          "radar": "Automatisch wählt ein Radar, das deine Karte abdeckt. Derzeit gibt es nur Deutschland (DWD).",
+          "satellite": "Automatisch nutzt EUMETSAT (Europa, Afrika, Atlantik)."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WeatherScope",
+        "data": {
+          "location": "Kartenmittelpunkt",
+          "width_km": "Kartenbreite",
+          "radar": "Regenradar",
+          "satellite": "Satellitenbilder"
+        },
+        "data_description": {
+          "width_km": "Echte Entfernung vom linken bis zum rechten Rand, z. B. 1000 km für Deutschland."
+        }
+      }
+    }
+  },
+  "selector": {
+    "radar": {
+      "options": {
+        "auto": "Automatisch",
+        "dwd": "Deutscher Wetterdienst (Deutschland)",
+        "none": "Aus"
+      }
+    },
+    "satellite": {
+      "options": {
+        "auto": "Automatisch",
+        "eumetsat": "EUMETSAT (Europa, Afrika)",
+        "none": "Aus"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Kartendaten"
+      }
+    }
+  }
+}

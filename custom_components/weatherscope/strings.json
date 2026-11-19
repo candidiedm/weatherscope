@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "WeatherScope",
+        "description": "Choose the centre and width of the map. Home Assistant downloads all map data itself, so your dashboards never need internet access.",
+        "data": {
+          "name": "Name",
+          "location": "Map centre",
+          "width_km": "Map width",
+          "radar": "Rain radar",
+          "satellite": "Satellite images"
+        },
+        "data_description": {
+          "location": "Click on the map to move the centre. Your home location is shown on the map either way.",
+          "width_km": "True distance from the left to the right edge, e.g. 1000 km for Germany.",
+          "radar": "Automatic chooses a radar that covers your map. At the moment only Germany (DWD) is available.",
+          "satellite": "Automatic uses EUMETSAT (Europe, Africa, Atlantic)."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WeatherScope",
+        "data": {
+          "location": "Map centre",
+          "width_km": "Map width",
+          "radar": "Rain radar",
+          "satellite": "Satellite images"
+        },
+        "data_description": {
+          "width_km": "True distance from the left to the right edge, e.g. 1000 km for Germany."
+        }
+      }
+    }
+  },
+  "selector": {
+    "radar": {
+      "options": {
+        "auto": "Automatic",
+        "dwd": "Deutscher Wetterdienst (Germany)",
+        "none": "Off"
+      }
+    },
+    "satellite": {
+      "options": {
+        "auto": "Automatic",
+        "eumetsat": "EUMETSAT (Europe, Africa)",
+        "none": "Off"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Map data"
+      }
+    }
+  }
+}
