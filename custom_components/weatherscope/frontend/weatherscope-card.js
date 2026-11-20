@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.3.1';
+  const VERSION = '0.3.2';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -24,6 +24,7 @@
   const ramp = (P) => { const t = new Uint8Array(2001 * 3); for (let i = 0; i <= 2000; i++) { const v = P[0][0] + (P[P.length - 1][0] - P[0][0]) * i / 2000; let c = P[P.length - 1][1]; for (let k = 0; k < P.length - 1; k++) { if (v >= P[k][0] && v <= P[k + 1][0]) { const f = (v - P[k][0]) / (P[k + 1][0] - P[k][0]); c = P[k][1].map((q, z) => Math.round(q + (P[k + 1][1][z] - q) * f)); break; } } t.set(c, i * 3); } return { t, a: P[0][0], b: P[P.length - 1][0] }; };
   const RT = ramp(PAL_T), RW = ramp(PAL_W);
   const TSTEP = 5, TLO = -50, THI = 55;
+  const place = (e, pct, tx) => { e.style.right = ''; if (pct <= 3) { e.style.left = '0'; e.style.transform = 'none'; } else if (pct >= 97) { e.style.left = 'auto'; e.style.right = '0'; e.style.transform = 'none'; } else { e.style.left = `${pct}%`; e.style.transform = tx || 'translateX(-50%)'; } };
   const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
   const tcol = (v) => { const q = Math.max(0, Math.min(2000, Math.round((v - RT.a) * 2000 / (RT.b - RT.a)))) * 3; return `rgb(${RT.t[q]},${RT.t[q + 1]},${RT.t[q + 2]})`; };
 
@@ -579,13 +580,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const show = !(sat && o.sm !== 'infra' && !o.ov);
       const rd = cols === LEG_R, tr = rd || ((map === 'temp' || map === 'wind' || map === 'rain') && !blitz && !sat);
       s.querySelectorAll('#lg .t .x').forEach((e) => e.remove()); $('lg').classList.toggle('rd', rd);
-      $('lg').classList.toggle('tr', tr); $('lga').style.left = ''; $('lgb').style.left = '';
+      $('lg').classList.toggle('tr', tr); ['lga', 'lgb'].forEach((k) => { const e = $(k); e.style.left = e.style.right = e.style.transform = ''; });
       $('lg').style.display = show ? '' : 'none';
       if (rd) {
         // all 15 DWD intensity classes (mm/h), colours as drawn on the map
         lg.innerHTML = WIN.map((c) => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('');
         const de = this._lang === 'de', f = (v) => (de ? String(v).replace('.', ',') : String(v));
-        $('lga').textContent = f(0.1); $('lga').style.left = '6%'; $('lgb').textContent = '150+'; $('lgb').style.left = '92%'; $('lgu').textContent = 'mm/h';
+        $('lga').textContent = f(0.1); place($('lga'), 0); $('lgb').textContent = '150+'; place($('lgb'), 100); $('lgu').textContent = 'mm/h';
         [[1, 3], [7.5, 7]].forEach(([v, k]) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = f(v); e.style.left = `${k / 15 * 100}%`; s.querySelector('#lg .t').appendChild(e); });
       } else if (tr) {
         // whole scale; the range found in the forecast is highlighted, the rest dimmed
@@ -598,9 +599,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         const fmt = (v) => { let t = String(v); if (this._lang === 'de') t = t.replace('.', ','); return map === 'temp' ? (v > 0 ? '+' : v < 0 ? '−' : '') + t.replace('-', '') : t; }; $('lgu').textContent = unit.trim();
         let h = ''; for (let k = 0; k < n; k++) h += `<i class="${k < i0 || k >= i1 ? 'o' : ''}${map === 'temp' && B[k] === 0 ? ' z' : ''}" style="background:${C[k]}"></i>`;
         lg.innerHTML = h; $('lga').textContent = fmt(B[i0]); $('lgb').textContent = fmt(B[i1]);
-        let pa = i0 / n * 100, pb = i1 / n * 100; const gap = 26 - (pb - pa); if (gap > 0) { pa -= gap / 2; pb += gap / 2; }
-        if (pa < 8) { pb += 8 - pa; pa = 8; } if (pb > 92) { pa -= pb - 92; pb = 92; }
-        $('lga').style.left = `${pa}%`; $('lgb').style.left = `${pb}%`;
+        const pa = i0 / n * 100, pb = i1 / n * 100, near = pb - pa < 16;
+        place($('lga'), pa, near ? 'translateX(-85%)' : null); place($('lgb'), pb, near ? 'translateX(-15%)' : null);
       } else { lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b; }
       this._layout();
     }
