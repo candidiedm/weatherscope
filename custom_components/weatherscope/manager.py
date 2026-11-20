@@ -138,16 +138,25 @@ class WeatherScopeManager:
             return 0
 
     def _restore_state(self) -> None:
-        """Pick up files from an earlier run so the card works right after a restart."""
+        """Pick up files from an earlier run so the card works right after a restart.
+
+        If the map area changed, all old images and forecast files belong to the old area: delete them.
+        """
         try:
             state = json.loads((self.dir / "state.json").read_text())
         except (OSError, ValueError):
+            state = {}
+        if state.get("bbox") != self.box.wms:
+            for p in self.dir.iterdir():
+                if p.suffix in (".png", ".jpg", ".json", ".tmp"):
+                    p.unlink(missing_ok=True)
+            self._save_state()
             return
         self.fc_basis = state.get("fc_basis")
         self.fc_updated = state.get("fc_updated")
 
     def _save_state(self) -> None:
-        (self.dir / "state.json").write_text(json.dumps({"fc_basis": self.fc_basis, "fc_updated": self.fc_updated}))
+        (self.dir / "state.json").write_text(json.dumps({"bbox": self.box.wms, "fc_basis": self.fc_basis, "fc_updated": self.fc_updated}))
 
     @callback
     def _notify(self) -> None:

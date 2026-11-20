@@ -111,3 +111,22 @@ async def test_radar_auto_off_outside_germany(hass: HomeAssistant, aioclient_moc
     assert m.radar is None
     assert m.satellite == "eumetsat"
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_area_change_clears_old_files(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, tmp_path: Path) -> None:
+    hass.config.config_dir = str(tmp_path)
+    aioclient_mock.get(re.compile(r".*"), status=500)
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"location": {"latitude": 51, "longitude": 10.1}, "width_km": 750, "radar": "none", "satellite": "none"}
+    )
+    entry.add_to_hass(hass)
+    data = tmp_path / "weatherscope" / entry.entry_id
+    data.mkdir(parents=True)
+    (data / "state.json").write_text(json.dumps({"bbox": "1,2,3,4", "fc_basis": 1, "fc_updated": "x"}))
+    (data / "om_0.json").write_text("[]")
+    (data / "r_1.png").write_bytes(PNG)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert not (data / "om_0.json").exists() and not (data / "r_1.png").exists()
+    assert entry.runtime_data.fc_basis is None
+    assert await hass.config_entries.async_unload(entry.entry_id)
