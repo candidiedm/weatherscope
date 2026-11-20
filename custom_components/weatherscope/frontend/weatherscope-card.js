@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.3.2';
+  const VERSION = '0.3.3';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -71,7 +71,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #lg .t{display:flex;justify-content:space-between;margin-top:2px;opacity:.85}
 #lg.tr .b{width:168px;height:8px;align-items:center;border-radius:0;overflow:visible;gap:1px}#lg.tr .b i{height:8px}#lg.tr .b i.o{height:4px;opacity:.35}#lg.tr .b i.z{margin-left:2px}
 #lg.tr.rd .b{width:220px}
-#lgu{display:none}#lg.tr{display:flex;align-items:center;gap:6px}#lg.tr #lgu{display:block;font-weight:500;padding-bottom:12px}
+#lgu{display:none}#lg.tr{display:flex;align-items:center;gap:7px;padding-right:14px}#lg.tr #lgu{display:block;font-weight:500;padding-bottom:12px}
 #lg.tr .t{position:relative;height:12px}#lg.tr .t span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 #ct{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(30,32,36,.84);border-radius:10px;padding:6px 8px 4px;color:#fff;font-size:10px}
 #r1{display:flex;align-items:center;gap:8px}
@@ -578,29 +578,38 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       else if (map === 'wind') { cols = LEG_W; a = '0 km/h'; b = '100 km/h'; }
       else if (map === 'rain') { cols = LEG_FR; a = '0,1 mm/h'; b = '30 mm/h'; if (this._lang !== 'de') a = '0.1 mm/h'; }
       const show = !(sat && o.sm !== 'infra' && !o.ov);
-      const rd = cols === LEG_R, tr = rd || ((map === 'temp' || map === 'wind' || map === 'rain') && !blitz && !sat);
-      s.querySelectorAll('#lg .t .x').forEach((e) => e.remove()); $('lg').classList.toggle('rd', rd);
-      $('lg').classList.toggle('tr', tr); ['lga', 'lgb'].forEach((k) => { const e = $(k); e.style.left = e.style.right = e.style.transform = ''; });
+      const ir = cols === LEG_I, rd = cols === LEG_R, tr = rd || ir || ((map === 'temp' || map === 'wind' || map === 'rain') && !blitz && !sat);
+      const tq = s.querySelector('#lg .t'); tq.querySelectorAll('.x').forEach((e) => e.remove());
+      $('lg').classList.toggle('rd', rd); $('lg').classList.toggle('tr', tr);
       $('lg').style.display = show ? '' : 'none';
+      const de = this._lang === 'de', f = (v) => (de ? String(v).replace('.', ',') : String(v));
+      // labels sit centred on their position; the box has room on both sides
+      const tick = (txt, pct) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = txt; e.style.left = `${pct}%`; tq.appendChild(e); };
+      ['lga', 'lgb'].forEach((k) => { const e = $(k); e.style.left = e.style.right = e.style.transform = ''; if (tr) e.textContent = ''; });
       if (rd) {
         // all 15 DWD intensity classes (mm/h), colours as drawn on the map
-        lg.innerHTML = WIN.map((c) => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('');
-        const de = this._lang === 'de', f = (v) => (de ? String(v).replace('.', ',') : String(v));
-        $('lga').textContent = f(0.1); place($('lga'), 0); $('lgb').textContent = '150+'; place($('lgb'), 100); $('lgu').textContent = 'mm/h';
-        [[1, 3], [7.5, 7]].forEach(([v, k]) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = f(v); e.style.left = `${k / 15 * 100}%`; s.querySelector('#lg .t').appendChild(e); });
+        lg.innerHTML = WIN.map((c) => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join(''); $('lgu').textContent = 'mm/h';
+        [[0.1, 0], [1, 3], [3, 5], [7.5, 7], [15, 9], [45, 11], [100, 13]].forEach(([v, k]) => tick(f(v), k / 15 * 100)); tick('150+', 100);
+      } else if (ir) {
+        // cloud-top temperature, EUMETSAT IR 10.5 µm (white −80 °C … black +30 °C)
+        lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lgu').textContent = '°C';
+        [[-35, 1], [-48, 3], [-58, 5], [-67, 7]].forEach(([v, k]) => tick('−' + Math.abs(v), (k + 0.5) / cols.length * 100));
       } else if (tr) {
         // whole scale; the range found in the forecast is highlighted, the rest dimmed
         let B, C, unit;
-        if (map === 'temp') { B = []; for (let v = TLO; v <= THI; v += TSTEP) B.push(v); C = B.slice(0, -1).map((v) => tcol(v + TSTEP / 2)); unit = ' °C'; }
-        else { const P = map === 'wind' ? PAL_W : PAL_R; B = P.map((q) => q[0]); C = P.slice(0, -1).map((q) => rgb(q[1])); unit = map === 'wind' ? ' km/h' : ' mm'; }
+        if (map === 'temp') { B = []; for (let v = TLO; v <= THI; v += TSTEP) B.push(v); C = B.slice(0, -1).map((v) => tcol(v + TSTEP / 2)); unit = '°C'; }
+        else { const P = map === 'wind' ? PAL_W : PAL_R; B = P.map((q) => q[0]); C = P.slice(0, -1).map((q) => rgb(q[1])); unit = map === 'wind' ? 'km/h' : 'mm'; }
         const n = C.length, R = this._frange(map);
         let i0 = 0, i1 = n;
         if (R) { if (map === 'temp') { while (i0 < n - 1 && B[i0 + 1] <= R[0]) i0++; } i1 = i0 + 1; while (i1 < n && B[i1] < R[1]) i1++; }
-        const fmt = (v) => { let t = String(v); if (this._lang === 'de') t = t.replace('.', ','); return map === 'temp' ? (v > 0 ? '+' : v < 0 ? '−' : '') + t.replace('-', '') : t; }; $('lgu').textContent = unit.trim();
+        $('lgu').textContent = unit;
         let h = ''; for (let k = 0; k < n; k++) h += `<i class="${k < i0 || k >= i1 ? 'o' : ''}${map === 'temp' && B[k] === 0 ? ' z' : ''}" style="background:${C[k]}"></i>`;
-        lg.innerHTML = h; $('lga').textContent = fmt(B[i0]); $('lgb').textContent = fmt(B[i1]);
-        const pa = i0 / n * 100, pb = i1 / n * 100, near = pb - pa < 16;
-        place($('lga'), pa, near ? 'translateX(-85%)' : null); place($('lgb'), pb, near ? 'translateX(-15%)' : null);
+        lg.innerHTML = h;
+        if (map === 'temp') {
+          const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v), z = B.indexOf(0);
+          tick(sg(B[i0]), i0 / n * 100); tick(sg(B[i1]), i1 / n * 100);
+          if (Math.abs(z - i0) >= 2 && Math.abs(z - i1) >= 2) tick('0', z / n * 100);
+        } else for (let k = 0; k <= n; k += 2) tick(f(B[k]), k / n * 100);
       } else { lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b; }
       this._layout();
     }
