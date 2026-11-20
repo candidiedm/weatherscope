@@ -1,23 +1,23 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.2.9';
+  const VERSION = '0.3.0';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
   const DWD = [[51, 255, 255], [26, 204, 154], [1, 153, 52], [77, 179, 27], [153, 204, 1], [204, 230, 1], [255, 255, 1], [255, 196, 1], [255, 137, 1], [255, 69, 1], [254, 0, 0], [229, 0, 76], [204, 0, 152], [102, 0, 203], [0, 0, 254]];
-  const WIN = [[112, 104, 172, .55], [70, 100, 168, .7], [22, 122, 142, .82], [12, 156, 108, .9], [60, 188, 70, .95], [170, 208, 50, 1], [240, 220, 40, 1], [245, 176, 32, 1], [240, 122, 32, 1], [230, 72, 32, 1], [214, 40, 40, 1], [200, 30, 90, 1], [200, 40, 150, 1], [170, 60, 200, 1], [240, 160, 240, 1]];
+  const WIN = [[112, 104, 172, .55], [70, 100, 168, .7], [22, 122, 142, .82], [12, 156, 108, .9], [60, 188, 70, .95], [170, 208, 50, 1], [240, 220, 40, 1], [245, 176, 32, 1], [240, 122, 32, 1], [230, 72, 32, 1], [214, 40, 40, 1], [200, 30, 90, 1], [200, 40, 150, 1], [170, 60, 200, 1], [90, 26, 154, 1]];
   const LEG_R = ['#7068ac', '#4664a8', '#167a8e', '#0c9c6c', '#3cbc46', '#aad032', '#f0dc28', '#f07a20', '#d62828', '#c8288c'];
-  const IRC = [[150, [90, 200, 230]], [166, [40, 90, 220]], [182, [40, 190, 80]], [195, [240, 225, 40]], [205, [245, 140, 30]], [214, [220, 40, 40]], [226, [230, 90, 230]]];
-  const LEG_I = ['#7a7a7a', '#5ac8e6', '#285adc', '#28be50', '#f0e128', '#f58c1e', '#dc2828', '#e65ae6'];
+  const IRC = [[150, [90, 200, 230]], [166, [40, 90, 220]], [182, [40, 190, 80]], [195, [240, 225, 40]], [205, [245, 140, 30]], [214, [220, 40, 40]], [226, [90, 26, 154]]];
+  const LEG_I = ['#7a7a7a', '#5ac8e6', '#285adc', '#28be50', '#f0e128', '#f58c1e', '#dc2828', '#5a1a9a'];
   const LEG_B = ['rgba(240,180,245,1)', 'rgba(220,160,230,.75)', 'rgba(200,140,210,.5)', 'rgba(180,130,190,.28)'];
   // WeatherScope temperature scale: smooth, with a clear edge at 0 °C (frost blue, above zero green)
   const PAL_T = [[-50, [245, 238, 248]], [-45, [214, 181, 226]], [-40, [176, 124, 200]], [-35, [138, 85, 176]], [-30, [75, 42, 122]], [-25, [58, 58, 140]], [-20, [44, 74, 158]], [-15, [54, 100, 186]], [-10, [63, 127, 214]], [-0.01, [143, 208, 240]], [0.01, [92, 191, 140]], [8, [159, 211, 107]], [14, [227, 220, 85]], [20, [246, 177, 63]], [26, [239, 124, 53]], [32, [217, 68, 47]], [40, [142, 28, 58]], [45, [106, 15, 42]], [50, [70, 8, 28]], [55, [36, 4, 14]]];
   // kept for a later colour choice in the card editor
   const PAL_T_WINDY = [[-25, [123, 47, 191]], [-15, [74, 90, 216]], [-5, [63, 160, 224]], [0, [86, 195, 201]], [5, [98, 191, 115]], [10, [156, 204, 74]], [15, [216, 210, 58]], [20, [240, 178, 50]], [25, [238, 125, 44]], [30, [224, 72, 48]], [38, [168, 32, 60]]];
   const PAL_T_APPLE = [[-30, [44, 79, 158]], [-0.01, [44, 79, 158]], [0, [111, 182, 233]], [14.99, [111, 182, 233]], [15, [100, 194, 107]], [19.99, [100, 194, 107]], [20, [242, 212, 58]], [24.99, [242, 212, 58]], [25, [243, 154, 44]], [29.99, [243, 154, 44]], [30, [227, 65, 47]], [40, [227, 65, 47]]];
-  const PAL_W = [[0, [61, 95, 163]], [10, [58, 143, 183]], [20, [63, 181, 154]], [30, [125, 197, 82]], [40, [216, 210, 58]], [55, [238, 154, 44]], [70, [224, 72, 48]], [90, [184, 48, 110]], [120, [123, 47, 191]], [150, [74, 29, 138]], [200, [224, 208, 245]]];
-  const PAL_R = [[0.1, [120, 160, 215]], [0.5, [45, 105, 205]], [1, [30, 160, 150]], [2, [80, 190, 80]], [4, [200, 210, 50]], [7, [240, 170, 40]], [10, [230, 100, 40]], [20, [210, 40, 40]], [30, [190, 40, 140]], [50, [122, 31, 143]], [100, [233, 200, 238]]];
+  const PAL_W = [[0, [61, 95, 163]], [10, [58, 143, 183]], [20, [63, 181, 154]], [30, [125, 197, 82]], [40, [216, 210, 58]], [55, [238, 154, 44]], [70, [224, 72, 48]], [90, [184, 48, 110]], [120, [123, 47, 191]], [150, [74, 29, 138]], [200, [44, 16, 96]]];
+  const PAL_R = [[0.1, [120, 160, 215]], [0.5, [45, 105, 205]], [1, [30, 160, 150]], [2, [80, 190, 80]], [4, [200, 210, 50]], [7, [240, 170, 40]], [10, [230, 100, 40]], [20, [210, 40, 40]], [30, [190, 40, 140]], [50, [122, 31, 143]], [100, [62, 12, 94]]];
   const LEG_T = ['#2c4a9e', '#3664ba', '#3f7fd6', '#67a8e3', '#8fd0f0', '#5cbf8c', '#9fd36b', '#e3dc55', '#f6b13f', '#ef7c35'];
   const LEG_W = ['#3d5fa3', '#3a8fb7', '#3fb59a', '#7dc552', '#d8d23a', '#ee9a2c', '#e04830', '#b8306e', '#7b2fbf'];
   const LEG_FR = ['#78a0d7', '#2d69cd', '#1ea096', '#50be50', '#c8d232', '#f0aa28', '#e66428', '#d22828', '#be288c'];
@@ -584,13 +584,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         // all 15 DWD intensity classes (mm/h), colours as drawn on the map
         lg.innerHTML = WIN.map((c) => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('');
         const de = this._lang === 'de', f = (v) => (de ? String(v).replace('.', ',') : String(v));
-        $('lga').textContent = f(0.1); $('lga').style.left = '3%'; $('lgb').textContent = '150+'; $('lgb').style.left = '95%';
-        [[1, 3], [7.5, 7], [30, 10]].forEach(([v, k]) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = f(v); e.style.left = `${k / 15 * 100}%`; s.querySelector('#lg .t').appendChild(e); });
+        $('lga').textContent = f(0.1); $('lga').style.left = '3%'; $('lgb').textContent = '150+ mm/h'; $('lgb').style.left = '88%';
+        [[1, 3], [7.5, 7]].forEach(([v, k]) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = f(v); e.style.left = `${k / 15 * 100}%`; s.querySelector('#lg .t').appendChild(e); });
       } else if (tr) {
         // whole scale; the range found in the forecast is highlighted, the rest dimmed
         let B, C, unit;
         if (map === 'temp') { B = []; for (let v = TLO; v <= THI; v += TSTEP) B.push(v); C = B.slice(0, -1).map((v) => tcol(v + TSTEP / 2)); unit = ' °C'; }
-        else { const P = map === 'wind' ? PAL_W : PAL_R; B = P.map((q) => q[0]); C = P.slice(0, -1).map((q) => rgb(q[1])); unit = map === 'wind' ? ' km/h' : ' mm/h'; }
+        else { const P = map === 'wind' ? PAL_W : PAL_R; B = P.map((q) => q[0]); C = P.slice(0, -1).map((q) => rgb(q[1])); unit = map === 'wind' ? ' km/h' : ' mm'; }
         const n = C.length, R = this._frange(map);
         let i0 = 0, i1 = n;
         if (R) { if (map === 'temp') { while (i0 < n - 1 && B[i0 + 1] <= R[0]) i0++; } i1 = i0 + 1; while (i1 < n && B[i1] < R[1]) i1++; }
@@ -715,7 +715,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         const tt = ref.hourly.time.map((q) => q * 1000), n = GR.nla * GR.nlo;
         const mk = () => tt.map(() => new Float32Array(n).fill(NaN));
         const G = { t: tt, T: mk(), U: mk(), V: mk(), S: mk(), N: mk(), C: mk(), P: mk(), M: mk() };
-        all.forEach((p, k) => { if (!p) return; const h = p.hourly; tt.forEach((_, si) => { const sp = h.wind_speed_10m[si], dr = h.wind_direction_10m[si] * Math.PI / 180; G.T[si][k] = h.temperature_2m[si]; G.S[si][k] = sp; G.U[si][k] = -sp * Math.sin(dr); G.V[si][k] = -sp * Math.cos(dr); G.N[si][k] = h.snowfall[si]; G.C[si][k] = h.weather_code[si]; G.P[si][k] = (h.precipitation || [])[si] / 3; G.M[si][k] = (h.pressure_msl || [])[si]; }); });
+        all.forEach((p, k) => { if (!p) return; const h = p.hourly; tt.forEach((_, si) => { const sp = h.wind_speed_10m[si], dr = h.wind_direction_10m[si] * Math.PI / 180; G.T[si][k] = h.temperature_2m[si]; G.S[si][k] = sp; G.U[si][k] = -sp * Math.sin(dr); G.V[si][k] = -sp * Math.cos(dr); G.N[si][k] = h.snowfall[si]; G.C[si][k] = h.weather_code[si]; G.P[si][k] = (h.precipitation || [])[si]; G.M[si][k] = (h.pressure_msl || [])[si]; }); });
         const nb = (A, fn) => { const B = new Float32Array(A.length).fill(NaN); for (let i = 0; i < GR.nla; i++) for (let j = 0; j < GR.nlo; j++) fn(A, B, i, j); return B; };
         const avg = (A, B, i, j) => { let s = 0, c = 0; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= GR.nla || jj >= GR.nlo) continue; const v = A[ii * GR.nlo + jj]; if (!isNaN(v)) { s += v; c++; } } if (c) B[i * GR.nlo + j] = s / c; };
         const sm = (A) => nb(A, avg);
