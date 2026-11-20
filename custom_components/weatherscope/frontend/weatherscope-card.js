@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.2.6';
+  const VERSION = '0.2.7';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -23,6 +23,8 @@
   const LEG_FR = ['#78a0d7', '#2d69cd', '#1ea096', '#50be50', '#c8d232', '#f0aa28', '#e66428', '#d22828', '#be288c'];
   const ramp = (P) => { const t = new Uint8Array(2001 * 3); for (let i = 0; i <= 2000; i++) { const v = P[0][0] + (P[P.length - 1][0] - P[0][0]) * i / 2000; let c = P[P.length - 1][1]; for (let k = 0; k < P.length - 1; k++) { if (v >= P[k][0] && v <= P[k + 1][0]) { const f = (v - P[k][0]) / (P[k + 1][0] - P[k][0]); c = P[k][1].map((q, z) => Math.round(q + (P[k + 1][1][z] - q) * f)); break; } } t.set(c, i * 3); } return { t, a: P[0][0], b: P[P.length - 1][0] }; };
   const RT = ramp(PAL_T), RW = ramp(PAL_W);
+  const TSTEP = 5, TLO = -50, THI = 55;
+  const tcol = (v) => { const q = Math.max(0, Math.min(2000, Math.round((v - RT.a) * 2000 / (RT.b - RT.a)))) * 3; return `rgb(${RT.t[q]},${RT.t[q + 1]},${RT.t[q + 2]})`; };
 
   // ---------- texts ----------
   const I18N = {
@@ -65,6 +67,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #lg{position:absolute;right:8px;background:rgba(30,32,36,.78);border-radius:7px;padding:3px 7px;color:#fff;font-size:10px}
 #lg .b{display:flex;width:110px;height:6px;border-radius:3px;overflow:hidden}#lg .b i{flex:1}
 #lg .t{display:flex;justify-content:space-between;margin-top:2px;opacity:.85}
+#lg.tr .b{width:168px;height:8px;align-items:center;border-radius:0;overflow:visible;gap:1px}#lg.tr .b i{height:8px}#lg.tr .b i.o{height:4px;opacity:.35}#lg.tr .b i.z{margin-left:2px}
+#lg.tr .t{position:relative;height:12px}#lg.tr .t span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 #ct{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(30,32,36,.84);border-radius:10px;padding:6px 8px 4px;color:#fff;font-size:10px}
 #r1{display:flex;align-items:center;gap:8px}
 #pl{flex:none;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
@@ -570,9 +574,27 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       else if (map === 'wind') { cols = LEG_W; a = '0 km/h'; b = '100 km/h'; }
       else if (map === 'rain') { cols = LEG_FR; a = '0,1 mm/h'; b = '30 mm/h'; if (this._lang !== 'de') a = '0.1 mm/h'; }
       const show = !(sat && o.sm !== 'infra' && !o.ov);
+      const tr = map === 'temp' && !blitz && !sat;
+      $('lg').classList.toggle('tr', tr); $('lga').style.left = ''; $('lgb').style.left = '';
       $('lg').style.display = show ? '' : 'none';
-      lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b;
+      if (tr) {
+        // whole scale; the range found in the forecast is highlighted, the rest dimmed
+        const n = (THI - TLO) / TSTEP, R = this._trange(), lo = R ? R[0] : TLO, hi = R ? R[1] : THI, sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + ' °C';
+        let h = ''; for (let k = 0; k < n; k++) { const v0 = TLO + k * TSTEP; h += `<i class="${v0 < lo || v0 >= hi ? 'o' : ''}${v0 === 0 ? ' z' : ''}" style="background:${tcol(v0 + TSTEP / 2)}"></i>`; }
+        lg.innerHTML = h; $('lga').textContent = sg(lo); $('lgb').textContent = sg(hi);
+        let pa = (lo - TLO) / (THI - TLO) * 100, pb = (hi - TLO) / (THI - TLO) * 100; const gap = 34 - (pb - pa); if (gap > 0) { pa -= gap / 2; pb += gap / 2; }
+        if (pa < 11) { pb += 11 - pa; pa = 11; } if (pb > 89) { pa -= pb - 89; pb = 89; }
+        $('lga').style.left = `${pa}%`; $('lgb').style.left = `${pb}%`;
+      } else { lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b; }
       this._layout();
+    }
+
+    _trange() {
+      const G = this._G; if (!G) return null; if (G.tr !== undefined) return G.tr;
+      let lo = Infinity, hi = -Infinity; G.T.forEach((A) => A.forEach((v) => { if (!isNaN(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
+      G.tr = lo > hi ? null : [Math.max(TLO, Math.floor(lo / TSTEP) * TSTEP), Math.min(THI, Math.ceil(hi / TSTEP) * TSTEP)];
+      if (G.tr && G.tr[0] === G.tr[1]) G.tr[1] += TSTEP;
+      return G.tr;
     }
 
     _layout() { const s = this.shadowRoot; if (!s) return; const h = s.getElementById('ct').offsetHeight; s.getElementById('lg').style.bottom = `${h + 14}px`; }
@@ -687,7 +709,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         const hiE = all.map((p) => !!(p && p.elevation > 700));
         const fill = (A) => { const B = Float32Array.from(A, (v, k) => (hiE[k] ? NaN : v)); for (let it = 0; it < 12; it++) { const C2 = B.slice(); let left = 0; for (let i = 0; i < GR.nla; i++) for (let j = 0; j < GR.nlo; j++) { const k = i * GR.nlo + j; if (!isNaN(B[k])) continue; let s = 0, c = 0; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= GR.nla || jj >= GR.nlo) continue; const v = B[ii * GR.nlo + jj]; if (!isNaN(v)) { s += v; c++; } } if (c) C2[k] = s / c; else left++; } B.set(C2); if (!left) break; } return B; };
         G.M = G.M.map((A) => sm(sm(sm(fill(A)))));
-        this._G = G; this._gk = vb; this._FF = {}; this._IC = {}; this._HT = {};
+        this._G = G; this._gk = vb; this._FF = {}; this._IC = {}; this._HT = {}; if (this._o && this._o.map === 'temp') this._ui();
       }
       const G = this._G, s0 = this._fnear(); if (s0 < 0) return;
       if (s0 !== this._fs) { this._fs = s0; this._FF = {}; }
