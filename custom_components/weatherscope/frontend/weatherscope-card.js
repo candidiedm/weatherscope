@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.2.5';
+  const VERSION = '0.2.6';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -12,16 +12,16 @@
   const LEG_I = ['#7a7a7a', '#5ac8e6', '#285adc', '#28be50', '#f0e128', '#f58c1e', '#dc2828', '#e65ae6'];
   const LEG_B = ['rgba(240,180,245,1)', 'rgba(220,160,230,.75)', 'rgba(200,140,210,.5)', 'rgba(180,130,190,.28)'];
   // WeatherScope temperature scale: smooth, with a clear edge at 0 °C (frost blue, above zero green)
-  const PAL_T = [[-30, [75, 42, 122]], [-20, [106, 79, 191]], [-10, [63, 127, 214]], [-0.01, [143, 208, 240]], [0.01, [92, 191, 140]], [8, [159, 211, 107]], [14, [227, 220, 85]], [20, [246, 177, 63]], [26, [239, 124, 53]], [32, [217, 68, 47]], [40, [142, 28, 58]]];
+  const PAL_T = [[-50, [245, 238, 248]], [-45, [214, 181, 226]], [-40, [176, 124, 200]], [-35, [138, 85, 176]], [-30, [75, 42, 122]], [-25, [58, 58, 140]], [-20, [44, 74, 158]], [-15, [54, 100, 186]], [-10, [63, 127, 214]], [-0.01, [143, 208, 240]], [0.01, [92, 191, 140]], [8, [159, 211, 107]], [14, [227, 220, 85]], [20, [246, 177, 63]], [26, [239, 124, 53]], [32, [217, 68, 47]], [40, [142, 28, 58]], [45, [106, 15, 42]], [50, [70, 8, 28]], [55, [36, 4, 14]]];
   // kept for a later colour choice in the card editor
   const PAL_T_WINDY = [[-25, [123, 47, 191]], [-15, [74, 90, 216]], [-5, [63, 160, 224]], [0, [86, 195, 201]], [5, [98, 191, 115]], [10, [156, 204, 74]], [15, [216, 210, 58]], [20, [240, 178, 50]], [25, [238, 125, 44]], [30, [224, 72, 48]], [38, [168, 32, 60]]];
   const PAL_T_APPLE = [[-30, [44, 79, 158]], [-0.01, [44, 79, 158]], [0, [111, 182, 233]], [14.99, [111, 182, 233]], [15, [100, 194, 107]], [19.99, [100, 194, 107]], [20, [242, 212, 58]], [24.99, [242, 212, 58]], [25, [243, 154, 44]], [29.99, [243, 154, 44]], [30, [227, 65, 47]], [40, [227, 65, 47]]];
   const PAL_W = [[0, [61, 95, 163]], [10, [58, 143, 183]], [20, [63, 181, 154]], [30, [125, 197, 82]], [40, [216, 210, 58]], [55, [238, 154, 44]], [70, [224, 72, 48]], [90, [184, 48, 110]], [120, [123, 47, 191]]];
   const PAL_R = [[0.1, [120, 160, 215]], [0.5, [45, 105, 205]], [1, [30, 160, 150]], [2, [80, 190, 80]], [4, [200, 210, 50]], [7, [240, 170, 40]], [10, [230, 100, 40]], [20, [210, 40, 40]], [30, [190, 40, 140]]];
-  const LEG_T = ['#6a4fbf', '#5566cc', '#3f7fd6', '#67a8e3', '#8fd0f0', '#5cbf8c', '#9fd36b', '#e3dc55', '#f6b13f', '#ef7c35'];
+  const LEG_T = ['#2c4a9e', '#3664ba', '#3f7fd6', '#67a8e3', '#8fd0f0', '#5cbf8c', '#9fd36b', '#e3dc55', '#f6b13f', '#ef7c35'];
   const LEG_W = ['#3d5fa3', '#3a8fb7', '#3fb59a', '#7dc552', '#d8d23a', '#ee9a2c', '#e04830', '#b8306e', '#7b2fbf'];
   const LEG_FR = ['#78a0d7', '#2d69cd', '#1ea096', '#50be50', '#c8d232', '#f0aa28', '#e66428', '#d22828', '#be288c'];
-  const ramp = (P) => { const t = new Uint8Array(1001 * 3); for (let i = 0; i <= 1000; i++) { const v = P[0][0] + (P[P.length - 1][0] - P[0][0]) * i / 1000; let c = P[P.length - 1][1]; for (let k = 0; k < P.length - 1; k++) { if (v >= P[k][0] && v <= P[k + 1][0]) { const f = (v - P[k][0]) / (P[k + 1][0] - P[k][0]); c = P[k][1].map((q, z) => Math.round(q + (P[k + 1][1][z] - q) * f)); break; } } t.set(c, i * 3); } return { t, a: P[0][0], b: P[P.length - 1][0] }; };
+  const ramp = (P) => { const t = new Uint8Array(2001 * 3); for (let i = 0; i <= 2000; i++) { const v = P[0][0] + (P[P.length - 1][0] - P[0][0]) * i / 2000; let c = P[P.length - 1][1]; for (let k = 0; k < P.length - 1; k++) { if (v >= P[k][0] && v <= P[k + 1][0]) { const f = (v - P[k][0]) / (P[k + 1][0] - P[k][0]); c = P[k][1].map((q, z) => Math.round(q + (P[k + 1][1][z] - q) * f)); break; } } t.set(c, i * 3); } return { t, a: P[0][0], b: P[P.length - 1][0] }; };
   const RT = ramp(PAL_T), RW = ramp(PAL_W);
 
   // ---------- texts ----------
@@ -723,8 +723,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 
     _field(A, R) {
       const P = this._pmap(), cv = document.createElement('canvas'); cv.width = P.w; cv.height = P.h;
-      const x = cv.getContext('2d'), d = x.createImageData(P.w, P.h), p = d.data, sc = 1000 / (R.b - R.a);
-      for (let k = 0; k < P.w * P.h; k++) { const v = this._samp(A, P.gi[k], P.gj[k]); if (isNaN(v)) continue; const q = Math.max(0, Math.min(1000, Math.round((v - R.a) * sc))) * 3, i = k * 4; p[i] = R.t[q]; p[i + 1] = R.t[q + 1]; p[i + 2] = R.t[q + 2]; p[i + 3] = 235; }
+      const x = cv.getContext('2d'), d = x.createImageData(P.w, P.h), p = d.data, sc = 2000 / (R.b - R.a);
+      for (let k = 0; k < P.w * P.h; k++) { const v = this._samp(A, P.gi[k], P.gj[k]); if (isNaN(v)) continue; const q = Math.max(0, Math.min(2000, Math.round((v - R.a) * sc))) * 3, i = k * 4; p[i] = R.t[q]; p[i + 1] = R.t[q + 1]; p[i + 2] = R.t[q + 2]; p[i + 3] = 235; }
       x.putImageData(d, 0, 0); return cv;
     }
 
