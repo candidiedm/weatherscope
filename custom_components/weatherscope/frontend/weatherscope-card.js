@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.2.3';
+  const VERSION = '0.2.4';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -22,8 +22,8 @@
 
   // ---------- texts ----------
   const I18N = {
-    de: { radar: 'Regenradar', sat: 'Satellit', blitz: 'Blitze', wind: 'Wind', rain: 'Regen', temp: 'Temperatur', blue: 'Blau', vis: 'Sichtbar', ir: 'Infra', more: 'Weitere Optionen', fc: 'Vorhersage', ort: 'Mein Ort', bz: 'Blitze', ov: 'Overlay mit Radar', iso: 'Isobaren', ws: 'Windstriche', now: 'aktuell', jetzt: 'jetzt', plus1: '+1 Std.', minusH: (h) => `−${h} Std.`, loading: 'Wird geladen …', nodata: 'Noch keine Daten', ago: (m) => m < 60 ? `vor ${m} Min.` : `vor ${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ''}`, in: (m) => `in ${m} Min.`, strikes: (n) => n ? `${n} Blitz${n === 1 ? '' : 'e'} im Kartenausschnitt in der letzten Stunde · live` : 'Keine Blitze im Kartenausschnitt in der letzten Stunde · live', weak: 'schwach', strong: 'stark', newest: 'neu', min60: '60 Min.', warm: 'warm', cold: 'kalt', play: 'Abspielen', pause: 'Anhalten', noentity: 'WeatherScope: Bitte zuerst die Integration einrichten und hier den Sensor angeben.' },
-    en: { radar: 'Rain radar', sat: 'Satellite', blitz: 'Lightning', wind: 'Wind', rain: 'Rain', temp: 'Temperature', blue: 'Blue', vis: 'Visible', ir: 'Infrared', more: 'More options', fc: 'Nowcast', ort: 'My location', bz: 'Lightning', ov: 'Radar overlay', iso: 'Isobars', ws: 'Wind lines', now: 'now', jetzt: 'now', plus1: '+1 h', minusH: (h) => `−${h} h`, loading: 'Loading …', nodata: 'No data yet', ago: (m) => m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} ago`, in: (m) => `in ${m} min`, strikes: (n) => n ? `${n} strike${n === 1 ? '' : 's'} in the map area in the last hour · live` : 'No lightning in the map area in the last hour · live', weak: 'light', strong: 'heavy', newest: 'new', min60: '60 min', warm: 'warm', cold: 'cold', play: 'Play', pause: 'Pause', noentity: 'WeatherScope: please set up the integration first and select its sensor here.' },
+    de: { radar: 'Regenradar', sat: 'Satellit', blitz: 'Blitze', wind: 'Wind', rain: 'Regen', temp: 'Temperatur', blue: 'Blau', vis: 'Sichtbar', ir: 'Infra', more: 'Weitere Optionen', fc: 'Vorhersage', ort: 'Mein Ort', bz: 'Blitze', ov: 'Overlay mit Radar', iso: 'Isobaren', ws: 'Windstriche', now: 'aktuell', jetzt: 'jetzt', plus1: '+1 Std.', minusH: (h) => `−${h} Std.`, loading: 'Wird geladen …', nodata: 'Noch keine Daten', ago: (m) => m < 60 ? `vor ${m} Min.` : `vor ${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ''}`, in: (m) => `in ${m} Min.`, strikes: (n) => n ? `${n} Blitz${n === 1 ? '' : 'e'} im Kartenausschnitt in der letzten Stunde · live` : 'Keine Blitze im Kartenausschnitt in der letzten Stunde · live', weak: 'schwach', strong: 'stark', newest: 'neu', min60: '60 Min.', warm: 'warm', cold: 'kalt', play: 'Abspielen', pause: 'Anhalten', noentity: 'WeatherScope: Bitte zuerst die Integration einrichten und hier den Sensor angeben.', e_entity: 'Kartendaten (Sensor der WeatherScope-Integration)', e_fit: 'Darstellung', e_cover: 'Kachel füllen', e_contain: 'Ganze Karte zeigen', e_zoom: 'Zoom', e_fit_h: '„Kachel füllen“ zeigt den eingestellten Ausschnitt und füllt die Kachel bis zum Rand.', e_zoom_h: 'Größer als 1 vergrößert die Karte, kleiner als 1 verkleinert sie.' },
+    en: { radar: 'Rain radar', sat: 'Satellite', blitz: 'Lightning', wind: 'Wind', rain: 'Rain', temp: 'Temperature', blue: 'Blue', vis: 'Visible', ir: 'Infrared', more: 'More options', fc: 'Nowcast', ort: 'My location', bz: 'Lightning', ov: 'Radar overlay', iso: 'Isobars', ws: 'Wind lines', now: 'now', jetzt: 'now', plus1: '+1 h', minusH: (h) => `−${h} h`, loading: 'Loading …', nodata: 'No data yet', ago: (m) => m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} ago`, in: (m) => `in ${m} min`, strikes: (n) => n ? `${n} strike${n === 1 ? '' : 's'} in the map area in the last hour · live` : 'No lightning in the map area in the last hour · live', weak: 'light', strong: 'heavy', newest: 'new', min60: '60 min', warm: 'warm', cold: 'cold', play: 'Play', pause: 'Pause', noentity: 'WeatherScope: please set up the integration first and select its sensor here.', e_entity: 'Map data (sensor of the WeatherScope integration)', e_fit: 'Display', e_cover: 'Fill the card', e_contain: 'Show the whole map', e_zoom: 'Zoom', e_fit_h: '“Fill the card” shows the chosen area and fills the card to its edges.', e_zoom_h: 'Above 1 enlarges the map, below 1 shrinks it.' },
   };
   const lang0 = () => { try { const h = document.querySelector('home-assistant'); return ((h && h.hass && (h.hass.locale && h.hass.locale.language || h.hass.language)) || navigator.language || 'en').slice(0, 2); } catch (e) { return 'en'; } };
 
@@ -94,6 +94,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;background:rgba(0,0,0,.25);pointer-events:none;text-align:center;padding:0 20px}`;
 
   class WeatherScopeCard extends HTMLElement {
+    static getConfigElement() { return document.createElement('weatherscope-card-editor'); }
+
     static getStubConfig(hass) {
       const e = Object.keys((hass && hass.states) || {}).find((k) => k.startsWith('sensor.') && hass.states[k].attributes && hass.states[k].attributes.bbox && hass.states[k].attributes.grid);
       return { entity: e || 'sensor.weatherscope_map_data' };
@@ -896,8 +898,39 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
     getGridOptions() { return { columns: 6, rows: 6, min_rows: 4 }; }
   }
 
+  // Visual editor shown in the dashboard ("Edit card"), so no YAML is needed
+  class WeatherScopeCardEditor extends HTMLElement {
+    setConfig(c) { this._config = Object.assign({}, c); this._render(); }
+    set hass(h) { this._hass = h; this._render(); }
+    _render() {
+      if (!this._hass || !this._config) return;
+      const lang = (this._hass.locale && this._hass.locale.language || this._hass.language || 'en').slice(0, 2), T = I18N[lang] || I18N.en;
+      if (!this._form) {
+        this._form = document.createElement('ha-form');
+        this._form.addEventListener('value-changed', (e) => {
+          const c = Object.assign({}, this._config, e.detail.value);
+          if (c.zoom === 1) delete c.zoom;
+          if (c.fit === 'cover') delete c.fit;
+          this._config = c;
+          this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: c }, bubbles: true, composed: true }));
+        });
+        this.appendChild(this._form);
+      }
+      this._form.hass = this._hass;
+      this._form.data = Object.assign({ fit: 'cover', zoom: 1 }, this._config);
+      this._form.schema = [
+        { name: 'entity', required: true, selector: { entity: { domain: 'sensor', integration: 'weatherscope' } } },
+        { name: 'fit', selector: { select: { mode: 'dropdown', options: [{ value: 'cover', label: T.e_cover }, { value: 'contain', label: T.e_contain }] } } },
+        { name: 'zoom', selector: { number: { min: 0.5, max: 3, step: 0.1, mode: 'slider' } } },
+      ];
+      this._form.computeLabel = (s) => T[`e_${s.name}`] || s.name;
+      this._form.computeHelper = (s) => T[`e_${s.name}_h`] || '';
+    }
+  }
+  if (!customElements.get('weatherscope-card-editor')) customElements.define('weatherscope-card-editor', WeatherScopeCardEditor);
+
   if (!customElements.get('weatherscope-card')) customElements.define('weatherscope-card', WeatherScopeCard);
   window.customCards = window.customCards || [];
-  if (!window.customCards.some((c) => c.type === 'weatherscope-card')) window.customCards.push({ type: 'weatherscope-card', name: 'WeatherScope', description: 'Animated weather maps: rain radar, satellite, lightning, wind, rain and temperature.', preview: false, documentationURL: 'https://github.com/candidiedm/weatherscope' });
+  if (!window.customCards.some((c) => c.type === 'weatherscope-card')) window.customCards.push({ type: 'weatherscope-card', name: 'WeatherScope', description: 'Animated weather maps: rain radar, satellite, lightning, wind, rain and temperature.', preview: true, documentationURL: 'https://github.com/candidiedm/weatherscope' });
   console.info(`%c WEATHERSCOPE %c ${VERSION} `, 'background:#2b7de0;color:#fff;border-radius:3px 0 0 3px', 'background:#444;color:#fff;border-radius:0 3px 3px 0');
 })();
