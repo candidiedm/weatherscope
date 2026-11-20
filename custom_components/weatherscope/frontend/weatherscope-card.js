@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.3.0';
+  const VERSION = '0.3.1';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -70,6 +70,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #lg .t{display:flex;justify-content:space-between;margin-top:2px;opacity:.85}
 #lg.tr .b{width:168px;height:8px;align-items:center;border-radius:0;overflow:visible;gap:1px}#lg.tr .b i{height:8px}#lg.tr .b i.o{height:4px;opacity:.35}#lg.tr .b i.z{margin-left:2px}
 #lg.tr.rd .b{width:220px}
+#lgu{display:none}#lg.tr{display:flex;align-items:center;gap:6px}#lg.tr #lgu{display:block;font-weight:500;padding-bottom:12px}
 #lg.tr .t{position:relative;height:12px}#lg.tr .t span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 #ct{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(30,32,36,.84);border-radius:10px;padding:6px 8px 4px;color:#fff;font-size:10px}
 #r1{display:flex;align-items:center;gap:8px}
@@ -122,7 +123,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const sw = (id, t) => `<button class="sw" id="${id}"><i></i><span>${t}</span></button>`;
       this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="m"><canvas id="cv"></canvas>
 <div id="mb">${MAPS.map((m) => `${m.sep ? '<i class="sep"></i>' : ''}<button class="mb" data-m="${m.id}"><span>${T[m.id]}</span><i style="background:${m.bg}"><ha-icon icon="${m.icon}"></ha-icon></i></button>`).join('')}</div>
-<div id="lg"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div>
+<div id="lg"><span id="lgu"></span><div class="w"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div></div>
 <div id="ct"><div id="r1"><button id="pl" aria-label="${T.play}"><ha-icon icon="mdi:play"></ha-icon></button>
 <div id="tl"><div id="tk"><div id="fc"></div><div id="pg"></div></div><div id="nm"></div><div id="tb">–</div><div id="nc">${T.now}</div><span id="l0"></span><span id="l1">${T.plus1}</span><div id="dl"></div></div><div id="bi"></div></div>
 <div id="r2"><div id="sm">${SATM.map(([k, t]) => `<button data-s="${k}">${T[t]}</button>`).join('')}</div><button id="mo"><ha-icon icon="mdi:chevron-down"></ha-icon><span>${T.more}</span></button></div>
@@ -584,7 +585,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         // all 15 DWD intensity classes (mm/h), colours as drawn on the map
         lg.innerHTML = WIN.map((c) => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('');
         const de = this._lang === 'de', f = (v) => (de ? String(v).replace('.', ',') : String(v));
-        $('lga').textContent = f(0.1); $('lga').style.left = '3%'; $('lgb').textContent = '150+ mm/h'; $('lgb').style.left = '88%';
+        $('lga').textContent = f(0.1); $('lga').style.left = '6%'; $('lgb').textContent = '150+'; $('lgb').style.left = '92%'; $('lgu').textContent = 'mm/h';
         [[1, 3], [7.5, 7]].forEach(([v, k]) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = f(v); e.style.left = `${k / 15 * 100}%`; s.querySelector('#lg .t').appendChild(e); });
       } else if (tr) {
         // whole scale; the range found in the forecast is highlighted, the rest dimmed
@@ -594,11 +595,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         const n = C.length, R = this._frange(map);
         let i0 = 0, i1 = n;
         if (R) { if (map === 'temp') { while (i0 < n - 1 && B[i0 + 1] <= R[0]) i0++; } i1 = i0 + 1; while (i1 < n && B[i1] < R[1]) i1++; }
-        const fmt = (v) => { let t = String(v); if (this._lang === 'de') t = t.replace('.', ','); return (map === 'temp' ? (v > 0 ? '+' : v < 0 ? '−' : '') + t.replace('-', '') : t) + unit; };
+        const fmt = (v) => { let t = String(v); if (this._lang === 'de') t = t.replace('.', ','); return map === 'temp' ? (v > 0 ? '+' : v < 0 ? '−' : '') + t.replace('-', '') : t; }; $('lgu').textContent = unit.trim();
         let h = ''; for (let k = 0; k < n; k++) h += `<i class="${k < i0 || k >= i1 ? 'o' : ''}${map === 'temp' && B[k] === 0 ? ' z' : ''}" style="background:${C[k]}"></i>`;
         lg.innerHTML = h; $('lga').textContent = fmt(B[i0]); $('lgb').textContent = fmt(B[i1]);
-        let pa = i0 / n * 100, pb = i1 / n * 100; const gap = 40 - (pb - pa); if (gap > 0) { pa -= gap / 2; pb += gap / 2; }
-        if (pa < 12) { pb += 12 - pa; pa = 12; } if (pb > 88) { pa -= pb - 88; pb = 88; }
+        let pa = i0 / n * 100, pb = i1 / n * 100; const gap = 26 - (pb - pa); if (gap > 0) { pa -= gap / 2; pb += gap / 2; }
+        if (pa < 8) { pb += 8 - pa; pa = 8; } if (pb > 92) { pa -= pb - 92; pb = 92; }
         $('lga').style.left = `${pa}%`; $('lgb').style.left = `${pb}%`;
       } else { lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b; }
       this._layout();
