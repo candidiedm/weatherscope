@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.1.2';
+  const VERSION = '0.1.3';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -247,14 +247,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         this._lp = { k: key, v: P };
       }
       const GR = this._GR, T = temps ? this._G.T[si] : null;
-      x.save(); x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.lineJoin = 'round'; x.lineWidth = 3 * D; x.strokeStyle = 'rgba(0,0,0,.6)'; x.fillStyle = '#fff';
+      // soft shadow behind white text, like Windy
+      x.save(); x.textBaseline = 'alphabetic'; x.fillStyle = '#fff'; x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 3 * D;
       for (const [n, lo, la, px, py, big, side] of P) {
-        x.beginPath(); x.arc(px, py, 2.2 * D, 0, 7); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 1.2 * D; x.stroke(); x.lineWidth = 3 * D;
+        x.beginPath(); x.arc(px, py, 2.2 * D, 0, 7); x.fill();
         x.textAlign = side > 0 ? 'left' : 'right'; const tx = px + side * 5 * D;
-        x.font = big ? fB : fN; x.strokeText(n, tx, py - 3 * D); x.fillText(n, tx, py - 3 * D);
+        x.font = big ? fB : fN; x.fillText(n, tx, py - 3 * D);
         if (T) {
           const v = this._samp(T, (la - GR.la0) / GR.dla, (lo - GR.lo0) / GR.dlo);
-          if (!isNaN(v)) { const t = `${Math.round(v)}°`; x.font = fT; x.strokeText(t, tx, py + 11 * D); x.fillText(t, tx, py + 11 * D); }
+          if (!isNaN(v)) { const t = `${Math.round(v)}°`; x.font = fT; x.fillText(t, tx, py + 11 * D); }
         }
       }
       x.restore();
