@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.2.7';
+  const VERSION = '0.2.8';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -16,20 +16,21 @@
   // kept for a later colour choice in the card editor
   const PAL_T_WINDY = [[-25, [123, 47, 191]], [-15, [74, 90, 216]], [-5, [63, 160, 224]], [0, [86, 195, 201]], [5, [98, 191, 115]], [10, [156, 204, 74]], [15, [216, 210, 58]], [20, [240, 178, 50]], [25, [238, 125, 44]], [30, [224, 72, 48]], [38, [168, 32, 60]]];
   const PAL_T_APPLE = [[-30, [44, 79, 158]], [-0.01, [44, 79, 158]], [0, [111, 182, 233]], [14.99, [111, 182, 233]], [15, [100, 194, 107]], [19.99, [100, 194, 107]], [20, [242, 212, 58]], [24.99, [242, 212, 58]], [25, [243, 154, 44]], [29.99, [243, 154, 44]], [30, [227, 65, 47]], [40, [227, 65, 47]]];
-  const PAL_W = [[0, [61, 95, 163]], [10, [58, 143, 183]], [20, [63, 181, 154]], [30, [125, 197, 82]], [40, [216, 210, 58]], [55, [238, 154, 44]], [70, [224, 72, 48]], [90, [184, 48, 110]], [120, [123, 47, 191]]];
-  const PAL_R = [[0.1, [120, 160, 215]], [0.5, [45, 105, 205]], [1, [30, 160, 150]], [2, [80, 190, 80]], [4, [200, 210, 50]], [7, [240, 170, 40]], [10, [230, 100, 40]], [20, [210, 40, 40]], [30, [190, 40, 140]]];
+  const PAL_W = [[0, [61, 95, 163]], [10, [58, 143, 183]], [20, [63, 181, 154]], [30, [125, 197, 82]], [40, [216, 210, 58]], [55, [238, 154, 44]], [70, [224, 72, 48]], [90, [184, 48, 110]], [120, [123, 47, 191]], [150, [74, 29, 138]], [200, [224, 208, 245]]];
+  const PAL_R = [[0.1, [120, 160, 215]], [0.5, [45, 105, 205]], [1, [30, 160, 150]], [2, [80, 190, 80]], [4, [200, 210, 50]], [7, [240, 170, 40]], [10, [230, 100, 40]], [20, [210, 40, 40]], [30, [190, 40, 140]], [50, [122, 31, 143]], [100, [233, 200, 238]]];
   const LEG_T = ['#2c4a9e', '#3664ba', '#3f7fd6', '#67a8e3', '#8fd0f0', '#5cbf8c', '#9fd36b', '#e3dc55', '#f6b13f', '#ef7c35'];
   const LEG_W = ['#3d5fa3', '#3a8fb7', '#3fb59a', '#7dc552', '#d8d23a', '#ee9a2c', '#e04830', '#b8306e', '#7b2fbf'];
   const LEG_FR = ['#78a0d7', '#2d69cd', '#1ea096', '#50be50', '#c8d232', '#f0aa28', '#e66428', '#d22828', '#be288c'];
   const ramp = (P) => { const t = new Uint8Array(2001 * 3); for (let i = 0; i <= 2000; i++) { const v = P[0][0] + (P[P.length - 1][0] - P[0][0]) * i / 2000; let c = P[P.length - 1][1]; for (let k = 0; k < P.length - 1; k++) { if (v >= P[k][0] && v <= P[k + 1][0]) { const f = (v - P[k][0]) / (P[k + 1][0] - P[k][0]); c = P[k][1].map((q, z) => Math.round(q + (P[k + 1][1][z] - q) * f)); break; } } t.set(c, i * 3); } return { t, a: P[0][0], b: P[P.length - 1][0] }; };
   const RT = ramp(PAL_T), RW = ramp(PAL_W);
   const TSTEP = 5, TLO = -50, THI = 55;
+  const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
   const tcol = (v) => { const q = Math.max(0, Math.min(2000, Math.round((v - RT.a) * 2000 / (RT.b - RT.a)))) * 3; return `rgb(${RT.t[q]},${RT.t[q + 1]},${RT.t[q + 2]})`; };
 
   // ---------- texts ----------
   const I18N = {
-    de: { radar: 'Regenradar', sat: 'Satellit', blitz: 'Blitze', wind: 'Wind', rain: 'Regen', temp: 'Temperatur', blue: 'Blau', vis: 'Sichtbar', ir: 'Infra', more: 'Weitere Optionen', fc: 'Vorhersage', ort: 'Mein Ort', bz: 'Blitze', ov: 'Overlay mit Radar', iso: 'Isobaren', ws: 'Windstriche', now: 'aktuell', jetzt: 'jetzt', plus1: '+1 Std.', minusH: (h) => `−${h} Std.`, loading: 'Wird geladen …', nodata: 'Noch keine Daten', ago: (m) => m < 60 ? `vor ${m} Min.` : `vor ${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ''}`, in: (m) => `in ${m} Min.`, strikes: (n) => n ? `${n} Blitz${n === 1 ? '' : 'e'} im Kartenausschnitt in der letzten Stunde · live` : 'Keine Blitze im Kartenausschnitt in der letzten Stunde · live', weak: 'schwach', strong: 'stark', newest: 'neu', min60: '60 Min.', warm: 'warm', cold: 'kalt', play: 'Abspielen', pause: 'Anhalten', noentity: 'WeatherScope: Bitte zuerst die Integration einrichten und hier den Sensor angeben.', e_entity: 'Kartendaten (Sensor der WeatherScope-Integration)', e_fit: 'Darstellung', e_cover: 'Kachel füllen', e_contain: 'Ganze Karte zeigen', e_zoom: 'Zoom', e_fit_h: '„Kachel füllen“ zeigt den eingestellten Ausschnitt und füllt die Kachel bis zum Rand.', e_zoom_h: 'Größer als 1 vergrößert die Karte, kleiner als 1 verkleinert sie.' },
-    en: { radar: 'Rain radar', sat: 'Satellite', blitz: 'Lightning', wind: 'Wind', rain: 'Rain', temp: 'Temperature', blue: 'Blue', vis: 'Visible', ir: 'Infrared', more: 'More options', fc: 'Nowcast', ort: 'My location', bz: 'Lightning', ov: 'Radar overlay', iso: 'Isobars', ws: 'Wind lines', now: 'now', jetzt: 'now', plus1: '+1 h', minusH: (h) => `−${h} h`, loading: 'Loading …', nodata: 'No data yet', ago: (m) => m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} ago`, in: (m) => `in ${m} min`, strikes: (n) => n ? `${n} strike${n === 1 ? '' : 's'} in the map area in the last hour · live` : 'No lightning in the map area in the last hour · live', weak: 'light', strong: 'heavy', newest: 'new', min60: '60 min', warm: 'warm', cold: 'cold', play: 'Play', pause: 'Pause', noentity: 'WeatherScope: please set up the integration first and select its sensor here.', e_entity: 'Map data (sensor of the WeatherScope integration)', e_fit: 'Display', e_cover: 'Fill the card', e_contain: 'Show the whole map', e_zoom: 'Zoom', e_fit_h: '“Fill the card” shows the chosen area and fills the card to its edges.', e_zoom_h: 'Above 1 enlarges the map, below 1 shrinks it.' },
+    de: { radar: 'Wetterradar', sat: 'Satellit', blitz: 'Blitze', wind: 'Wind', rain: 'Regen', temp: 'Temperatur', blue: 'Blau', vis: 'Sichtbar', ir: 'Infra', more: 'Weitere Optionen', fc: 'Vorhersage', ort: 'Mein Ort', bz: 'Blitze', ov: 'Overlay mit Radar', iso: 'Isobaren', ws: 'Windstriche', now: 'aktuell', jetzt: 'jetzt', plus1: '+1 Std.', minusH: (h) => `−${h} Std.`, loading: 'Wird geladen …', nodata: 'Noch keine Daten', ago: (m) => m < 60 ? `vor ${m} Min.` : `vor ${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ''}`, in: (m) => `in ${m} Min.`, strikes: (n) => n ? `${n} Blitz${n === 1 ? '' : 'e'} im Kartenausschnitt in der letzten Stunde · live` : 'Keine Blitze im Kartenausschnitt in der letzten Stunde · live', weak: 'schwach', strong: 'stark', newest: 'neu', min60: '60 Min.', warm: 'warm', cold: 'kalt', play: 'Abspielen', pause: 'Anhalten', noentity: 'WeatherScope: Bitte zuerst die Integration einrichten und hier den Sensor angeben.', e_entity: 'Kartendaten (Sensor der WeatherScope-Integration)', e_fit: 'Darstellung', e_cover: 'Kachel füllen', e_contain: 'Ganze Karte zeigen', e_zoom: 'Zoom', e_fit_h: '„Kachel füllen“ zeigt den eingestellten Ausschnitt und füllt die Kachel bis zum Rand.', e_zoom_h: 'Größer als 1 vergrößert die Karte, kleiner als 1 verkleinert sie.' },
+    en: { radar: 'Weather radar', sat: 'Satellite', blitz: 'Lightning', wind: 'Wind', rain: 'Rain', temp: 'Temperature', blue: 'Blue', vis: 'Visible', ir: 'Infrared', more: 'More options', fc: 'Nowcast', ort: 'My location', bz: 'Lightning', ov: 'Radar overlay', iso: 'Isobars', ws: 'Wind lines', now: 'now', jetzt: 'now', plus1: '+1 h', minusH: (h) => `−${h} h`, loading: 'Loading …', nodata: 'No data yet', ago: (m) => m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} ago`, in: (m) => `in ${m} min`, strikes: (n) => n ? `${n} strike${n === 1 ? '' : 's'} in the map area in the last hour · live` : 'No lightning in the map area in the last hour · live', weak: 'light', strong: 'heavy', newest: 'new', min60: '60 min', warm: 'warm', cold: 'cold', play: 'Play', pause: 'Pause', noentity: 'WeatherScope: please set up the integration first and select its sensor here.', e_entity: 'Map data (sensor of the WeatherScope integration)', e_fit: 'Display', e_cover: 'Fill the card', e_contain: 'Show the whole map', e_zoom: 'Zoom', e_fit_h: '“Fill the card” shows the chosen area and fills the card to its edges.', e_zoom_h: 'Above 1 enlarges the map, below 1 shrinks it.' },
   };
   const lang0 = () => { try { const h = document.querySelector('home-assistant'); return ((h && h.hass && (h.hass.locale && h.hass.locale.language || h.hass.language)) || navigator.language || 'en').slice(0, 2); } catch (e) { return 'en'; } };
 
@@ -574,27 +575,32 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       else if (map === 'wind') { cols = LEG_W; a = '0 km/h'; b = '100 km/h'; }
       else if (map === 'rain') { cols = LEG_FR; a = '0,1 mm/h'; b = '30 mm/h'; if (this._lang !== 'de') a = '0.1 mm/h'; }
       const show = !(sat && o.sm !== 'infra' && !o.ov);
-      const tr = map === 'temp' && !blitz && !sat;
+      const tr = (map === 'temp' || map === 'wind' || map === 'rain') && !blitz && !sat;
       $('lg').classList.toggle('tr', tr); $('lga').style.left = ''; $('lgb').style.left = '';
       $('lg').style.display = show ? '' : 'none';
       if (tr) {
         // whole scale; the range found in the forecast is highlighted, the rest dimmed
-        const n = (THI - TLO) / TSTEP, R = this._trange(), lo = R ? R[0] : TLO, hi = R ? R[1] : THI, sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + ' °C';
-        let h = ''; for (let k = 0; k < n; k++) { const v0 = TLO + k * TSTEP; h += `<i class="${v0 < lo || v0 >= hi ? 'o' : ''}${v0 === 0 ? ' z' : ''}" style="background:${tcol(v0 + TSTEP / 2)}"></i>`; }
-        lg.innerHTML = h; $('lga').textContent = sg(lo); $('lgb').textContent = sg(hi);
-        let pa = (lo - TLO) / (THI - TLO) * 100, pb = (hi - TLO) / (THI - TLO) * 100; const gap = 34 - (pb - pa); if (gap > 0) { pa -= gap / 2; pb += gap / 2; }
-        if (pa < 11) { pb += 11 - pa; pa = 11; } if (pb > 89) { pa -= pb - 89; pb = 89; }
+        let B, C, unit;
+        if (map === 'temp') { B = []; for (let v = TLO; v <= THI; v += TSTEP) B.push(v); C = B.slice(0, -1).map((v) => tcol(v + TSTEP / 2)); unit = ' °C'; }
+        else { const P = map === 'wind' ? PAL_W : PAL_R; B = P.map((q) => q[0]); C = P.slice(0, -1).map((q) => rgb(q[1])); unit = map === 'wind' ? ' km/h' : ' mm/h'; }
+        const n = C.length, R = this._frange(map);
+        let i0 = 0, i1 = n;
+        if (R) { if (map === 'temp') { while (i0 < n - 1 && B[i0 + 1] <= R[0]) i0++; } i1 = i0 + 1; while (i1 < n && B[i1] < R[1]) i1++; }
+        const fmt = (v) => { let t = String(v); if (this._lang === 'de') t = t.replace('.', ','); return (map === 'temp' ? (v > 0 ? '+' : v < 0 ? '−' : '') + t.replace('-', '') : t) + unit; };
+        let h = ''; for (let k = 0; k < n; k++) h += `<i class="${k < i0 || k >= i1 ? 'o' : ''}${map === 'temp' && B[k] === 0 ? ' z' : ''}" style="background:${C[k]}"></i>`;
+        lg.innerHTML = h; $('lga').textContent = fmt(B[i0]); $('lgb').textContent = fmt(B[i1]);
+        let pa = i0 / n * 100, pb = i1 / n * 100; const gap = 40 - (pb - pa); if (gap > 0) { pa -= gap / 2; pb += gap / 2; }
+        if (pa < 12) { pb += 12 - pa; pa = 12; } if (pb > 88) { pa -= pb - 88; pb = 88; }
         $('lga').style.left = `${pa}%`; $('lgb').style.left = `${pb}%`;
       } else { lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b; }
       this._layout();
     }
 
-    _trange() {
-      const G = this._G; if (!G) return null; if (G.tr !== undefined) return G.tr;
-      let lo = Infinity, hi = -Infinity; G.T.forEach((A) => A.forEach((v) => { if (!isNaN(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
-      G.tr = lo > hi ? null : [Math.max(TLO, Math.floor(lo / TSTEP) * TSTEP), Math.min(THI, Math.ceil(hi / TSTEP) * TSTEP)];
-      if (G.tr && G.tr[0] === G.tr[1]) G.tr[1] += TSTEP;
-      return G.tr;
+    _frange(map) {
+      const G = this._G; if (!G) return null; G.fr = G.fr || {}; if (G.fr[map] !== undefined) return G.fr[map];
+      const A = map === 'temp' ? G.T : map === 'wind' ? G.S : G.P;
+      let lo = Infinity, hi = -Infinity; A.forEach((X) => X.forEach((v) => { if (!isNaN(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
+      return (G.fr[map] = lo > hi ? null : [lo, hi]);
     }
 
     _layout() { const s = this.shadowRoot; if (!s) return; const h = s.getElementById('ct').offsetHeight; s.getElementById('lg').style.bottom = `${h + 14}px`; }
@@ -709,7 +715,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         const hiE = all.map((p) => !!(p && p.elevation > 700));
         const fill = (A) => { const B = Float32Array.from(A, (v, k) => (hiE[k] ? NaN : v)); for (let it = 0; it < 12; it++) { const C2 = B.slice(); let left = 0; for (let i = 0; i < GR.nla; i++) for (let j = 0; j < GR.nlo; j++) { const k = i * GR.nlo + j; if (!isNaN(B[k])) continue; let s = 0, c = 0; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= GR.nla || jj >= GR.nlo) continue; const v = B[ii * GR.nlo + jj]; if (!isNaN(v)) { s += v; c++; } } if (c) C2[k] = s / c; else left++; } B.set(C2); if (!left) break; } return B; };
         G.M = G.M.map((A) => sm(sm(sm(fill(A)))));
-        this._G = G; this._gk = vb; this._FF = {}; this._IC = {}; this._HT = {}; if (this._o && this._o.map === 'temp') this._ui();
+        this._G = G; this._gk = vb; this._FF = {}; this._IC = {}; this._HT = {}; if (this._o && ['temp', 'wind', 'rain'].includes(this._o.map)) this._ui();
       }
       const G = this._G, s0 = this._fnear(); if (s0 < 0) return;
       if (s0 !== this._fs) { this._fs = s0; this._FF = {}; }

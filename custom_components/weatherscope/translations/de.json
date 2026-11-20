@@ -8,7 +8,7 @@
           "name": "Name",
           "location": "Kartenmittelpunkt",
           "width_km": "Kartenbreite",
-          "radar": "Regenradar",
+          "radar": "Wetterradar",
           "satellite": "Satellitenbilder"
         },
         "data_description": {
@@ -27,7 +27,7 @@
         "data": {
           "location": "Kartenmittelpunkt",
           "width_km": "Kartenbreite",
-          "radar": "Regenradar",
+          "radar": "Wetterradar",
           "satellite": "Satellitenbilder"
         },
         "data_description": {

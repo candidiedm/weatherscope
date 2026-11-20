@@ -12,7 +12,7 @@ Animated weather maps for Home Assistant dashboards: rain radar, satellite, ligh
 
 | Map | Source | Coverage |
 |---|---|---|
-| Rain radar, past 3 h + 1 h nowcast | Deutscher Wetterdienst (DWD) | Germany and surroundings |
+| Weather radar, past 3 h + 1 h nowcast | Deutscher Wetterdienst (DWD) | Germany and surroundings |
 | Satellite (visible, blue, infrared) | EUMETSAT (MTG, every 10 min) | Europe, Africa, Atlantic |
 | Lightning, live | [Blitzortung](https://github.com/mrk-its/homeassistant-blitzortung) integration (optional) | worldwide |
 | Wind, rain, temperature, isobars – 5 days | Open-Meteo | worldwide |
@@ -58,7 +58,7 @@ Each radar source is a small, separate piece of code. If you know an open radar 
 
 ## Deutsch
 
-WeatherScope zeigt animierte Wetterkarten im Dashboard: Regenradar, Satellit, Blitze, Wind mit animierten Windstrichen, Regen- und Temperaturvorhersage mit Isobaren sowie Hoch- und Tiefdruckgebieten.
+WeatherScope zeigt animierte Wetterkarten im Dashboard: Wetterradar, Satellit, Blitze, Wind mit animierten Windstrichen, Regen- und Temperaturvorhersage mit Isobaren sowie Hoch- und Tiefdruckgebieten.
 
 **Home Assistant lädt alle Kartendaten selbst.** Die Dashboards, zum Beispiel Wandtablets, sprechen nur mit Home Assistant und brauchen keinen Internetzugang.
 
@@ -74,4 +74,4 @@ type: custom:weatherscope-card
 entity: sensor.weatherscope_map_data
 ```
 
-Regenradar gibt es derzeit für Deutschland (DWD). Satellit, Blitze und die Vorhersagekarten funktionieren auch außerhalb.
+Wetterradar gibt es derzeit für Deutschland (DWD). Satellit, Blitze und die Vorhersagekarten funktionieren auch außerhalb.

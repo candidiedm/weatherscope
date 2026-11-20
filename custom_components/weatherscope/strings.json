@@ -8,7 +8,7 @@
           "name": "Name",
           "location": "Map centre",
           "width_km": "Map width",
-          "radar": "Rain radar",
+          "radar": "Weather radar",
           "satellite": "Satellite images"
         },
         "data_description": {
@@ -27,7 +27,7 @@
         "data": {
           "location": "Map centre",
           "width_km": "Map width",
-          "radar": "Rain radar",
+          "radar": "Weather radar",
           "satellite": "Satellite images"
         },
         "data_description": {
