@@ -21,7 +21,7 @@ More radar sources (other countries) are welcome – see *Contributing*.
 
 1. Home Assistant → **Settings → Marketplace** → ⋮ → **Custom repositories** → add `https://github.com/candidiedm/weatherscope` as *Integration*.
 2. Install **WeatherScope** and restart Home Assistant.
-3. **Settings → Devices & services → Add integration → WeatherScope.** Choose the map centre and the map width (1000 km shows all of Germany).
+3. **Settings → Devices & services → Add integration → WeatherScope.** Choose the map centre and the map width (750 km shows all of Germany; a margin around it is loaded automatically).
 4. Add the card to a dashboard:
 
 ```yaml
@@ -64,7 +64,7 @@ WeatherScope zeigt animierte Wetterkarten im Dashboard: Regenradar, Satellit, Bl
 
 1. Home Assistant → **Einstellungen → Marketplace** → ⋮ → **Benutzerdefinierte Repositories** → `https://github.com/candidiedm/weatherscope` als *Integration* hinzufügen.
 2. **WeatherScope** installieren und Home Assistant neu starten.
-3. **Einstellungen → Geräte & Dienste → Integration hinzufügen → WeatherScope.** Kartenmittelpunkt und Kartenbreite wählen (1000 km zeigen ganz Deutschland).
+3. **Einstellungen → Geräte & Dienste → Integration hinzufügen → WeatherScope.** Kartenmittelpunkt und Kartenbreite wählen (750 km zeigen ganz Deutschland; rundherum wird automatisch etwas mehr geladen).
 4. Karte im Dashboard einfügen:
 
 ```yaml

@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.1.3';
+  const VERSION = '0.2.0';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -581,12 +581,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const [iw, ih] = (this._A && this._A.size) || [800, 922];
       const ct = s.getElementById('ct'), op = s.getElementById('op');
       const Hv = c.fit === 'contain' ? H : Math.max(H * 0.5, H - Math.round((ct.offsetHeight - (op.classList.contains('open') ? op.offsetHeight : 0) + 8) * D));
-      let sc = c.fit === 'contain' ? Math.min(W / iw, H / ih) : Math.min(W / (iw * 0.7), Hv / (ih * 0.8));
+      // the integration loads a margin around the chosen area (pad); fit the chosen area into the space above the controls
+      const pad = (this._A && this._A.pad) || 1;
+      let sc = c.fit === 'contain' ? Math.min(W / iw, H / ih) : Math.min(W / (iw / pad), Hv / (ih / pad));
       sc *= c.zoom;
       const dw = iw * sc, dh = ih * sc;
       let ox = W / 2 - c.cx * dw, oy = Hv / 2 - c.cy * dh;
       ox = dw <= W ? (W - dw) / 2 : Math.min(0, Math.max(W - dw, ox));
-      oy = dh <= Hv ? (Hv - dh) / 2 : Math.min(0, Math.max(Hv - dh, oy));
+      // keep the whole card covered (also below the controls) as long as the loaded map is large enough
+      oy = dh <= H ? (H - dh) / 2 : Math.min(0, Math.max(H - dh, oy));
       const g = { ox, oy, dw, dh, W, H };
       const layer = (kind) => {
         const key = `${W}x${H}x${Math.round(ox)}x${Math.round(oy)}x${Math.round(dw)}`, bc = this._bc[kind];

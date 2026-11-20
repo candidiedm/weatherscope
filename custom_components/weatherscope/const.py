@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "weatherscope"
-VERSION = "0.1.3"
+VERSION = "0.2.0"
 
 # Config entry keys
 CONF_LOCATION = "location"
@@ -12,7 +12,9 @@ CONF_RADAR = "radar"
 CONF_SATELLITE = "satellite"
 
 DEFAULT_NAME = "WeatherScope"
-DEFAULT_WIDTH_KM = 1000
+DEFAULT_WIDTH_KM = 750
+# Extra map loaded around the chosen area, so the card is always filled (1.5 = 25 % on every side)
+MAP_PAD = 1.5
 
 # Provider choices
 AUTO = "auto"

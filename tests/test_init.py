@@ -37,7 +37,7 @@ async def test_config_flow(hass: HomeAssistant) -> None:
     with patch("custom_components.weatherscope.async_setup_entry", return_value=True):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {"name": "Wetter", "location": {"latitude": 51.0, "longitude": 10.1}, "width_km": 1000, "radar": "auto", "satellite": "auto"},
+            {"name": "Wetter", "location": {"latitude": 51.0, "longitude": 10.1}, "width_km": 750, "radar": "auto", "satellite": "auto"},
         )
     assert result["type"] == "create_entry"
     assert result["title"] == "Wetter"
@@ -65,7 +65,7 @@ async def test_setup_downloads(hass: HomeAssistant, aioclient_mock: AiohttpClien
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="WeatherScope",
-        data={"location": {"latitude": 51.0, "longitude": 10.1}, "width_km": 1000, "radar": "auto", "satellite": "auto"},
+        data={"location": {"latitude": 51.0, "longitude": 10.1}, "width_km": 750, "radar": "auto", "satellite": "auto"},
     )
     entry.add_to_hass(hass)
     with patch("custom_components.weatherscope.manager.asyncio.sleep", return_value=None):
@@ -102,7 +102,7 @@ async def test_radar_auto_off_outside_germany(hass: HomeAssistant, aioclient_moc
     aioclient_mock.get(re.compile(r".*"), status=500)
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data={"location": {"latitude": 40.7, "longitude": -74.0}, "width_km": 1000, "radar": "auto", "satellite": "auto"},
+        data={"location": {"latitude": 40.7, "longitude": -74.0}, "width_km": 750, "radar": "auto", "satellite": "auto"},
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)

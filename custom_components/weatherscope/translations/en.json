@@ -13,7 +13,7 @@
         },
         "data_description": {
           "location": "Click on the map to move the centre. Your home location is shown on the map either way.",
-          "width_km": "True distance from the left to the right edge, e.g. 1000 km for Germany.",
+          "width_km": "Visible width of the map, e.g. 750 km for Germany. A margin around it is loaded automatically so the card is always filled.",
           "radar": "Automatic chooses a radar that covers your map. At the moment only Germany (DWD) is available.",
           "satellite": "Automatic uses EUMETSAT (Europe, Africa, Atlantic)."
         }
@@ -31,7 +31,7 @@
           "satellite": "Satellite images"
         },
         "data_description": {
-          "width_km": "True distance from the left to the right edge, e.g. 1000 km for Germany."
+          "width_km": "Visible width of the map, e.g. 750 km for Germany. A margin around it is loaded automatically so the card is always filled."
         }
       }
     }

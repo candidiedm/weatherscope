@@ -38,6 +38,7 @@ from .const import (
     FC_PARTS,
     IMG_H,
     IMG_W,
+    MAP_PAD,
     NONE,
     RADAR_DWD,
     RADAR_FUTURE,
@@ -83,7 +84,8 @@ class WeatherScopeManager:
         self.lat = float(loc.get("latitude", hass.config.latitude))
         self.lon = float(loc.get("longitude", hass.config.longitude))
         self.width_km = float(conf.get(CONF_WIDTH_KM, DEFAULT_WIDTH_KM))
-        self.box = MapBox.around(self.lat, self.lon, self.width_km)
+        # load a margin around the chosen area so the card never shows empty edges
+        self.box = MapBox.around(self.lat, self.lon, self.width_km * MAP_PAD)
         self.radar = self._pick(conf.get(CONF_RADAR, AUTO), RADAR_DWD, DWD_COVERAGE)
         self.satellite = self._pick(conf.get(CONF_SATELLITE, AUTO), SAT_EUMETSAT, EUMETSAT_COVERAGE)
         self.dir = Path(hass.config.path("weatherscope", entry.entry_id))
@@ -347,6 +349,8 @@ class WeatherScopeManager:
             "bbox": [self.box.x0, self.box.y0, self.box.x1, self.box.y1],
             "size": [IMG_W, IMG_H],
             "center": [round(self.lat, 4), round(self.lon, 4)],
+            "pad": MAP_PAD,
+            "width_km": self.width_km,
             "grid": self.box.grid(),
             "radar": None
             if not self.radar

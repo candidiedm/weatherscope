@@ -13,7 +13,7 @@
         },
         "data_description": {
           "location": "Klicke auf die Karte, um den Mittelpunkt zu verschieben. Dein Zuhause wird in jedem Fall angezeigt.",
-          "width_km": "Echte Entfernung vom linken bis zum rechten Rand, z. B. 1000 km für Deutschland.",
+          "width_km": "Sichtbare Breite der Karte, z. B. 750 km für Deutschland. Rundherum wird automatisch etwas mehr geladen, damit die Kachel immer gefüllt ist.",
           "radar": "Automatisch wählt ein Radar, das deine Karte abdeckt. Derzeit gibt es nur Deutschland (DWD).",
           "satellite": "Automatisch nutzt EUMETSAT (Europa, Afrika, Atlantik)."
         }
@@ -31,7 +31,7 @@
           "satellite": "Satellitenbilder"
         },
         "data_description": {
-          "width_km": "Echte Entfernung vom linken bis zum rechten Rand, z. B. 1000 km für Deutschland."
+          "width_km": "Sichtbare Breite der Karte, z. B. 750 km für Deutschland. Rundherum wird automatisch etwas mehr geladen, damit die Kachel immer gefüllt ist."
         }
       }
     }
