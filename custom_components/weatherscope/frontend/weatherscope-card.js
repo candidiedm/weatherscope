@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.2.8';
+  const VERSION = '0.2.9';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -69,6 +69,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #lg .b{display:flex;width:110px;height:6px;border-radius:3px;overflow:hidden}#lg .b i{flex:1}
 #lg .t{display:flex;justify-content:space-between;margin-top:2px;opacity:.85}
 #lg.tr .b{width:168px;height:8px;align-items:center;border-radius:0;overflow:visible;gap:1px}#lg.tr .b i{height:8px}#lg.tr .b i.o{height:4px;opacity:.35}#lg.tr .b i.z{margin-left:2px}
+#lg.tr.rd .b{width:220px}
 #lg.tr .t{position:relative;height:12px}#lg.tr .t span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 #ct{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(30,32,36,.84);border-radius:10px;padding:6px 8px 4px;color:#fff;font-size:10px}
 #r1{display:flex;align-items:center;gap:8px}
@@ -575,10 +576,17 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       else if (map === 'wind') { cols = LEG_W; a = '0 km/h'; b = '100 km/h'; }
       else if (map === 'rain') { cols = LEG_FR; a = '0,1 mm/h'; b = '30 mm/h'; if (this._lang !== 'de') a = '0.1 mm/h'; }
       const show = !(sat && o.sm !== 'infra' && !o.ov);
-      const tr = (map === 'temp' || map === 'wind' || map === 'rain') && !blitz && !sat;
+      const rd = cols === LEG_R, tr = rd || ((map === 'temp' || map === 'wind' || map === 'rain') && !blitz && !sat);
+      s.querySelectorAll('#lg .t .x').forEach((e) => e.remove()); $('lg').classList.toggle('rd', rd);
       $('lg').classList.toggle('tr', tr); $('lga').style.left = ''; $('lgb').style.left = '';
       $('lg').style.display = show ? '' : 'none';
-      if (tr) {
+      if (rd) {
+        // all 15 DWD intensity classes (mm/h), colours as drawn on the map
+        lg.innerHTML = WIN.map((c) => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('');
+        const de = this._lang === 'de', f = (v) => (de ? String(v).replace('.', ',') : String(v));
+        $('lga').textContent = f(0.1); $('lga').style.left = '3%'; $('lgb').textContent = '150+'; $('lgb').style.left = '95%';
+        [[1, 3], [7.5, 7], [30, 10]].forEach(([v, k]) => { const e = document.createElement('span'); e.className = 'x'; e.textContent = f(v); e.style.left = `${k / 15 * 100}%`; s.querySelector('#lg .t').appendChild(e); });
+      } else if (tr) {
         // whole scale; the range found in the forecast is highlighted, the rest dimmed
         let B, C, unit;
         if (map === 'temp') { B = []; for (let v = TLO; v <= THI; v += TSTEP) B.push(v); C = B.slice(0, -1).map((v) => tcol(v + TSTEP / 2)); unit = ' °C'; }
