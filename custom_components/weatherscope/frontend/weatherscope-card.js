@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.3.4';
+  const VERSION = '0.3.5';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -101,7 +101,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 .sw i::after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .2s}
 .sw.on i{background:#e0402e}.sw.on i::after{left:13px}
 #s_ort.on i{background:#2b7de0}#s_bz.on i{background:#a8489e}#s_ov.on i{background:#2f9e5a}#s_iso.on i{background:#8a8a8a}#s_ws.on i{background:#3a8fb7}
-.sep{width:18px;height:4px;margin:1px 5px}
+.sep{display:none}
 #dl{position:absolute;left:0;right:0;top:30px;height:12px;pointer-events:none}#dl span{position:absolute;transform:translateX(-50%);opacity:.8;white-space:nowrap}#dl span.j{transform:none}
 #ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;background:rgba(0,0,0,.25);pointer-events:none;text-align:center;padding:0 20px}`;
 
