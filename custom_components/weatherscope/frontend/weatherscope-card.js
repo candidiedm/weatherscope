@@ -919,7 +919,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       this._form.hass = this._hass;
       this._form.data = Object.assign({ fit: 'cover', zoom: 1 }, this._config);
       this._form.schema = [
-        { name: 'entity', required: true, selector: { entity: { domain: 'sensor', integration: 'weatherscope' } } },
+        { name: 'entity', required: true, selector: { entity: { filter: [{ domain: 'sensor', integration: 'weatherscope' }] } } },
         { name: 'fit', selector: { select: { mode: 'dropdown', options: [{ value: 'cover', label: T.e_cover }, { value: 'contain', label: T.e_contain }] } } },
         { name: 'zoom', selector: { number: { min: 0.5, max: 3, step: 0.1, mode: 'slider' } } },
       ];
