@@ -1,3 +1,5 @@
+<img src="custom_components/weatherscope/brand/icon@2x.png" width="96" align="right" alt="WeatherScope">
+
 # WeatherScope
 
 Animated weather maps for Home Assistant dashboards: rain radar, satellite, lightning, wind (with animated wind lines), rain and temperature forecast with isobars, highs and lows.
