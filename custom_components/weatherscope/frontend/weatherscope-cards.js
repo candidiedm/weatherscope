@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.12.1';
+  const VERSION = '0.12.2';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -676,9 +676,9 @@ ${med && chart
 
   // ---------------------------------------------------------------- Wind
   class WindCard extends WSBase {
-    static defaults = { entity: 'weather.weatherscope', background: 'sky' };
+    static defaults = { entity: 'weather.weatherscope', background: 'sky', size: 'medium' };
     getCardSize() { return 3; }
-    _grid() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    _grid() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
     _html(h, s, t) {
       const c = this._c, U = units(s), A = s.attributes;
       const ws = sensor(h, c.wind_speed, U.w) ?? num(A.wind_speed), wg = sensor(h, c.wind_gust, U.w) ?? num(A.wind_gust_speed), wb = sensor(h, c.wind_bearing) ?? num(A.wind_bearing);
@@ -689,12 +689,18 @@ ${med && chart
       // the arrow points where the wind blows to (from the bearing it comes from)
       const arrow = wb === null ? '' : `<g transform="rotate(${wb + 180} ${cx} ${cy})"><line x1="${cx}" y1="${cy + R - 4}" x2="${cx}" y2="${cy - R + 10}" stroke="#fff" stroke-width="2.2"/><polygon points="${cx},${cy - R + 2} ${cx - 6},${cy - R + 13} ${cx + 6},${cy - R + 13}" fill="#fff"/><circle cx="${cx}" cy="${cy + R - 4}" r="4" fill="none" stroke="#fff" stroke-width="2"/></g>`;
       const comp = `<svg class="cmp" viewBox="0 0 112 112">${ticks}${letters}${arrow}<circle cx="${cx}" cy="${cy}" r="19" fill="rgba(20,40,80,.55)"/><text x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="16" font-weight="600" fill="#fff">${int(ws)}</text><text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,.8)">${U.w}</text></svg>`;
+      // small: compass fills the tile, gusts below (wind speed is in the middle of the compass)
+      if (c.size === 'small') {
+        return `<style>${baseCss(h, s, c.background)}.cw{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 0}.cmp{height:100%;max-height:112px;aspect-ratio:1;display:block}.note{margin-top:0}</style>
+<ha-card><div class="lab"><ha-icon icon="mdi:weather-windy"></ha-icon>${t.n_wind}</div><div class="cw">${comp}</div><div class="note">${t.w_gust}: ${int(wg)} ${U.w}</div></ha-card>`;
+      }
       return `<style>${baseCss(h, s, c.background)}${rowsCss}.cmp{width:112px;height:112px;display:block}</style>
 <ha-card><div class="lab"><ha-icon icon="mdi:weather-windy"></ha-icon>${t.n_wind}</div><div class="md">${rowList([[t.w_wind, `${int(ws)} ${U.w}`], [t.w_gust, `${int(wg)} ${U.w}`], [t.w_dir, dir]])}${comp}</div></ha-card>`;
     }
   }
   register('weatherscope-wind-card', WindCard, makeEditor((t) => [
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
+    { name: 'size', selector: { select: { mode: 'dropdown', options: [{ value: 'small', label: t.e_small }, { value: 'medium', label: t.e_medium }] } } },
     { name: 'wind_speed', ...sensorSel('wind_speed') }, { name: 'wind_gust', ...sensorSel('wind_speed') }, { name: 'wind_bearing', ...sensorSel() },
     bgSchema(t),
   ], { background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_wind}`, 'd_wind');
