@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.10.1';
+  const VERSION = '0.10.2';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -510,7 +510,9 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const v = own() ?? num(A.uv_index), st = v === null ? 0 : uvStage(v), mx = today ? num(today.uv_index) : null;
         big = v === null ? '–' : String(Math.round(v)); sub = v === null ? '' : t[`uv${st}`];
         const pos = v === null ? 0 : Math.min(100, (v / 12) * 100);
-        viz = `<div class="uvb">${[3, 3, 2, 3, 1].map((w, k) => `<i style="flex:${w};background:${UVC[k]}"></i>`).join('')}${v === null ? '' : `<b style="left:${pos}%"></b>`}</div>`;
+        // gradient that keeps every WHO stage in its own colour; blends only at the stage limits (0-12 scale)
+        const UVG = 'linear-gradient(90deg,#3ea72d 0%,#3ea72d 22%,#fff300 28%,#fff300 47%,#f18b00 53%,#f18b00 64%,#e53210 70%,#e53210 89%,#b567a4 95%,#b567a4 100%)';
+        viz = `<div class="uvb" style="background:${UVG}">${v === null ? '' : `<b style="left:${pos}%"></b>`}</div>`;
         note = mx === null ? '' : mx < 3 ? t.uv_low_day : t.uv_max(Math.round(mx), t[`uv${uvStage(mx)}`]);
         if (med) {
           const d0 = new Date(); d0.setHours(0, 0, 0, 0);
@@ -589,7 +591,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .big{margin-top:6px}.sub{margin-top:2px}
 .sv{width:100%;height:40px;margin-top:6px;display:block}
 .gv{width:100%;max-height:86px;margin-top:2px;display:block}
-.uvb{position:relative;display:flex;gap:2px;height:6px;margin-top:10px}.uvb i{display:block;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
+.uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
 .md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:14px;align-items:stretch}
 .ml{display:flex;flex-direction:column;min-width:0}.mr{position:relative;min-width:0;padding-top:6px}
