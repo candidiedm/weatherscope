@@ -35,6 +35,7 @@ FORECAST = {
         "wind_direction_10m_dominant": [180] * 10,
     },
 }  # fmt: skip
+FORECAST["minutely_15"] = {"time": [T0 + 900 * i for i in range(12)], "precipitation": [0.0, 0.1, 0.3, 0.2] + [0.0] * 8}
 AIR = {
     "current": {
         "european_aqi": 35,
@@ -102,6 +103,8 @@ async def test_weather_entities(hass: HomeAssistant, aioclient_mock: AiohttpClie
     assert hass.states.get("sensor.weatherscope_pm2_5").state == "12"
     assert hass.states.get("sensor.weatherscope_visibility").state == "20.0"
     assert hass.states.get("sensor.weatherscope_moon_phase").state in astro.PHASES
+    now_c = hass.states.get("sensor.weatherscope_precipitation_nowcast")
+    assert len(now_c.attributes["steps"]) == 12
     normal = hass.states.get("sensor.weatherscope_normal_high")
     assert len(normal.attributes["months"]) == 12
     assert (tmp_path / "weatherscope" / entry.entry_id / "normals.json").exists()

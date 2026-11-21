@@ -48,6 +48,19 @@ def _today(d: dict[str, Any], key: str) -> Any:
     return lst[0] if lst else None
 
 
+def _steps(d: dict[str, Any]) -> list[list[Any]]:
+    """Precipitation in 15-minute steps for the next hours: [[iso time, mm], ...]."""
+    m = d.get("minutely") or {}
+    return [[_ts(t).isoformat(), v] for t, v in zip(m.get("time", []), m.get("precipitation", []), strict=False) if t is not None]
+
+
+def _next_hour(d: dict[str, Any]) -> float | None:
+    now = dt_util.utcnow().timestamp()
+    m = d.get("minutely") or {}
+    vals = [v for t, v in zip(m.get("time", []), m.get("precipitation", []), strict=False) if v is not None and now - 900 < t <= now + 3600]
+    return round(sum(vals), 1) if vals else None
+
+
 def _normal_today(d: dict[str, Any]) -> float | None:
     months = d.get("normals")
     if not months:
@@ -89,6 +102,9 @@ WEATHER_SENSORS: tuple[WSSensorDescription, ...] = (
                         value_fn=lambda d: round(d["current"]["visibility"] / 1000, 1) if d["current"].get("visibility") is not None else None),
     WSSensorDescription(key="precipitation_today", translation_key="precipitation_today", device_class=SensorDeviceClass.PRECIPITATION,
                         native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS, value_fn=lambda d: _today(d, "precipitation_sum")),
+    WSSensorDescription(key="precipitation_nowcast", translation_key="precipitation_nowcast", icon="mdi:weather-rainy",
+                        device_class=SensorDeviceClass.PRECIPITATION, native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+                        value_fn=lambda d: _next_hour(d), attrs_fn=lambda d: {"steps": _steps(d)}),
     WSSensorDescription(key="sunrise", translation_key="sunrise", icon="mdi:weather-sunset-up", device_class=SensorDeviceClass.TIMESTAMP,
                         value_fn=lambda d: _ts(_today(d, "sunrise"))),
     WSSensorDescription(key="sunset", translation_key="sunset", icon="mdi:weather-sunset-down", device_class=SensorDeviceClass.TIMESTAMP,
@@ -139,6 +155,8 @@ class WeatherSensor(CoordinatorEntity[WeatherScopeData], SensorEntity):
         self._attr_device_info = device_info(entry)
         if desc.key == "normal_high":
             self._unrecorded_attributes = frozenset({"months"})
+        if desc.key == "precipitation_nowcast":
+            self._unrecorded_attributes = frozenset({"steps"})
 
     @property
     def native_value(self) -> Any:

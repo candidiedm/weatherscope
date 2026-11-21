@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.9.1';
+  const VERSION = '0.10.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -19,7 +19,11 @@
       n_above: 'über dem durchschnittlichen Tageshöchstwert', n_below: 'unter dem durchschnittlichen Tageshöchstwert', n_same: 'entspricht dem durchschnittlichen Tageshöchstwert', n_note: (a, b) => `Heute H: ${a} · Durchschnitt H: ${b}`, n_none: 'Klimawerte werden geladen …',
       p_today: 'Heute', p_tomorrow: (v) => `Morgen ${v} erwartet.`, p_tomorrow0: 'Morgen kein Niederschlag erwartet.',
       v0: 'Nebel.', v1: 'Dunst.', v2: 'Leicht dunstig.', v3: 'Gute Sicht.', v4: 'Klare Sicht.', h_dew: (v) => `Der Taupunkt liegt bei ${v}.`,
-      pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', e_kind: 'Wert', e_sensor: 'Eigener Sensor (optional)', e_sensor_h: 'Ersetzt den Hauptwert, z. B. von deiner Wetterstation.', e_sensor2: 'Zweiter eigener Sensor (optional)', e_sensor2_h: 'Gefühlt: tatsächliche Temperatur · Feuchtigkeit: Taupunkt.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
+      pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', pr_24: 'letzte 24 Std.',
+      uv_protect: (a, b) => `Sonnenschutz von ${a} bis ${b} empfohlen`, uv_none: 'Kein Sonnenschutz nötig', uv_peak: (v, at) => `Höchstwert ${v} um ${at}`,
+      rn_start: (at) => `Niederschlag ab ${at}`, rn_stop: (at) => `Hört gegen ${at} auf`, rn_none: (hh) => `Kein Niederschlag in den nächsten ${hh} Std.`, rn_cont: 'Hält an', rn_next: 'nächste Stunde',
+      daylen: (h, m) => `Tageslänge ${h} Std. ${m} Min.`, dusk: (at) => `Dämmerung bis ${at}`, dawn: (at) => `Dämmerung ab ${at}`, golden: (at) => `Goldene Stunde ab ${at}`,
+      e_size: 'Größe', e_small: 'Klein (4 × 3)', e_medium: 'Mittel (8 × 3)', e_size_h: 'Mittel zeigt bei UV, Niederschlag, Luftdruck und Sonne einen Verlauf.', e_kind: 'Wert', e_sensor: 'Eigener Sensor (optional)', e_sensor_h: 'Ersetzt den Hauptwert, z. B. von deiner Wetterstation.', e_sensor2: 'Zweiter eigener Sensor (optional)', e_sensor2_h: 'Gefühlt: tatsächliche Temperatur · Feuchtigkeit: Taupunkt.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
@@ -36,7 +40,11 @@
       n_above: 'above the average daily high', n_below: 'below the average daily high', n_same: 'equal to the average daily high', n_note: (a, b) => `Today H: ${a} · Average H: ${b}`, n_none: 'Loading climate normals …',
       p_today: 'Today', p_tomorrow: (v) => `${v} expected tomorrow.`, p_tomorrow0: 'None expected tomorrow.',
       v0: 'Fog.', v1: 'Haze.', v2: 'Slightly hazy.', v3: 'Good visibility.', v4: 'Clear view.', h_dew: (v) => `The dew point is ${v} right now.`,
-      pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', e_kind: 'Value', e_sensor: 'Own sensor (optional)', e_sensor_h: 'Replaces the main value, e.g. from your weather station.', e_sensor2: 'Second own sensor (optional)', e_sensor2_h: 'Feels like: actual temperature · Humidity: dew point.', today: 'Today', days: (n) => `${n} days`, d_rain: 'Precipitation', d_wind: 'Wind', e_days: 'Number of days', e_link: 'Link with other cards', e_link_h: 'Switching between temperature, precipitation and wind applies to all linked cards on the page.', d_daily: 'Daily forecast: temperature, precipitation, wind.', d_sky: 'Animated sky as background of the whole page, matching the weather.', e_test: 'Test a condition (optional)', e_test_h: 'Always shows this condition – for trying out. Leave empty for normal use.', e_fps: 'Frames per second', e_fps_h: 'Fewer frames are easier on older tablets.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
+      pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', pr_24: 'last 24 h',
+      uv_protect: (a, b) => `Sun protection recommended ${a}–${b}`, uv_none: 'No sun protection needed', uv_peak: (v, at) => `Maximum ${v} at ${at}`,
+      rn_start: (at) => `Precipitation from ${at}`, rn_stop: (at) => `Stopping around ${at}`, rn_none: (hh) => `No precipitation in the next ${hh} h`, rn_cont: 'Continuing', rn_next: 'next hour',
+      daylen: (h, m) => `Day length ${h} h ${m} min`, dusk: (at) => `Dusk until ${at}`, dawn: (at) => `Dawn from ${at}`, golden: (at) => `Golden hour from ${at}`,
+      e_size: 'Size', e_small: 'Small (4 × 3)', e_medium: 'Medium (8 × 3)', e_size_h: 'Medium shows a chart for UV, precipitation, pressure and sun.', e_kind: 'Value', e_sensor: 'Own sensor (optional)', e_sensor_h: 'Replaces the main value, e.g. from your weather station.', e_sensor2: 'Second own sensor (optional)', e_sensor2_h: 'Feels like: actual temperature · Humidity: dew point.', today: 'Today', days: (n) => `${n} days`, d_rain: 'Precipitation', d_wind: 'Wind', e_days: 'Number of days', e_link: 'Link with other cards', e_link_h: 'Switching between temperature, precipitation and wind applies to all linked cards on the page.', d_daily: 'Daily forecast: temperature, precipitation, wind.', d_sky: 'Animated sky as background of the whole page, matching the weather.', e_test: 'Test a condition (optional)', e_test_h: 'Always shows this condition – for trying out. Leave empty for normal use.', e_fps: 'Frames per second', e_fps_h: 'Fewer frames are easier on older tablets.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
     },
   };
   const lang = (h) => ((h && ((h.locale && h.locale.language) || h.language)) || navigator.language || 'en').slice(0, 2);
@@ -428,14 +436,27 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
   // WHO UV index colours (INTERSUN): green, yellow, orange, red, violet
   const UVC = ['#3ea72d', '#fff300', '#f18b00', '#e53210', '#b567a4'];
   const uvStage = (v) => (v < 3 ? 0 : v < 6 ? 1 : v < 8 ? 2 : v < 11 ? 3 : 4);
+  // sunrise/sunset/twilight times (SunCalc formulas)
+  const sunTimes = (date, lat, lng, angle) => {
+    const rad = Math.PI / 180, day = 864e5, J1970 = 2440588, J2000 = 2451545, e = rad * 23.4397;
+    const d = date.valueOf() / day - 0.5 + J1970 - J2000, lw = rad * -lng, phi = rad * lat;
+    const n = Math.round(d - 0.0009 - lw / (2 * Math.PI)), ds = 0.0009 + lw / (2 * Math.PI) + n;
+    const M = rad * (357.5291 + 0.98560028 * ds), L = M + rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + rad * 102.9372 + Math.PI;
+    const dec = Math.asin(Math.sin(e) * Math.sin(L)), Jnoon = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+    const cosw = (Math.sin(angle * rad) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec));
+    if (cosw < -1 || cosw > 1) return null;
+    const w = Math.acos(cosw), Jset = J2000 + (0.0009 + (w + lw) / (2 * Math.PI) + n) + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L), Jrise = Jnoon - (Jset - Jnoon);
+    const toDate = (j) => new Date((j + 0.5 - J1970) * day);
+    return [toDate(Jrise), toDate(Jset)];
+  };
   const KINDS = ['feels', 'sun', 'uv', 'normal', 'precip', 'visibility', 'humidity', 'pressure'];
   const KICON = { feels: 'mdi:thermometer', sun: 'mdi:weather-sunset', uv: 'mdi:sun-wireless-outline', normal: 'mdi:chart-bell-curve-cumulative', precip: 'mdi:water', visibility: 'mdi:eye-outline', humidity: 'mdi:water-percent', pressure: 'mdi:gauge' };
   class ValueCard extends WSBase {
-    static defaults = { entity: 'weather.weatherscope', kind: 'feels', background: 'sky' };
-    static forecast = 'daily';
+    static defaults = { entity: 'weather.weatherscope', kind: 'feels', background: 'sky', size: 'small' };
+    static forecast = ['daily', 'hourly'];
     static getStubConfig(h) { return { ...WSBase.getStubConfig(h), kind: 'feels' }; }
-    getCardSize() { return 2; }
-    getGridOptions() { return { columns: 4, rows: 3, min_columns: 4, min_rows: 3 }; }
+    getCardSize() { return 3; }
+    getGridOptions() { return this._c && this._c.size === 'medium' ? { columns: 8, rows: 3, min_columns: 6, min_rows: 3 } : { columns: 4, rows: 3, min_columns: 4, min_rows: 3 }; }
     connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { if (this._c && (this._c.kind === 'sun' || this._c.kind === 'pressure')) { this._last = null; this._render(); } }, 60000); }
     disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
     // pressure trend: change over the last 3 hours from the recorder
@@ -444,17 +465,20 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
       if (this._trK === key || this._trBusy) return;
       this._trBusy = true;
       try {
-        const start = new Date(Date.now() - 3 * 36e5).toISOString();
+        const start = new Date(Date.now() - 24 * 36e5).toISOString();
         const r = await h.callWS({ type: 'history/history_during_period', start_time: start, entity_ids: [id], minimal_response: !attr, no_attributes: !attr, significant_changes_only: false });
-        const L = (r && r[id]) || [], first = L[0];
-        const v0 = first ? num(attr ? (first.a || first.attributes || {})[attr] : first.s ?? first.state) : null;
-        this._trV = v0; this._trK = key; this._last = null; this._render();
+        const L = (r && r[id]) || [];
+        const pts = L.map((q) => [(q.lu || q.lc || 0) * 1000 || new Date(q.last_updated || q.last_changed).getTime(), num(attr ? (q.a || q.attributes || {})[attr] : q.s ?? q.state)]).filter((q) => q[1] !== null && !isNaN(q[0]));
+        this._series = pts;
+        const t3 = Date.now() - 3 * 36e5; let v0 = null; for (const q of pts) { if (q[0] <= t3) v0 = q[1]; }
+        this._trV = v0 ?? (pts[0] ? pts[0][1] : null); this._trK = key; this._last = null; this._render();
       } catch (e) { this._trK = key; } finally { this._trBusy = false; }
     }
     _html(h, s, t) {
       const c = this._c, K = KINDS.includes(c.kind) ? c.kind : 'feels', U = units(s), A = s.attributes, today = (this._fc || [])[0], tomorrow = (this._fc || [])[1];
       const own = (unit) => sensor(h, c.sensor, unit), own2 = (unit) => sensor(h, c.sensor2, unit);
-      let label = t[`k_${K}`], ic = KICON[K], big = '–', sub = '', viz = '', note = '';
+      let label = t[`k_${K}`], ic = KICON[K], big = '–', sub = '', viz = '', note = '', chart = '';
+      const med = c.size === 'medium', hourly = this._fcs.hourly || [], L = lang(h), now = Date.now();
       if (K === 'feels') {
         const f = own(U.t) ?? num(A.apparent_temperature), a = own2(U.t) ?? num(A.temperature);
         big = deg(f); sub = t.actual(deg(a));
@@ -472,12 +496,36 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const nowD = new Date(), xf = (nowD.getHours() * 60 + nowD.getMinutes()) / 1440;
         let path = ''; for (let k = 0; k <= 48; k++) { const x = k / 48; path += `${k ? 'L' : 'M'}${(x * W).toFixed(1)} ${yc(x).toFixed(1)}`; }
         viz = `<svg class="sv" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/><circle cx="${xf * W}" cy="${yc(xf)}" r="3.5" fill="#fff"/></svg>`;
+        if (med) {
+          const lat = h.config.latitude, lng = h.config.longitude, today0 = new Date(); today0.setHours(12, 0, 0, 0);
+          const rs = sunTimes(today0, lat, lng, -0.833), tw = sunTimes(today0, lat, lng, -6), gh = sunTimes(today0, lat, lng, 6);
+          chart = viz.replace('class="sv"', 'class="sv big"'); viz = '';
+          const parts = [];
+          if (rs) { const m = Math.round((rs[1] - rs[0]) / 6e4); parts.push(t.daylen(Math.floor(m / 60), m % 60)); }
+          if (tw) parts.push(up || now > (rs ? rs[1].getTime() : 0) ? t.dusk(hhmm(h, tw[1])) : t.dawn(hhmm(h, tw[0])));
+          if (gh && up) parts.push(t.golden(hhmm(h, gh[1])));
+          sub = note; note = parts.join(' · ');
+        }
       } else if (K === 'uv') {
         const v = own() ?? num(A.uv_index), st = v === null ? 0 : uvStage(v), mx = today ? num(today.uv_index) : null;
         big = v === null ? '–' : String(Math.round(v)); sub = v === null ? '' : t[`uv${st}`];
         const pos = v === null ? 0 : Math.min(100, (v / 12) * 100);
         viz = `<div class="uvb">${[3, 3, 2, 3, 1].map((w, k) => `<i style="flex:${w};background:${UVC[k]}"></i>`).join('')}${v === null ? '' : `<b style="left:${pos}%"></b>`}</div>`;
         note = mx === null ? '' : mx < 3 ? t.uv_low_day : t.uv_max(Math.round(mx), t[`uv${uvStage(mx)}`]);
+        if (med) {
+          const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+          let hs = hourly.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= d0.getTime() && q < d0.getTime() + 864e5 && num(x.uv_index) !== null; });
+          const on = hs.filter((x) => num(x.uv_index) >= 0.5);
+          if (on.length) { const a = new Date(on[0].datetime).getTime() - 36e5, b = new Date(on[on.length - 1].datetime).getTime() + 36e5; hs = hs.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= a && q <= b; }); }
+          if (hs.length) {
+            const top = Math.max(8, ...hs.map((x) => num(x.uv_index))), W = 100 / hs.length;
+            const bars = hs.map((x, k) => { const u = num(x.uv_index), hh = new Date(x.datetime).getHours(); return `<div class="cb" style="left:${k * W}%;width:${W}%"><i style="height:${Math.max(3, (u / top) * 100)}%;background:${UVC[uvStage(u)]}"></i>${hh % 3 === 0 ? `<span>${hh}</span>` : ''}</div>`; }).join('');
+            const t0 = new Date(hs[0].datetime).getTime(), nowX = ((now - t0) / (hs.length * 36e5)) * 100;
+            chart = `<div class="ch">${bars}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div>`;
+            const pr = hs.filter((x) => num(x.uv_index) >= 3), pk = hs.reduce((p, q) => (num(q.uv_index) > num(p.uv_index) ? q : p));
+            note = pr.length ? `${t.uv_protect(hhmm(h, new Date(pr[0].datetime)), hhmm(h, new Date(new Date(pr[pr.length - 1].datetime).getTime() + 36e5)))} · ${t.uv_peak(Math.round(num(pk.uv_index)), hhmm(h, new Date(pk.datetime)))}` : t.uv_none;
+          }
+        }
       } else if (K === 'normal') {
         const nid = c.sensor || 'sensor.weatherscope_normal_high', ns = h.states[nid];
         const nh = ns ? conv(num(ns.state), ns.attributes.unit_of_measurement, U.t) : null, th = today ? num(today.temperature) : null;
@@ -488,6 +536,24 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const v = own(U.p) ?? (today ? num(today.precipitation) : null), tm = tomorrow ? num(tomorrow.precipitation) : null;
         big = v === null ? '–' : `${dec(h, v, U.p)} ${U.p}`; sub = t.p_today;
         note = tm === null ? '' : tm >= conv(0.1, 'mm', U.p) ? t.p_tomorrow(`${dec(h, tm, U.p)} ${U.p}`) : t.p_tomorrow0;
+        if (med) {
+          // 15-minute steps from WeatherScope, otherwise the next hours of the hourly forecast
+          const nc = h.states[c.nowcast || 'sensor.weatherscope_precipitation_nowcast'];
+          let steps = nc && Array.isArray(nc.attributes.steps) ? nc.attributes.steps.map((q) => [new Date(q[0]).getTime(), conv(num(q[1]) || 0, 'mm', U.p), 9e5]) : [];
+          steps = steps.filter((q) => q[0] + q[2] > now);
+          if (!steps.length) steps = hourly.filter((x) => new Date(x.datetime).getTime() + 36e5 > now).slice(0, 6).map((x) => [new Date(x.datetime).getTime(), num(x.precipitation) || 0, 36e5]);
+          if (steps.length) {
+            const wet = (q) => q[1] >= conv(0.05, 'mm', U.p), top = Math.max(conv(1, 'mm', U.p), ...steps.map((q) => q[1])), W = 100 / steps.length;
+            const bars = steps.map((q, k) => `<div class="cb" style="left:${k * W}%;width:${W}%"><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i>${k % (steps[0][2] < 36e5 ? 4 : 1) === 0 ? `<span>${hhmm(h, new Date(q[0]))}</span>` : ''}</div>`).join('');
+            chart = `<div class="ch">${bars}</div>`;
+            const first = steps.find(wet), hh = Math.round((steps.length * steps[0][2]) / 36e5);
+            if (!first) sub = t.rn_none(hh);
+            else if (first === steps[0]) { const stop = steps.find((q) => !wet(q)); sub = stop ? t.rn_stop(hhmm(h, new Date(stop[0]))) : t.rn_cont; }
+            else sub = t.rn_start(hhmm(h, new Date(first[0])));
+            const nh = steps.filter((q) => q[0] < now + 36e5).reduce((a, q) => a + q[1] * Math.min(1, q[2] / 36e5), 0);
+            big = `${dec(h, nh, U.p)} ${U.p}`; label = `${t.k_precip} · ${t.rn_next}`;
+          }
+        }
       } else if (K === 'visibility') {
         const vu = A.visibility_unit || 'km', v = own(vu) ?? num(A.visibility), km = v === null ? null : vu === 'mi' ? v * 1.609 : v;
         big = v === null ? '–' : `${dec(h, v)} ${vu}`;
@@ -505,6 +571,14 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         let ticks = ''; for (let k = 0; k <= 30; k++) { const a = a0 + ((a1 - a0) * k) / 30; ticks += `<line x1="${cx + Math.cos(a) * (R - 6)}" y1="${cy + Math.sin(a) * (R - 6)}" x2="${cx + Math.cos(a) * R}" y2="${cy + Math.sin(a) * R}" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`; }
         viz = `<svg class="gv" viewBox="0 0 120 80">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy + 3}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
         big = ''; note = `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}`;
+        if (med && this._series && this._series.length > 1) {
+          const P = this._series.map((q) => [q[0], c.sensor ? conv(q[1], h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : q[1]]);
+          const t0 = now - 24 * 36e5, lo = Math.min(...P.map((q) => q[1])), hi = Math.max(...P.map((q) => q[1])), pad = Math.max(1, (hi - lo) * 0.15);
+          const X = (q) => Math.max(0, ((q - t0) / (24 * 36e5)) * 200), Y = (v) => 56 - ((v - (lo - pad)) / (hi - lo + 2 * pad)) * 52;
+          const line = P.map((q, k) => `${k ? 'L' : 'M'}${X(q[0]).toFixed(1)} ${Y(q[1]).toFixed(1)}`).join(' ') + (v !== null ? ` L200 ${Y(v).toFixed(1)}` : '');
+          const fmtp = (x) => (pu === 'inHg' ? x.toFixed(2) : Math.round(x).toLocaleString(L));
+          chart = `<div class="pc"><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="${line} L200 60 L0 60 Z" fill="rgba(127,212,255,.18)"/><path d="${line}" fill="none" stroke="#7fd4ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><span class="hi">${fmtp(hi)}</span><span class="lo">${fmtp(lo)}</span><span class="ax">${t.pr_24}</span></div>`;
+        }
       }
       return `
 <style>${baseCss(h, s, c.background)}
@@ -513,17 +587,27 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .gv{width:100%;max-height:86px;margin-top:2px;display:block}
 .uvb{position:relative;display:flex;gap:2px;height:6px;margin-top:10px}.uvb i{display:block;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
+.md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:14px;align-items:stretch}
+.ml{display:flex;flex-direction:column;min-width:0}.mr{position:relative;min-width:0;padding-top:6px}
+.ch{position:absolute;inset:6px 0 16px 0}.cb{position:absolute;top:0;bottom:0;display:flex;justify-content:center}
+.cb i{position:absolute;bottom:0;left:18%;right:18%;border-radius:3px 3px 1px 1px;display:block}.cb span{position:absolute;bottom:-15px;font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap}
+.nw{position:absolute;top:-4px;bottom:0;border-left:1.5px dashed rgba(255,255,255,.85)}
+.pc{position:absolute;inset:6px 0 4px 0}.pc svg{width:100%;height:100%;display:block}.pc span{position:absolute;right:0;font-size:12px;color:rgba(255,255,255,.75)}.pc .hi{top:0}.pc .lo{bottom:16px}.pc .ax{left:0;bottom:-2px;right:auto}
+.sv.big{height:100%;min-height:60px;margin-top:0}
 </style>
-<ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div>${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}<div class="note">${note}</div></ha-card>`;
+${med && chart
+  ? `<ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div><div class="md"><div class="ml">${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}</div><div class="mr">${chart}</div></div><div class="note">${note}</div></ha-card>`
+  : `<ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div>${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}<div class="note">${note}</div></ha-card>`}`;
     }
   }
   register('weatherscope-value-card', ValueCard, makeEditor((t) => [
     { name: 'kind', required: true, selector: { select: { mode: 'dropdown', options: KINDS.map((k) => ({ value: k, label: t[`k_${k}`] })) } } },
+    { name: 'size', selector: { select: { mode: 'dropdown', options: [{ value: 'small', label: t.e_small }, { value: 'medium', label: t.e_medium }] } } },
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
     { name: 'sensor', ...sensorSel() },
     { name: 'sensor2', ...sensorSel() },
     bgSchema(t),
-  ], { sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' }), 'WeatherScope – Value', 'd_value');
+  ], { size: 'e_size_h', sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' }), 'WeatherScope – Value', 'd_value');
 
   // ---------------------------------------------------------------- Sky (animated page background)
   class SkyCard extends HTMLElement {

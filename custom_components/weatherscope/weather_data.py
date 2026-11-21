@@ -134,7 +134,16 @@ class WeatherScopeData(DataUpdateCoordinator[dict[str, Any]]):
         fc, air = await asyncio.gather(
             self._get(
                 FORECAST_URL,
-                {**self._base(), "current": CURRENT, "hourly": HOURLY, "daily": DAILY, "forecast_days": 10, "forecast_hours": 240},
+                {
+                    **self._base(),
+                    "current": CURRENT,
+                    "hourly": HOURLY,
+                    "daily": DAILY,
+                    "forecast_days": 10,
+                    "forecast_hours": 240,
+                    "minutely_15": "precipitation",
+                    "forecast_minutely_15": 12,
+                },
             ),
             self._get(AIR_URL, {**self._base(), "current": AIR}),
         )
@@ -148,6 +157,7 @@ class WeatherScopeData(DataUpdateCoordinator[dict[str, Any]]):
             "current": fc["current"],
             "hourly": fc.get("hourly", {}),
             "daily": fc.get("daily", {}),
+            "minutely": fc.get("minutely_15", {}),
             "air": (air or {}).get("current", {}),
             "moon": {
                 "phase": astro.moon_phase(now),
