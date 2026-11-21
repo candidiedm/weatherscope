@@ -539,7 +539,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const cid = `sc${Math.random().toString(36).slice(2, 7)}`;
         // the sun is an HTML dot on top of the stretched SVG, so it stays round at every tile size
         viz = `<div class="svw"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><clipPath id="${cid}"><rect x="0" y="0" width="${W}" height="${hz}"/></clipPath></defs>
-<path d="${path}" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><path d="${path}" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" vector-effect="non-scaling-stroke" clip-path="url(#${cid})"/>
+<path d="${path}" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="2" vector-effect="non-scaling-stroke"/><path d="${path}" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" vector-effect="non-scaling-stroke" clip-path="url(#${cid})"/>
 <line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/></svg><i class="sd${yf > hz ? ' dn' : ''}" style="left:${(xf * 100).toFixed(2)}%;top:${((yf / H) * 100).toFixed(2)}%"></i></div>`;
         if (med) {
           const lat = h.config.latitude, lng = h.config.longitude, today0 = new Date(); today0.setHours(12, 0, 0, 0);
@@ -635,7 +635,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 <style>${baseCss(h, s, c.background)}
 .big{margin-top:6px}.sub{margin-top:2px}
 .svw{position:relative;width:100%;height:40px;margin-top:6px}.svw svg{width:100%;height:100%;display:block}
-.sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(255,255,255,.55);box-shadow:none}
+.sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(0,0,0,.3);box-shadow:none}
 .gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
 .uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
