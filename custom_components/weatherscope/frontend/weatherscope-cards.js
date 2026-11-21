@@ -542,7 +542,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const cid = `sc${Math.random().toString(36).slice(2, 7)}`;
         // the sun is an HTML dot on top of the stretched SVG, so it stays round at every tile size
         viz = `<div class="svw"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><clipPath id="${cid}"><rect x="0" y="0" width="${W}" height="${hz}"/></clipPath></defs>
-<path d="${path}" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="2" vector-effect="non-scaling-stroke"/><path d="${path}" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" vector-effect="non-scaling-stroke" clip-path="url(#${cid})"/>
+<path d="${path}" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="2.5" vector-effect="non-scaling-stroke"/><path d="${path}" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" vector-effect="non-scaling-stroke" clip-path="url(#${cid})"/>
 <line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/></svg><i class="sd${yf > hz ? ' dn' : ''}" style="left:${(xf * 100).toFixed(2)}%;top:${((yf / H) * 100).toFixed(2)}%"></i></div>`;
         if (med) {
           const lat = h.config.latitude, lng = h.config.longitude, today0 = new Date(); today0.setHours(12, 0, 0, 0);
