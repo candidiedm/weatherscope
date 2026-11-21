@@ -996,6 +996,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 
   if (!customElements.get('weatherscope-card')) customElements.define('weatherscope-card', WeatherScopeCard);
   window.customCards = window.customCards || [];
-  if (!window.customCards.some((c) => c.type === 'weatherscope-card')) window.customCards.push({ type: 'weatherscope-card', name: 'WeatherScope', description: 'Animated weather maps: rain radar, satellite, lightning, wind, rain and temperature.', preview: true, documentationURL: 'https://github.com/candidiedm/weatherscope' });
+  if (!window.customCards.some((c) => c.type === 'weatherscope-card')) window.customCards.push({ type: 'weatherscope-card', name: lang0() === 'de' ? 'WeatherScope – Wetterkarte' : 'WeatherScope – Weather map', description: lang0() === 'de' ? 'Animierte Wetterkarten: Wetterradar, Satellit, Blitze, Wind, Regen und Temperatur.' : 'Animated weather maps: weather radar, satellite, lightning, wind, rain and temperature.', preview: true, documentationURL: 'https://github.com/candidiedm/weatherscope' });
   console.info(`%c WEATHERSCOPE %c ${VERSION} `, 'background:#2b7de0;color:#fff;border-radius:3px 0 0 3px', 'background:#444;color:#fff;border-radius:0 3px 3px 0');
 })();

@@ -11,7 +11,7 @@
       e_sky: 'Eigener Himmel', e_glass: 'Glas', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
       e_background_h: '„Glas“ und „Durchsichtig“ passen zu einer Wetterseite mit der WeatherScope-Himmel-Animation dahinter.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
       e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
-      d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_value: 'Einzelwert: Gefühlt, Sonne, UV-Index, Durchschnitt, Niederschlag, Sichtweite, Feuchtigkeit oder Luftdruck.',
+      n_now: 'Aktuell', n_hourly: 'Stündlich', n_daily: 'Tagesvorhersage', n_value: 'Wert (alle)', n_sky: 'Himmel-Animation', d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_value: 'Einzelwert: Gefühlt, Sonne, UV-Index, Durchschnitt, Niederschlag, Sichtweite, Feuchtigkeit oder Luftdruck.',
       k_feels: 'Gefühlt', k_sun: 'Sonne', k_uv: 'UV-Index', k_normal: 'Durchschnitt', k_precip: 'Niederschlag', k_visibility: 'Sichtweite', k_humidity: 'Feuchtigkeit', k_pressure: 'Luftdruck',
       sunrise_l: 'Sonnenaufgang', sunset_l: 'Sonnenuntergang', actual: (v) => `Tatsächlich: ${v}`, f_colder: 'Fühlt sich kälter an als die tatsächliche Temperatur.', f_colder_wind: 'Fühlt sich durch den Wind kälter an.',
       f_warmer: 'Fühlt sich wärmer an als die tatsächliche Temperatur.', f_warmer_hum: 'Fühlt sich durch die Luftfeuchtigkeit wärmer an.', f_same: 'Ähnlich wie die tatsächliche Temperatur.',
@@ -32,7 +32,7 @@
       e_sky: 'Own sky', e_glass: 'Glass', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
       e_background_h: '“Glass” and “Transparent” suit a weather page with the WeatherScope sky animation behind it.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
       e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
-      d_now: 'Place, temperature, condition, high and low.', d_value: 'Single value: feels like, sun, UV index, average, precipitation, visibility, humidity or pressure.',
+      n_now: 'Now', n_hourly: 'Hourly', n_daily: 'Daily forecast', n_value: 'Value (all)', n_sky: 'Sky animation', d_now: 'Place, temperature, condition, high and low.', d_value: 'Single value: feels like, sun, UV index, average, precipitation, visibility, humidity or pressure.',
       k_feels: 'Feels like', k_sun: 'Sun', k_uv: 'UV index', k_normal: 'Average', k_precip: 'Precipitation', k_visibility: 'Visibility', k_humidity: 'Humidity', k_pressure: 'Pressure',
       sunrise_l: 'Sunrise', sunset_l: 'Sunset', actual: (v) => `Actual: ${v}`, f_colder: 'Feels colder than the actual temperature.', f_colder_wind: 'Wind makes it feel colder.',
       f_warmer: 'Feels warmer than the actual temperature.', f_warmer_hum: 'Humidity makes it feel warmer.', f_same: 'Similar to the actual temperature.',
@@ -227,7 +227,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     { name: 'temperature', ...sensorSel('temperature') },
     { name: 'name', selector: { text: {} } },
     bgSchema(t),
-  ], { temperature: 'e_temperature_h', background: 'e_background_h' }), 'WeatherScope – Now', 'd_now');
+  ], { temperature: 'e_temperature_h', background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_now}`, 'd_now');
 
   // ---------------------------------------------------------------- Hourly
   class HourlyCard extends WSBase {
@@ -318,7 +318,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     { name: 'wind_bearing', ...sensorSel() },
     { name: 'rain_rate', ...sensorSel() },
     bgSchema(t),
-  ], { link: 'e_link_h', temperature: 'e_own_h', rain_rate: 'e_rain_rate_h', background: 'e_background_h' }), 'WeatherScope – Hourly', 'd_hourly');
+  ], { link: 'e_link_h', temperature: 'e_own_h', rain_rate: 'e_rain_rate_h', background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_hourly}`, 'd_hourly');
 
   // ---------------------------------------------------------------- Daily
   const ROW = 36; // minimum row height (px)
@@ -430,7 +430,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     { name: 'link', selector: { boolean: {} } },
     { name: 'temperature', ...sensorSel('temperature') },
     bgSchema(t),
-  ], { link: 'e_link_h', temperature: 'e_own_h', background: 'e_background_h' }), 'WeatherScope – Daily', 'd_daily');
+  ], { link: 'e_link_h', temperature: 'e_own_h', background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_daily}`, 'd_daily');
 
   // ---------------------------------------------------------------- Value (small tiles)
   // WHO UV index colours (INTERSUN): green, yellow, orange, red, violet
@@ -617,7 +617,7 @@ ${med && chart
     { name: 'sensor2', ...sensorSel() },
     bgSchema(t),
   ], { size: 'e_size_h', sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' });
-  register('weatherscope-value-card', ValueCard, valueEditor, 'WeatherScope – Value', 'd_value');
+  register('weatherscope-value-card', ValueCard, valueEditor, `WeatherScope – ${tr(hass0()).n_value}`, 'd_value');
   // every value also as its own entry in the card picker (same card, preset value)
   KINDS.forEach((k) => {
     const Cls = class extends ValueCard {
@@ -846,7 +846,7 @@ ${med && chart
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
     { name: 'test', selector: { select: { mode: 'dropdown', options: Object.keys(ICON).map((k) => ({ value: k, label: k })) } } },
     { name: 'fps', selector: { number: { min: 5, max: 60, step: 5, mode: 'box' } } },
-  ], { test: 'e_test_h', fps: 'e_fps_h' }), 'WeatherScope – Sky', 'd_sky');
+  ], { test: 'e_test_h', fps: 'e_fps_h' }), `WeatherScope – ${tr(hass0()).n_sky}`, 'd_sky');
 
   console.info(`%c WEATHERSCOPE CARDS %c ${VERSION} `, 'background:#2b7de0;color:#fff;border-radius:3px 0 0 3px', 'background:#444;color:#fff;border-radius:0 3px 3px 0');
 })();
