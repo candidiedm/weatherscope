@@ -164,7 +164,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     connectedCallback() {
       if (this._h) this._subscribe();
       // "link": switching temperature/rain/wind on one card switches the others on the page too
-      this._onMode = (e) => { if (this._c && this._c.link !== false && e.detail.entity === this._c.entity && e.detail.src !== this) { this._mode = e.detail.mode; this._render(); } };
+      this._onMode = (e) => { if (this._c && this._c.link !== false && (e.detail.entity === this._c.entity || e.detail.entity === '*') && e.detail.src !== this) { this._mode = e.detail.mode; this._render(); } };
       window.addEventListener('weatherscope-mode', this._onMode);
       this._sqro = new ResizeObserver(() => this._sq()); this._sqro.observe(this);
     }
@@ -343,7 +343,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 </style>
 <ha-card>
   <div class="hd"><div><div class="lab"><ha-icon icon="mdi:clock-outline"></ha-icon>${t.hourly}</div><div class="mode">${t[`m_${M}`].replace('{u}', unit)}</div></div>
-  <div class="seg">${btn('temp', 'mdi:weather-partly-cloudy')}${btn('rain', 'mdi:water')}${btn('wind', 'mdi:weather-windy')}</div></div>
+  <div class="seg">${btn('temp', 'mdi:thermometer')}${btn('rain', 'mdi:water')}${btn('wind', 'mdi:weather-windy')}</div></div>
   <div class="hours">${cells || `<span class="dim">${t.loading}</span>`}</div>
 </ha-card>`;
     }
@@ -459,7 +459,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 </style>
 <ha-card>
   <div class="hd"><div class="lab"><ha-icon icon="mdi:calendar-month-outline"></ha-icon>${t.days(n || Number(c.days) || 10)}${sub}</div>
-  <div class="seg">${btn('temp', 'mdi:weather-partly-cloudy')}${btn('rain', 'mdi:water')}${btn('wind', 'mdi:weather-windy')}</div></div>
+  <div class="seg">${btn('temp', 'mdi:thermometer')}${btn('rain', 'mdi:water')}${btn('wind', 'mdi:weather-windy')}</div></div>
   <div class="list">${rows || `<span class="dim">${t.loading}</span>`}</div>
 </ha-card>`;
     }
