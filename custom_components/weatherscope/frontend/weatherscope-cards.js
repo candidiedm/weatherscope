@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.11.0';
+  const VERSION = '0.11.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -509,7 +509,10 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const W = 120, H = 40, yc = (x) => H / 2 - Math.cos(2 * Math.PI * (x - 0.5)) * (H / 2 - 4), hz = H / 2 - Math.cos(Math.PI * dayLen / 24) * (H / 2 - 4);
         const nowD = new Date(), xf = (nowD.getHours() * 60 + nowD.getMinutes()) / 1440;
         let path = ''; for (let k = 0; k <= 48; k++) { const x = k / 48; path += `${k ? 'L' : 'M'}${(x * W).toFixed(1)} ${yc(x).toFixed(1)}`; }
-        viz = `<svg class="sv" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/><circle cx="${xf * W}" cy="${yc(xf)}" r="3.5" fill="#fff"/></svg>`;
+        const cid = `sc${Math.random().toString(36).slice(2, 7)}`;
+        viz = `<svg class="sv" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><clipPath id="${cid}"><rect x="0" y="0" width="${W}" height="${hz}"/></clipPath><radialGradient id="${cid}g"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<path d="${path}" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><path d="${path}" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" vector-effect="non-scaling-stroke" clip-path="url(#${cid})"/>
+<line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/><ellipse cx="${xf * W}" cy="${yc(xf)}" rx="9" ry="7" fill="url(#${cid}g)"/><circle cx="${xf * W}" cy="${yc(xf)}" r="3.5" fill="#fff"/></svg>`;
         if (med) {
           const lat = h.config.latitude, lng = h.config.longitude, today0 = new Date(); today0.setHours(12, 0, 0, 0);
           const rs = sunTimes(today0, lat, lng, -0.833), tw = sunTimes(today0, lat, lng, -6), gh = sunTimes(today0, lat, lng, 6);
@@ -589,8 +592,8 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const hpa = v === null ? 1013 : conv(v, pu === 'inHg' ? 'inHg' : pu, 'hPa') ?? v, f = Math.max(0, Math.min(1, ((pu === 'inHg' ? v * 33.8639 : hpa) - 960) / 90));
         const R = 34, cx = 60, cy = 42, a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, ang = a0 + (a1 - a0) * f;
         let ticks = ''; for (let k = 0; k <= 30; k++) { const a = a0 + ((a1 - a0) * k) / 30; ticks += `<line x1="${cx + Math.cos(a) * (R - 6)}" y1="${cy + Math.sin(a) * (R - 6)}" x2="${cx + Math.cos(a) * R}" y2="${cy + Math.sin(a) * R}" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`; }
-        viz = `<svg class="gv" viewBox="0 0 120 80">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy + 3}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
-        big = ''; note = `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}`;
+        viz = `<svg class="gv" viewBox="0 0 120 88">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy - 11}" text-anchor="middle" fill="#fff" font-size="11">${d > 1 ? '↑' : d < -1 ? '↓' : '='}</text><text x="${cx - 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↓</text><text x="${cx + 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↑</text><text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
+        big = ''; note = med ? `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}` : '';
         if (med && this._series && this._series.length > 1) {
           const P = this._series.map((q) => [q[0], c.sensor ? conv(q[1], h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : q[1]]);
           const t0 = now - 24 * 36e5, lo = Math.min(...P.map((q) => q[1])), hi = Math.max(...P.map((q) => q[1])), pad = Math.max(1, (hi - lo) * 0.15);
@@ -604,7 +607,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 <style>${baseCss(h, s, c.background)}
 .big{margin-top:6px}.sub{margin-top:2px}
 .sv{width:100%;height:40px;margin-top:6px;display:block}
-.gv{width:100%;max-height:86px;margin-top:2px;display:block}
+.gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
 .uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
 .md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:14px;align-items:stretch}
