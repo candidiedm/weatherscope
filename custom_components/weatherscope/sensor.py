@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass
-from homeassistant.const import CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, PERCENTAGE, UnitOfLength, UnitOfPrecipitationDepth
+from homeassistant.const import PERCENTAGE, UnitOfLength, UnitOfPrecipitationDepth
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -76,7 +76,12 @@ class WSSensorDescription(SensorEntityDescription):
     attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
 
 
-AQ = CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+try:  # Home Assistant 2026.8+: µg/m³ moved to UnitOfDensity
+    from homeassistant.const import UnitOfDensity
+
+    AQ = UnitOfDensity.MICROGRAMS_PER_CUBIC_METER
+except ImportError:  # older versions
+    from homeassistant.const import CONCENTRATION_MICROGRAMS_PER_CUBIC_METER as AQ
 MEAS = SensorStateClass.MEASUREMENT
 
 WEATHER_SENSORS: tuple[WSSensorDescription, ...] = (
