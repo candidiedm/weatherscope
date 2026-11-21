@@ -518,10 +518,13 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           const on = hs.filter((x) => num(x.uv_index) >= 0.5);
           if (on.length) { const a = new Date(on[0].datetime).getTime() - 36e5, b = new Date(on[on.length - 1].datetime).getTime() + 36e5; hs = hs.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= a && q <= b; }); }
           if (hs.length) {
-            const top = Math.max(8, ...hs.map((x) => num(x.uv_index))), W = 100 / hs.length;
-            const bars = hs.map((x, k) => { const u = num(x.uv_index), hh = new Date(x.datetime).getHours(); return `<div class="cb" style="left:${k * W}%;width:${W}%"><i style="height:${Math.max(3, (u / top) * 100)}%;background:${UVC[uvStage(u)]}"></i>${hh % 3 === 0 ? `<span>${hh}</span>` : ''}</div>`; }).join('');
-            const t0 = new Date(hs[0].datetime).getTime(), nowX = ((now - t0) / (hs.length * 36e5)) * 100;
-            chart = `<div class="ch">${bars}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div>`;
+            const rs = sunTimes(new Date(d0.getTime() + 432e5), h.config.latitude, h.config.longitude, -0.833);
+            const a = rs ? Math.floor(rs[0].getTime() / 36e5) * 36e5 - 36e5 : new Date(hs[0].datetime).getTime(), b = rs ? Math.ceil(rs[1].getTime() / 36e5) * 36e5 + 36e5 : new Date(hs[hs.length - 1].datetime).getTime() + 36e5;
+            const span = b - a, W = (36e5 / span) * 100, top = Math.max(8, ...hs.map((x) => num(x.uv_index)));
+            let axis = ''; for (let q = a; q <= b; q += 36e5) { const hh = new Date(q).getHours(); if (hh % 3 === 0) axis += `<span class="ax" style="left:${((q - a) / span) * 100}%">${hh}</span>`; }
+            const bars = hs.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= a && q < b; }).map((x) => { const u = num(x.uv_index), q = new Date(x.datetime).getTime(); return `<div class="cb" style="left:${((q - a) / span) * 100}%;width:${W}%"><i style="height:${Math.max(3, (u / top) * 100)}%;background:${UVC[uvStage(u)]}"></i></div>`; }).join('');
+            const nowX = ((now - a) / span) * 100;
+            chart = `<div class="ch"><div class="base"></div>${bars}${axis}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div>`;
             const pr = hs.filter((x) => num(x.uv_index) >= 3), pk = hs.reduce((p, q) => (num(q.uv_index) > num(p.uv_index) ? q : p));
             note = pr.length ? `${t.uv_protect(hhmm(h, new Date(pr[0].datetime)), hhmm(h, new Date(new Date(pr[pr.length - 1].datetime).getTime() + 36e5)))} · ${t.uv_peak(Math.round(num(pk.uv_index)), hhmm(h, new Date(pk.datetime)))}` : t.uv_none;
           }
@@ -544,14 +547,15 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           if (!steps.length) steps = hourly.filter((x) => new Date(x.datetime).getTime() + 36e5 > now).slice(0, 6).map((x) => [new Date(x.datetime).getTime(), num(x.precipitation) || 0, 36e5]);
           if (steps.length) {
             const wet = (q) => q[1] >= conv(0.05, 'mm', U.p), top = Math.max(conv(1, 'mm', U.p), ...steps.map((q) => q[1])), W = 100 / steps.length;
-            const bars = steps.map((q, k) => `<div class="cb" style="left:${k * W}%;width:${W}%"><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i>${k % (steps[0][2] < 36e5 ? 4 : 1) === 0 ? `<span>${hhmm(h, new Date(q[0]))}</span>` : ''}</div>`).join('');
+            const every = steps[0][2] < 36e5 ? 4 : 2;
+            const bars = steps.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${k % every === 0 ? `<span class="ax" style="left:${k * W}%">${hhmm(h, new Date(q[0]))}</span>` : ''}`).join('');
             chart = `<div class="ch">${bars}</div>`;
             const first = steps.find(wet), hh = Math.round((steps.length * steps[0][2]) / 36e5);
-            if (!first) sub = t.rn_none(hh);
-            else if (first === steps[0]) { const stop = steps.find((q) => !wet(q)); sub = stop ? t.rn_stop(hhmm(h, new Date(stop[0]))) : t.rn_cont; }
-            else sub = t.rn_start(hhmm(h, new Date(first[0])));
+            if (!first) note = t.rn_none(hh);
+            else if (first === steps[0]) { const stop = steps.find((q) => !wet(q)); note = stop ? t.rn_stop(hhmm(h, new Date(stop[0]))) : t.rn_cont; }
+            else note = t.rn_start(hhmm(h, new Date(first[0])));
             const nh = steps.filter((q) => q[0] < now + 36e5).reduce((a, q) => a + q[1] * Math.min(1, q[2] / 36e5), 0);
-            big = `${dec(h, nh, U.p)} ${U.p}`; label = `${t.k_precip} · ${t.rn_next}`;
+            big = `${dec(h, nh, U.p)} ${U.p}`; sub = t.rn_next;
           }
         }
       } else if (K === 'visibility') {
@@ -590,7 +594,10 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:14px;align-items:stretch}
 .ml{display:flex;flex-direction:column;min-width:0}.mr{position:relative;min-width:0;padding-top:6px}
 .ch{position:absolute;inset:6px 0 16px 0}.cb{position:absolute;top:0;bottom:0;display:flex;justify-content:center}
-.cb i{position:absolute;bottom:0;left:18%;right:18%;border-radius:3px 3px 1px 1px;display:block}.cb span{position:absolute;bottom:-15px;font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap}
+.cb i{position:absolute;bottom:0;left:15%;right:15%;border-radius:3px 3px 1px 1px;display:block}
+.cb.slot em{position:absolute;top:0;bottom:0;left:15%;right:15%;border-radius:3px;background:rgba(0,0,0,.18)}
+.ch .ax{position:absolute;bottom:-16px;font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap;transform:translateX(0)}
+.ch .base{position:absolute;left:0;right:0;bottom:0;border-top:1px solid rgba(255,255,255,.25)}
 .nw{position:absolute;top:-4px;bottom:0;border-left:1.5px dashed rgba(255,255,255,.85)}
 .pc{position:absolute;inset:6px 0 4px 0}.pc svg{width:100%;height:100%;display:block}.pc span{position:absolute;right:0;font-size:12px;color:rgba(255,255,255,.75)}.pc .hi{top:0}.pc .lo{bottom:16px}.pc .ax{left:0;bottom:-2px;right:auto}
 .sv.big{height:100%;min-height:60px;margin-top:0}
