@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.7.1';
+  const VERSION = '0.7.2';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -166,10 +166,12 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
 <style>${baseCss(h, s, this._c.background)}
 :host{container-type:inline-size}
 ha-card{align-items:center;justify-content:center;text-align:center;padding:16px 12px}
-.o{font-size:clamp(18px,4.2cqw,28px);font-weight:400;text-shadow:0 1px 3px rgba(0,0,0,.25)}
-.t{font-size:clamp(56px,16cqw,104px);font-weight:var(--ws-temp-weight,300);line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.2)}
-.c{font-size:clamp(15px,3.4cqw,20px);font-weight:500;margin-top:4px}
-.h{font-size:clamp(13px,3cqw,17px);opacity:.9;margin-top:2px}
+/* page header: the one exception to the four type sizes (design rules) */
+.o{font-size:22px;font-weight:400;text-shadow:0 1px 3px rgba(0,0,0,.25)}
+.t{font-size:88px;font-weight:var(--ws-temp-weight,300);line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.2)}
+.c{font-size:17px;font-weight:500;margin-top:4px}
+.h{font-size:15px;opacity:.9;margin-top:2px}
+@container (max-width:260px){.t{font-size:64px}}
 </style>
 <ha-card><div class="o">${name}</div><div class="t">${deg(temp)}</div><div class="c">${cond}</div>
 <div class="h">${today ? `${t.hi}: ${deg(today.temperature)} ${t.lo}: ${deg(today.templow)}` : '&nbsp;'}</div></ha-card>`;
@@ -238,18 +240,18 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
       return `
 <style>${baseCss(h, s, c.background)}
 .hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.mode{font-size:13px;font-weight:500;margin-top:3px}
+.mode{font-size:12px;font-weight:500;margin-top:3px}
 .seg{display:flex;gap:2px;background:rgba(0,0,0,.18);border-radius:999px;padding:3px}
 .seg button{all:unset;cursor:pointer;width:34px;height:24px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:rgba(235,240,255,.7)}
 .seg button.on{background:rgba(255,255,255,.28);color:#fff}.seg ha-icon{--mdc-icon-size:16px}
 .hours{flex:1;display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;align-items:center}.hours::-webkit-scrollbar{display:none}
 .h{flex:0 0 52px;display:grid;grid-template-rows:16px 34px 18px 14px;row-gap:6px;justify-items:center;align-items:center}
-.h .tm{font-size:13px;font-weight:600}
+.h .tm{font-size:12px;font-weight:600}
 .h ha-icon{--mdc-icon-size:24px}
 .h .v{font-size:15px;font-weight:600;white-space:nowrap}
-.h .x{font-size:11px;font-weight:600;color:rgba(255,255,255,.85);text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap}
+.h .x{font-size:12px;font-weight:600;color:rgba(255,255,255,.85);text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap}
 .h .x.pp{color:#bfe9ff}
-.h.ev{flex:0 0 auto;padding:0 8px;color:#ffe7a3}.h.ev .v{font-size:13px}
+.h.ev{flex:0 0 auto;padding:0 8px;color:#ffe7a3}.h.ev .v{font-size:15px}
 .vb{width:14px;height:34px;border-radius:4px;background:rgba(0,0,0,.2);position:relative;overflow:hidden}
 .vb i{position:absolute;left:0;right:0;bottom:0;background:#5ac8fa}
 </style>

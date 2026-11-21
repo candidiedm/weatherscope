@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.7.1';
+  const VERSION = '0.7.2';
   const BASE = '/weatherscope/static/geo/';
 
   // ---------- colour tables ----------
@@ -30,8 +30,8 @@
 
   // ---------- texts ----------
   const I18N = {
-    de: { radar: 'Wetterradar', sat: 'Satellit', blitz: 'Blitze', wind: 'Wind', rain: 'Regen', temp: 'Temperatur', blue: 'Blau', vis: 'Sichtbar', ir: 'Infra', more: 'Weitere Optionen', fc: 'Vorhersage', ort: 'Mein Ort', bz: 'Blitze', ov: 'Overlay mit Radar', iso: 'Isobaren', ws: 'Windstriche', now: 'aktuell', jetzt: 'jetzt', plus1: '+1 Std.', minusH: (h) => `−${h} Std.`, loading: 'Wird geladen …', nodata: 'Noch keine Daten', ago: (m) => m < 60 ? `vor ${m} Min.` : `vor ${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ''}`, in: (m) => `in ${m} Min.`, strikes: (n) => n ? `${n} Blitz${n === 1 ? '' : 'e'} im Kartenausschnitt in der letzten Stunde · live` : 'Keine Blitze im Kartenausschnitt in der letzten Stunde · live', weak: 'schwach', strong: 'stark', newest: 'neu', min60: '60 Min.', warm: 'warm', cold: 'kalt', play: 'Abspielen', pause: 'Anhalten', noentity: 'WeatherScope: Bitte zuerst die Integration einrichten und hier den Sensor angeben.', e_entity: 'Kartendaten (Sensor der WeatherScope-Integration)', e_fit: 'Darstellung', e_cover: 'Kachel füllen', e_contain: 'Ganze Karte zeigen', e_zoom: 'Zoom', e_fit_h: '„Kachel füllen“ zeigt den eingestellten Ausschnitt und füllt die Kachel bis zum Rand.', e_zoom_h: 'Größer als 1 vergrößert die Karte, kleiner als 1 verkleinert sie.' },
-    en: { radar: 'Weather radar', sat: 'Satellite', blitz: 'Lightning', wind: 'Wind', rain: 'Rain', temp: 'Temperature', blue: 'Blue', vis: 'Visible', ir: 'Infrared', more: 'More options', fc: 'Nowcast', ort: 'My location', bz: 'Lightning', ov: 'Radar overlay', iso: 'Isobars', ws: 'Wind lines', now: 'now', jetzt: 'now', plus1: '+1 h', minusH: (h) => `−${h} h`, loading: 'Loading …', nodata: 'No data yet', ago: (m) => m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} ago`, in: (m) => `in ${m} min`, strikes: (n) => n ? `${n} strike${n === 1 ? '' : 's'} in the map area in the last hour · live` : 'No lightning in the map area in the last hour · live', weak: 'light', strong: 'heavy', newest: 'new', min60: '60 min', warm: 'warm', cold: 'cold', play: 'Play', pause: 'Pause', noentity: 'WeatherScope: please set up the integration first and select its sensor here.', e_entity: 'Map data (sensor of the WeatherScope integration)', e_fit: 'Display', e_cover: 'Fill the card', e_contain: 'Show the whole map', e_zoom: 'Zoom', e_fit_h: '“Fill the card” shows the chosen area and fills the card to its edges.', e_zoom_h: 'Above 1 enlarges the map, below 1 shrinks it.' },
+    de: { radar: 'Wetterradar', sat: 'Satellit', blitz: 'Blitze', wind: 'Wind', rain: 'Regen', temp: 'Temperatur', blue: 'Blau', vis: 'Sichtbar', ir: 'Infra', more: 'Weitere Optionen', fc: 'Vorhersage', ort: 'Mein Ort', bz: 'Blitze', ov: 'Overlay mit Radar', iso: 'Isobaren', ws: 'Windstriche', now: 'aktuell', jetzt: 'jetzt', plus1: '+1 Std.', minusH: (h) => `−${h} Std.`, loading: 'Wird geladen …', nodata: 'Noch keine Daten', ago: (m) => m < 60 ? `vor ${m} Min.` : `vor ${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ''}`, in: (m) => `in ${m} Min.`, strikes: (n) => n ? `${n} Blitz${n === 1 ? '' : 'e'} im Kartenausschnitt in der letzten Stunde · live` : 'Keine Blitze im Kartenausschnitt in der letzten Stunde · live', weak: 'schwach', strong: 'stark', newest: 'neu', min60: '60 Min.', warm: 'warm', cold: 'kalt', play: 'Abspielen', pause: 'Anhalten', noentity: 'WeatherScope: Bitte zuerst die Integration einrichten und hier den Sensor angeben.', e_entity: 'Kartendaten (Sensor der WeatherScope-Integration)', e_fit: 'Darstellung', e_cover: 'Kachel füllen', e_contain: 'Ganze Karte zeigen', e_zoom: 'Zoom', e_fit_h: '„Kachel füllen“ zeigt den eingestellten Ausschnitt und füllt die Kachel bis zum Rand.', e_zoom_h: 'Größer als 1 vergrößert die Karte, kleiner als 1 verkleinert sie.', e_frame: 'Rahmen', e_frame_none: 'Ohne', e_frame_glass: 'Glas', e_frame_h: '„Glas“ passt zu den anderen WeatherScope-Kacheln mit Glas-Hintergrund.', e_header: 'Kopfzeile anzeigen', e_header_h: 'Zeigt oben den Namen der gewählten Karte, wie bei den anderen Kacheln.' },
+    en: { radar: 'Weather radar', sat: 'Satellite', blitz: 'Lightning', wind: 'Wind', rain: 'Rain', temp: 'Temperature', blue: 'Blue', vis: 'Visible', ir: 'Infrared', more: 'More options', fc: 'Nowcast', ort: 'My location', bz: 'Lightning', ov: 'Radar overlay', iso: 'Isobars', ws: 'Wind lines', now: 'now', jetzt: 'now', plus1: '+1 h', minusH: (h) => `−${h} h`, loading: 'Loading …', nodata: 'No data yet', ago: (m) => m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} ago`, in: (m) => `in ${m} min`, strikes: (n) => n ? `${n} strike${n === 1 ? '' : 's'} in the map area in the last hour · live` : 'No lightning in the map area in the last hour · live', weak: 'light', strong: 'heavy', newest: 'new', min60: '60 min', warm: 'warm', cold: 'cold', play: 'Play', pause: 'Pause', noentity: 'WeatherScope: please set up the integration first and select its sensor here.', e_entity: 'Map data (sensor of the WeatherScope integration)', e_fit: 'Display', e_cover: 'Fill the card', e_contain: 'Show the whole map', e_zoom: 'Zoom', e_fit_h: '“Fill the card” shows the chosen area and fills the card to its edges.', e_zoom_h: 'Above 1 enlarges the map, below 1 shrinks it.', e_frame: 'Frame', e_frame_none: 'None', e_frame_glass: 'Glass', e_frame_h: '“Glass” matches the other WeatherScope cards with glass background.', e_header: 'Show header', e_header_h: 'Shows the name of the chosen map at the top, like the other cards.' },
   };
   const lang0 = () => { try { const h = document.querySelector('home-assistant'); return ((h && h.hass && (h.hass.locale && h.hass.locale.language || h.hass.language)) || navigator.language || 'en').slice(0, 2); } catch (e) { return 'en'; } };
 
@@ -54,26 +54,34 @@
   const FMAPS = ['wind', 'rain', 'temp'];
 
   const CSS = `:host{display:block;position:relative;width:100%;height:100%;min-height:260px;font-family:var(--paper-font-body1_-_font-family,sans-serif);-webkit-tap-highlight-color:transparent;user-select:none}
-#m{position:absolute;inset:0;border-radius:var(--ha-card-border-radius,12px);overflow:hidden;background:#858585}
+#m{position:absolute;inset:0;border-radius:18px;overflow:hidden;background:#858585}
+#fr{position:absolute;inset:0;border-radius:18px;display:none}
+:host([frame]) #fr{display:block;background:rgba(32,62,112,.38);-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.18)}
+:host([frame]) #m{inset:8px;border-radius:12px}
+:host([header]) #m{top:32px}
+:host([header]:not([frame])) #fr{display:block;background:rgba(30,32,36,.84)}
+#hd{position:absolute;left:12px;top:9px;display:none;align-items:center;gap:5px;font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+#hd ha-icon{--mdc-icon-size:14px}
+:host([header]) #hd{display:flex}
 canvas{position:absolute;inset:0;width:100%;height:100%}
 #mb{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;align-items:flex-end;gap:7px}
 .mb{display:flex;align-items:center;gap:6px;background:none;border:none;padding:0;cursor:pointer;color:#fff}
 .mb[hidden]{display:none}
-.mb span{background:rgba(30,32,36,.82);border-radius:9px;padding:2px 8px;font-size:11px;white-space:nowrap;display:none;transition:opacity .8s ease}
+.mb span{background:rgba(30,32,36,.82);border-radius:9px;padding:2px 8px;font-size:12px;white-space:nowrap;display:none;transition:opacity .8s ease}
 .mb i{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,.55);opacity:.85}
 .mb i ha-icon{--mdc-icon-size:15px;color:#fff}
 .mb.on i{width:30px;height:30px;border:2px solid #fff;opacity:1}
 .mb.on span,:host([big]) .mb span{display:block}
 :host(:not([big])) #mb.fade .mb.on span{opacity:0}
 :host([big]) .mb:not(.on) span{background:rgba(30,32,36,.6)}
-#lg{position:absolute;right:8px;background:rgba(30,32,36,.78);border-radius:7px;padding:3px 7px;color:#fff;font-size:10px}
+#lg{position:absolute;right:8px;background:rgba(30,32,36,.78);border-radius:7px;padding:3px 7px;color:#fff;font-size:12px}
 #lg .b{display:flex;width:110px;height:6px;border-radius:3px;overflow:hidden}#lg .b i{flex:1}
 #lg .t{display:flex;justify-content:space-between;margin-top:2px;opacity:.85}
 #lg.tr .b{width:168px;height:8px;align-items:center;border-radius:0;overflow:visible;gap:1px}#lg.tr .b i{height:8px}#lg.tr .b i.o{height:4px;opacity:.35}#lg.tr .b i.z{margin-left:2px}
 #lg.tr.rd .b{width:220px}
 #lgu{display:none}#lg.tr{display:flex;align-items:center;gap:7px;padding-right:14px}#lg.tr #lgu{display:block;font-weight:500;padding-bottom:12px}
 #lg.tr .t{position:relative;height:12px}#lg.tr .t span{position:absolute;transform:translateX(-50%);white-space:nowrap}
-#ct{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(30,32,36,.84);border-radius:10px;padding:6px 8px 4px;color:#fff;font-size:10px}
+#ct{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(30,32,36,.84);border-radius:10px;padding:6px 8px 4px;color:#fff;font-size:12px}
 #r1{display:flex;align-items:center;gap:8px}
 #pl{flex:none;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
 #pl ha-icon{--mdc-icon-size:18px}
@@ -90,13 +98,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #bi{flex:1;font-size:12px;padding:6px 2px}
 #r2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;min-height:18px}
 #sm{display:flex;gap:2px;background:rgba(255,255,255,.1);border-radius:7px;padding:1px}
-#sm button{background:none;border:none;color:#fff;font-size:10px;padding:2px 7px;border-radius:6px;cursor:pointer;opacity:.85}
+#sm button{background:none;border:none;color:#fff;font-size:12px;padding:2px 7px;border-radius:6px;cursor:pointer;opacity:.85}
 #sm button.on{background:rgba(232,163,23,.9);color:#3a2600;opacity:1;font-weight:600}
-#mo{background:none;border:none;color:#fff;font-size:10px;opacity:.8;cursor:pointer;padding:2px 4px;margin-left:auto;display:flex;align-items:center;gap:2px}
+#mo{background:none;border:none;color:#fff;font-size:12px;opacity:.8;cursor:pointer;padding:2px 4px;margin-left:auto;display:flex;align-items:center;gap:2px}
 #mo ha-icon{--mdc-icon-size:14px}
 #op{display:none;flex-wrap:wrap;gap:12px;justify-content:center;padding:6px 0 3px}
 #op.open{display:flex}
-.sw{display:flex;align-items:center;gap:5px;background:none;border:none;color:#fff;font-size:11px;padding:0;cursor:pointer}
+.sw{display:flex;align-items:center;gap:5px;background:none;border:none;color:#fff;font-size:12px;padding:0;cursor:pointer}
 .sw i{width:26px;height:15px;border-radius:8px;background:rgba(255,255,255,.25);position:relative;transition:background .2s}
 .sw i::after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .2s}
 .sw.on i{background:#e0402e}.sw.on i::after{left:13px}
@@ -116,13 +124,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
     setConfig(c) {
       this._c = Object.assign({ fspeed: 650, fhold: 1500, fit: 'cover', cx: 0.5, cy: 0.5, zoom: 1, speed: 450, hold: 1000, bzfilm: 15, bzlive: 60 }, c || {});
       if (this._c.fit === 'contain') this.setAttribute('big', ''); else this.removeAttribute('big');
+      this.toggleAttribute('frame', this._c.frame === 'glass');
+      this.toggleAttribute('header', !!this._c.header);
       if (this.shadowRoot) return;
       this._lang = I18N[lang0()] ? lang0() : 'en';
       const T = (this._T = I18N[this._lang]);
       this._o = Object.assign({}, OPT0, LS.get('weatherscopeOpt', {}));
       this.attachShadow({ mode: 'open' });
       const sw = (id, t) => `<button class="sw" id="${id}"><i></i><span>${t}</span></button>`;
-      this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="m"><canvas id="cv"></canvas>
+      this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="fr"></div><div id="hd"><ha-icon></ha-icon><span></span></div><div id="m"><canvas id="cv"></canvas>
 <div id="mb">${MAPS.map((m) => `${m.sep ? '<i class="sep"></i>' : ''}<button class="mb" data-m="${m.id}"><span>${T[m.id]}</span><i style="background:${m.bg}"><ha-icon icon="${m.icon}"></ha-icon></i></button>`).join('')}</div>
 <div id="lg"><span id="lgu"></span><div class="w"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div></div>
 <div id="ct"><div id="r1"><button id="pl" aria-label="${T.play}"><ha-icon icon="mdi:play"></ha-icon></button>
@@ -564,6 +574,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const s = this.shadowRoot; if (!s) return;
       const $ = (id) => s.getElementById(id), o = this._o, map = o.map, T = this._T, av = this._avail || {};
       s.querySelectorAll('.mb').forEach((b) => b.classList.toggle('on', b.dataset.m === map));
+      const mm = MAPS.find((q) => q.id === map); if (mm) { s.querySelector('#hd span').textContent = T[map]; s.querySelector('#hd ha-icon').setAttribute('icon', mm.icon); }
       s.querySelectorAll('#sm button').forEach((b) => b.classList.toggle('on', b.dataset.s === o.sm));
       $('sm').style.visibility = map === 'sat' ? 'visible' : 'hidden';
       [['s_fc', 'fc', map === 'radar'], ['s_ort', 'ort', true], ['s_bz', 'bz', av.blitz && (map === 'radar' || map === 'sat')], ['s_ov', 'ov', map === 'sat' && av.radar], ['s_iso', 'iso', FMAPS.includes(map)], ['s_ws', 'ws', map === 'rain' || map === 'temp']].forEach(([id, k, vis]) => { $(id).style.display = vis ? '' : 'none'; $(id).classList.toggle('on', !!o[k]); });
@@ -961,17 +972,21 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
           const c = Object.assign({}, this._config, e.detail.value);
           if (c.zoom === 1) delete c.zoom;
           if (c.fit === 'cover') delete c.fit;
+          if (c.frame === 'none') delete c.frame;
+          if (!c.header) delete c.header;
           this._config = c;
           this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: c }, bubbles: true, composed: true }));
         });
         this.appendChild(this._form);
       }
       this._form.hass = this._hass;
-      this._form.data = Object.assign({ fit: 'cover', zoom: 1 }, this._config);
+      this._form.data = Object.assign({ fit: 'cover', zoom: 1, frame: 'none', header: false }, this._config);
       this._form.schema = [
         { name: 'entity', required: true, selector: { entity: { filter: [{ domain: 'sensor', integration: 'weatherscope' }] } } },
         { name: 'fit', selector: { select: { mode: 'dropdown', options: [{ value: 'cover', label: T.e_cover }, { value: 'contain', label: T.e_contain }] } } },
         { name: 'zoom', selector: { number: { min: 0.5, max: 3, step: 0.1, mode: 'slider' } } },
+        { name: 'frame', selector: { select: { mode: 'dropdown', options: [{ value: 'none', label: T.e_frame_none }, { value: 'glass', label: T.e_frame_glass }] } } },
+        { name: 'header', selector: { boolean: {} } },
       ];
       this._form.computeLabel = (s) => T[`e_${s.name}`] || s.name;
       this._form.computeHelper = (s) => T[`e_${s.name}_h`] || '';
