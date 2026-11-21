@@ -1,6 +1,6 @@
-/* WeatherScope weather cards: Now, Hourly. Every value can come from any weather entity or the user's own sensors. */
+/* WeatherScope weather cards: Now, Hourly, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.7.0';
+  const VERSION = '0.7.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -11,7 +11,7 @@
       e_sky: 'Eigener Himmel', e_glass: 'Glas', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
       e_background_h: '„Glas“ und „Durchsichtig“ passen zu einer Wetterseite mit der WeatherScope-Himmel-Animation dahinter.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
       e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
-      d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
+      d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
@@ -20,7 +20,7 @@
       e_sky: 'Own sky', e_glass: 'Glass', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
       e_background_h: '“Glass” and “Transparent” suit a weather page with the WeatherScope sky animation behind it.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
       e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
-      d_now: 'Place, temperature, condition, high and low.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
+      d_now: 'Place, temperature, condition, high and low.', d_sky: 'Animated sky as background of the whole page, matching the weather.', e_test: 'Test a condition (optional)', e_test_h: 'Always shows this condition – for trying out. Leave empty for normal use.', e_fps: 'Frames per second', e_fps_h: 'Fewer frames are easier on older tablets.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
     },
   };
   const lang = (h) => ((h && ((h.locale && h.locale.language) || h.language)) || navigator.language || 'en').slice(0, 2);
@@ -271,6 +271,227 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     { name: 'rain_rate', ...sensorSel() },
     bgSchema(t),
   ], { temperature: 'e_own_h', rain_rate: 'e_rain_rate_h', background: 'e_background_h' }), 'WeatherScope – Hourly', 'd_hourly');
+
+  // ---------------------------------------------------------------- Sky (animated page background)
+  class SkyCard extends HTMLElement {
+    static getStubConfig(h) { return WSBase.getStubConfig(h); }
+    setConfig(c) {
+      this._c = Object.assign({ entity: 'weather.weatherscope', sun: 'sun.sun', fps: 30 }, c || {});
+      this.style.display = 'block';
+      this._place();
+      if (this._h) this.hass = this._h;
+    }
+    getCardSize() { return this.preview ? 2 : 0; }
+    getGridOptions() { return this.preview ? { rows: 2, columns: 12 } : { rows: 0, columns: 12 }; }
+    set hass(h) {
+      this._h = h;
+      if (!this._c) return;
+      const w = h.states[this._c.entity], s = h.states[this._c.sun];
+      let cond = w ? w.state : 'cloudy';
+      if (this._c.test) cond = this._c.test;
+      const night = cond === 'clear-night' || (s ? s.state === 'below_horizon' : false);
+      this._wind = w && w.attributes ? parseFloat(w.attributes.wind_speed) || 0 : 0;
+      const key = `${cond}|${night}`;
+      if (key !== this._key) { this._key = key; this._cond = cond; this._night = night; this._build(); }
+    }
+    // full-screen behind all cards; inside the card editor only a small preview
+    _place() {
+      if (!this._cv) this._cv = document.createElement('canvas');
+      const pv = !!this.preview;
+      this.style.height = pv ? '112px' : '0';
+      this.style.margin = '0';
+      this._cv.style.cssText = pv
+        ? 'display:block;width:100%;height:112px;border-radius:18px;pointer-events:none'
+        : 'position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none';
+      if (this.isConnected) this._resize();
+    }
+    set preview(v) { this._pv = v; if (this._c) this._place(); }
+    get preview() { return this._pv; }
+    connectedCallback() {
+      this._place();
+      this.appendChild(this._cv);
+      this._onResize = () => this._resize();
+      window.addEventListener('resize', this._onResize);
+      this._onVis = () => { if (!document.hidden) this._last = 0; };
+      document.addEventListener('visibilitychange', this._onVis);
+      this._resize();
+      this._run = true;
+      const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const loop = (t) => {
+        if (!this._run) return;
+        this._raf = requestAnimationFrame(loop);
+        if (document.hidden) return;
+        const step = 1000 / (still ? 1 : Number(this._c.fps) || 30);
+        if (this._last && t - this._last < step - 2) return;
+        const dt = still ? 0 : this._last ? Math.min((t - this._last) / 1000, 0.1) : 0.033;
+        this._last = t;
+        this._draw(dt, t / 1000);
+      };
+      this._raf = requestAnimationFrame(loop);
+    }
+    disconnectedCallback() {
+      this._run = false;
+      cancelAnimationFrame(this._raf);
+      window.removeEventListener('resize', this._onResize);
+      document.removeEventListener('visibilitychange', this._onVis);
+    }
+    _resize() {
+      const d = Math.min(window.devicePixelRatio || 1, 1.25), r = this._cv.getBoundingClientRect();
+      this._d = d;
+      this._W = this.preview ? Math.max(100, r.width || 400) : window.innerWidth;
+      this._H = this.preview ? 112 : window.innerHeight;
+      this._cv.width = Math.round(this._W * d); this._cv.height = Math.round(this._H * d);
+      this._ctx = this._cv.getContext('2d');
+      this._ctx.setTransform(d, 0, 0, d, 0, 0);
+      this._build();
+    }
+
+    _scene() {
+      const c = this._cond || 'cloudy', n = !!this._night;
+      const S = { clouds: 0, dark: 0, rain: 0, snow: 0, flash: false, fog: false, sun: false, stars: false, sky: null };
+      const sky = {
+        clear: n ? ['#081329', '#1c3160', '#36507f'] : ['#1f5ea8', '#4f8fd0', '#9cc3ea'],
+        part: n ? ['#0d1830', '#24365e', '#3e537a'] : ['#2f6aa8', '#6497cc', '#a9c7e3'],
+        cloud: n ? ['#141a24', '#2a3240', '#3d4655'] : ['#5b6c80', '#7f8fa1', '#a7b3c0'],
+        rain: n ? ['#10151d', '#232b37', '#343e4c'] : ['#3d4a5a', '#56646f', '#7a8692'],
+        storm: n ? ['#090c12', '#171d27', '#252d3a'] : ['#232a35', '#3a4452', '#545f6d'],
+        snow: n ? ['#1a2230', '#36425a', '#56627a'] : ['#7d8ea3', '#a8b6c6', '#d6dee7'],
+        fog: n ? ['#1c2128', '#343b44', '#4b535c'] : ['#8a949e', '#a9b1b9', '#ccd2d7'],
+      };
+      switch (c) {
+        case 'sunny': S.sky = sky.clear; S.sun = !n; S.stars = n; break;
+        case 'clear-night': S.sky = sky.clear; S.stars = true; break;
+        case 'partlycloudy': S.sky = sky.part; S.clouds = 5; S.sun = !n; S.stars = n; break;
+        case 'cloudy': S.sky = sky.cloud; S.clouds = 10; S.dark = 0.15; break;
+        case 'windy': case 'windy-variant': S.sky = sky.part; S.clouds = 7; break;
+        case 'fog': S.sky = sky.fog; S.clouds = 4; S.fog = true; break;
+        case 'rainy': S.sky = sky.rain; S.clouds = 11; S.dark = 0.35; S.rain = 130; break;
+        case 'pouring': S.sky = sky.rain; S.clouds = 13; S.dark = 0.45; S.rain = 260; break;
+        case 'lightning': S.sky = sky.storm; S.clouds = 12; S.dark = 0.55; S.flash = true; break;
+        case 'lightning-rainy': S.sky = sky.storm; S.clouds = 13; S.dark = 0.55; S.rain = 200; S.flash = true; break;
+        case 'hail': S.sky = sky.storm; S.clouds = 12; S.dark = 0.45; S.rain = 160; S.snow = 40; break;
+        case 'snowy': S.sky = sky.snow; S.clouds = 10; S.dark = 0.05; S.snow = 140; break;
+        case 'snowy-rainy': S.sky = sky.rain; S.clouds = 11; S.dark = 0.3; S.rain = 80; S.snow = 70; break;
+        default: S.sky = sky.cloud; S.clouds = 8;
+      }
+      if (n) S.dark = Math.min(1, S.dark + 0.55);
+      return S;
+    }
+
+    _puff(w, h, shade) {
+      const o = document.createElement('canvas');
+      o.width = w; o.height = h;
+      const g = o.getContext('2d');
+      const n = 9 + Math.floor(Math.random() * 6);
+      const v = Math.round(255 - shade * 195);
+      for (let i = 0; i < n; i++) {
+        const x = w * (0.22 + Math.random() * 0.56);
+        const y = h * (0.5 + (Math.random() - 0.5) * 0.16);
+        const r = h * (0.2 + Math.random() * 0.2);
+        const rg = g.createRadialGradient(x, y, 0, x, y, r);
+        rg.addColorStop(0, `rgba(${v},${v},${Math.min(255, v + 8)},0.55)`);
+        rg.addColorStop(0.6, `rgba(${v},${v},${Math.min(255, v + 8)},0.25)`);
+        rg.addColorStop(1, `rgba(${v},${v},${v},0)`);
+        g.fillStyle = rg;
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      }
+      return o;
+    }
+
+    _build() {
+      if (!this._W || !this._cond) return;
+      const W = this._W, H = this._H, S = this._scene();
+      this._S = S;
+      this._clouds = [];
+      for (let i = 0; i < S.clouds; i++) {
+        const cw = W * (0.4 + Math.random() * 0.45), ch = cw * 0.5;
+        this._clouds.push({
+          img: this._puff(Math.round(cw), Math.round(ch), S.dark * (0.6 + Math.random() * 0.4)),
+          x: Math.random() * (W + cw) - cw, y: -ch * 0.3 + Math.random() * H * 0.45,
+          v: 6 + Math.random() * 10, a: 0.4 + Math.random() * 0.4,
+        });
+      }
+      this._drops = [];
+      for (let i = 0; i < S.rain; i++) this._drops.push({ x: Math.random() * W, y: Math.random() * H, l: 14 + Math.random() * 16, v: 650 + Math.random() * 350, a: 0.18 + Math.random() * 0.25 });
+      this._flakes = [];
+      for (let i = 0; i < S.snow; i++) this._flakes.push({ x: Math.random() * W, y: Math.random() * H, r: 1.2 + Math.random() * 2.6, v: 25 + Math.random() * 45, p: Math.random() * 6.28 });
+      this._stars = [];
+      if (S.stars) for (let i = 0; i < 140; i++) this._stars.push({ x: Math.random() * W, y: Math.random() * H * 0.75, r: 0.4 + Math.random() * 1.2, p: Math.random() * 6.28, s: 0.5 + Math.random() * 1.5 });
+      this._fog = [];
+      if (S.fog) for (let i = 0; i < 4; i++) this._fog.push({ x: Math.random() * W, y: H * (0.25 + i * 0.2), v: 8 + Math.random() * 10 });
+      this._flashT = 0; this._nextFlash = 4 + Math.random() * 8; this._flashA = 0;
+    }
+
+    _draw(dt, t) {
+      const g = this._ctx, S = this._S;
+      if (!g || !S) return;
+      const W = this._W, H = this._H;
+      const wind = Math.max(0.6, Math.min(3, (this._wind || 10) / 12));
+      const lg = g.createLinearGradient(0, 0, 0, H);
+      lg.addColorStop(0, S.sky[0]); lg.addColorStop(0.55, S.sky[1]); lg.addColorStop(1, S.sky[2]);
+      g.fillStyle = lg; g.fillRect(0, 0, W, H);
+
+      for (const s of this._stars) {
+        const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.s + s.p));
+        g.fillStyle = `rgba(255,255,255,${a * 0.9})`;
+        g.beginPath(); g.arc(s.x, s.y, s.r, 0, 6.283); g.fill();
+      }
+      if (S.sun) {
+        const sx = W * 0.82, sy = H * 0.08, r = H * (0.55 + 0.03 * Math.sin(t * 0.6));
+        const rg = g.createRadialGradient(sx, sy, 0, sx, sy, r);
+        rg.addColorStop(0, 'rgba(255,248,220,0.75)'); rg.addColorStop(0.15, 'rgba(255,236,180,0.35)'); rg.addColorStop(1, 'rgba(255,230,170,0)');
+        g.fillStyle = rg; g.fillRect(0, 0, W, H);
+      }
+      for (const c of this._clouds) {
+        c.x += c.v * wind * dt;
+        if (c.x > W) { c.x = -c.img.width; c.y = -c.img.height * 0.3 + Math.random() * H * 0.45; }
+        g.globalAlpha = c.a; g.drawImage(c.img, c.x, c.y); g.globalAlpha = 1;
+      }
+      for (const f of this._fog) {
+        f.x += f.v * dt; if (f.x > W) f.x -= W * 2;
+        const rg = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, W * 0.6);
+        rg.addColorStop(0, 'rgba(230,234,238,0.35)'); rg.addColorStop(1, 'rgba(230,234,238,0)');
+        g.fillStyle = rg; g.fillRect(0, 0, W, H);
+      }
+      if (this._drops.length) {
+        const sl = 0.12 * wind;
+        g.lineWidth = 1.2; g.lineCap = 'round';
+        for (const d of this._drops) {
+          d.y += d.v * dt; d.x += d.v * sl * dt;
+          if (d.y > H) { d.y = -d.l; d.x = Math.random() * (W + 100) - 100; }
+          if (d.x > W) d.x -= W;
+          g.strokeStyle = `rgba(210,225,240,${d.a})`;
+          g.beginPath(); g.moveTo(d.x, d.y); g.lineTo(d.x - d.l * sl, d.y - d.l); g.stroke();
+        }
+      }
+      for (const f of this._flakes) {
+        f.y += f.v * dt; f.p += dt; f.x += (Math.sin(f.p) * 18 + 10 * wind) * dt;
+        if (f.y > H) { f.y = -5; f.x = Math.random() * W; }
+        if (f.x > W) f.x -= W;
+        g.fillStyle = 'rgba(255,255,255,0.85)';
+        g.beginPath(); g.arc(f.x, f.y, f.r, 0, 6.283); g.fill();
+      }
+      if (S.flash) {
+        this._flashT += dt;
+        if (this._flashT > this._nextFlash) {
+          this._flashT = 0; this._nextFlash = 6 + Math.random() * 12;
+          this._flashSeq = [0, 0.12, 0.28];
+        }
+        if (this._flashSeq) {
+          const ft = this._flashT;
+          let a = 0;
+          for (const s of this._flashSeq) { const d = ft - s; if (d >= 0 && d < 0.25) a = Math.max(a, 0.45 * (1 - d / 0.25)); }
+          if (ft > 0.6) this._flashSeq = null;
+          if (a > 0) { g.fillStyle = `rgba(235,240,255,${a})`; g.fillRect(0, 0, W, H); }
+        }
+      }
+    }
+  }
+  register('weatherscope-sky-card', SkyCard, makeEditor((t) => [
+    { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
+    { name: 'test', selector: { select: { mode: 'dropdown', options: Object.keys(ICON).map((k) => ({ value: k, label: k })) } } },
+    { name: 'fps', selector: { number: { min: 5, max: 60, step: 5, mode: 'box' } } },
+  ], { test: 'e_test_h', fps: 'e_fps_h' }), 'WeatherScope – Sky', 'd_sky');
 
   console.info(`%c WEATHERSCOPE CARDS %c ${VERSION} `, 'background:#2b7de0;color:#fff;border-radius:3px 0 0 3px', 'background:#444;color:#fff;border-radius:0 3px 3px 0');
 })();
