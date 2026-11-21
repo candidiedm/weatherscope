@@ -178,6 +178,9 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     }
   }
 
+  // true while the dashboard is in edit mode
+  const lovelaceEdit = () => !!document.querySelector('home-assistant')?.shadowRoot?.querySelector('home-assistant-main')?.shadowRoot?.querySelector('ha-panel-lovelace')?.lovelace?.editMode;
+
   // generic visual editor built from a schema
   const makeEditor = (schemaFn, helpers) => class extends HTMLElement {
     setConfig(c) { this._c = c; this._r(); }
@@ -774,7 +777,7 @@ ${med && chart
       if (!this.shadowRoot || !this._c || !this._h) return;
       const h = this._h, t = tr(h), c = this._c;
       const all = [...this._list(c.warning, false), ...this._list(c.advance, true)].sort((a, b) => b.level - a.level);
-      const edit = !!this.closest && (this.preview || document.querySelector('home-assistant')?.shadowRoot?.querySelector('ha-panel-lovelace')?.lovelace?.editMode);
+      const edit = !!this.closest && (this.preview || lovelaceEdit());
       let html;
       if (!all.length) {
         this.style.display = c.hide && !edit ? 'none' : '';
@@ -807,7 +810,7 @@ ${med && chart
     }
     // small tile in the card editor and while the dashboard is being edited;
     // full screen would otherwise cover the cards in edit mode
-    _small() { return !!this.preview || !!document.querySelector('home-assistant')?.shadowRoot?.querySelector('ha-panel-lovelace')?.lovelace?.editMode; }
+    _small() { return !!this.preview || !!lovelaceEdit(); }
     getCardSize() { return this._small() ? 2 : 0; }
     getGridOptions() { return this._small() ? { rows: 2, columns: 12 } : { rows: 0, columns: 12 }; }
     set hass(h) {
