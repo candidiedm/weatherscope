@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.12.0';
+  const VERSION = '0.12.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -132,20 +132,21 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
   };
 
   // base class: config, forecast subscription, re-render only on visible change
-  // Apple-style grid: a small tile (4 columns) is a square, bigger tiles are multiples of it, gaps included.
-  // Active while the card's height is left on auto ("fit to content"); a fixed row count in the layout turns it off.
+  // Apple-style grid: a small tile (4 columns × 3 rows) is a square, bigger tiles are multiples of it.
+  // Inside a sections grid the row height of that section is set so that 3 rows match 4 columns (gaps included).
+  // Turn off per card with square: false.
   const sqCols = (c, g) => (c && c.grid_options && c.grid_options.columns) ?? g.columns;
-  const sqOn = (c, g) => !(c && c.grid_options && typeof c.grid_options.rows === 'number') && typeof g.rows === 'number' && typeof sqCols(c, g) === 'number';
-  const sqGrid = (c, g) => (sqOn(c, g) ? { ...g, rows: 'auto' } : g);
+  const sqUp = (n) => n.parentElement || (n.getRootNode && n.getRootNode().host) || null;
   const sqFit = (el, c, g) => {
-    if (!sqOn(c, g)) { if (el.style.height) el.style.height = ''; return; }
+    if (!c || c.square === false) return;
+    const cols = sqCols(c, g); if (typeof cols !== 'number') return;
+    const cs = getComputedStyle(el); if (!cs.getPropertyValue('--row-height').trim()) return;
+    let sec = sqUp(el); for (let i = 0; sec && sec.tagName !== 'HUI-GRID-SECTION' && i < 12; i++) sec = sqUp(sec);
+    if (!sec || sec.tagName !== 'HUI-GRID-SECTION') return;
     const W = el.getBoundingClientRect().width; if (!W) return;
-    const cs = getComputedStyle(el);
-    // only inside a sections grid (it defines --row-height); elsewhere, e.g. inside another card, leave the height alone
-    if (!cs.getPropertyValue('--row-height').trim()) { if (el.style.height) el.style.height = ''; return; }
     const cg = parseFloat(cs.getPropertyValue('--column-gap')) || 8, rg = parseFloat(cs.getPropertyValue('--row-gap')) || 8;
-    const k = Math.max(1, sqCols(c, g) / 4), n = g.rows / 3, u = (W - (k - 1) * cg) / k, H = `${Math.round(n * u + (n - 1) * rg)}px`;
-    if (el.style.height !== H) el.style.height = H;
+    const col = (W - (cols - 1) * cg) / cols, h = Math.round(((4 * col + 3 * cg - 2 * rg) / 3) * 2) / 2;
+    if (h > 20 && Math.abs((parseFloat(sec.style.getPropertyValue('--ha-section-grid-row-height')) || 0) - h) > 0.5) sec.style.setProperty('--ha-section-grid-row-height', `${h}px`);
   };
 
   class WSBase extends HTMLElement {
@@ -166,7 +167,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     }
     disconnectedCallback() { this._unsub(); window.removeEventListener('weatherscope-mode', this._onMode); if (this._sqro) this._sqro.disconnect(); }
     _grid() { return { columns: 4, rows: 3 }; }
-    getGridOptions() { return sqGrid(this._c, this._grid()); }
+    getGridOptions() { return this._grid(); }
     _sq() { if (this._c) sqFit(this, this._c, this._grid()); }
     _click() {}
     _setMode(m) {
@@ -238,7 +239,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     static defaults = { entity: 'weather.weatherscope', background: 'sky' };
     static forecast = 'daily';
     getCardSize() { return 3; }
-    _grid() { return { columns: 'full', rows: 'auto' }; }
+    _grid() { return { columns: 'full', rows: 3, min_rows: 2 }; }
     _html(h, s, t) {
       const temp = sensor(h, this._c.temperature, units(s).t) ?? s.attributes.temperature;
       const cond = h.formatEntityState ? h.formatEntityState(s) : s.state;
@@ -787,7 +788,7 @@ ${med && chart
     set hass(h) { this._h = h; this._render(); }
     getCardSize() { return 3; }
     _grid() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 2 }; }
-    getGridOptions() { return sqGrid(this._c, this._grid()); }
+    getGridOptions() { return this._grid(); }
     connectedCallback() { this._sqro = new ResizeObserver(() => { if (this._c) sqFit(this, this._c, this._grid()); }); this._sqro.observe(this); }
     disconnectedCallback() { if (this._sqro) this._sqro.disconnect(); }
     _list(id, adv) {
