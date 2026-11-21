@@ -62,7 +62,7 @@
   const baseCss = (h, s, bg) => `
 :host{display:block;height:100%}
 ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${bgCss(h, s, bg)}}
-.lab{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.lab{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lab ha-icon{--mdc-icon-size:14px}
 .big{font-size:30px;font-weight:400;line-height:1.15}
 .sub{font-size:15px;font-weight:500}
@@ -511,7 +511,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .big{margin-top:6px}.sub{margin-top:2px}
 .sv{width:100%;height:40px;margin-top:6px;display:block}
 .gv{width:100%;max-height:86px;margin-top:2px;display:block}
-.uvb{position:relative;display:flex;gap:2px;height:6px;margin-top:10px}.uvb i{border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
+.uvb{position:relative;display:flex;gap:2px;height:6px;margin-top:10px}.uvb i{display:block;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
 </style>
 <ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div>${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}<div class="note">${note}</div></ha-card>`;
