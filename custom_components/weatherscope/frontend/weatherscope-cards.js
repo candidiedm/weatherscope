@@ -1,25 +1,25 @@
 /* WeatherScope weather cards: Now, Hourly. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.6.0';
+  const VERSION = '0.6.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
     de: {
       hi: 'H', lo: 'T', home: 'Zuhause', now: 'Jetzt', hourly: 'Stündlich', sunrise: 'Sonnenaufgang', sunset: 'Sonnenuntergang',
-      m_temp: 'Temperatur (°C)', m_rain: 'Niederschlag (mm)', m_wind: 'Wind und Böen (km/h)', max: 'max', loading: 'Vorhersage wird geladen …',
+      m_temp: 'Temperatur ({u})', m_rain: 'Niederschlag ({u})', m_wind: 'Wind und Böen ({u})', max: 'max', loading: 'Vorhersage wird geladen …',
       e_entity: 'Wetter-Entität', e_temperature: 'Eigener Temperatursensor (optional)', e_name: 'Ortsname (optional)', e_background: 'Hintergrund',
       e_sky: 'Eigener Himmel', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
       e_background_h: '„Durchsichtig“ passt zu einer Wetterseite mit eigenem Hintergrund.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
-      e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
+      e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
       d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
-      m_temp: 'Temperature (°C)', m_rain: 'Precipitation (mm)', m_wind: 'Wind and gusts (km/h)', max: 'max', loading: 'Loading forecast …',
+      m_temp: 'Temperature ({u})', m_rain: 'Precipitation ({u})', m_wind: 'Wind and gusts ({u})', max: 'max', loading: 'Loading forecast …',
       e_entity: 'Weather entity', e_temperature: 'Own temperature sensor (optional)', e_name: 'Place name (optional)', e_background: 'Background',
       e_sky: 'Own sky', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
       e_background_h: '“Transparent” suits a weather page with its own background.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
-      e_wind_bearing: 'Own wind direction sensor (optional)', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
+      e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
       d_now: 'Place, temperature, condition, high and low.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
     },
   };
@@ -53,9 +53,26 @@
   const num = (v) => (v === null || v === undefined || v === '' || isNaN(v) ? null : Number(v));
   const deg = (v) => { const n = num(v); if (n === null) return '–'; const r = Math.round(n); return `${r < 0 ? '−' : ''}${Math.abs(r)}°`; };
   const int = (v) => { const n = num(v); return n === null ? '–' : String(Math.round(n)); };
-  const dec = (h, v) => { const n = num(v); if (n === null) return '–'; const r = n >= 10 ? Math.round(n) : Math.round(n * 10) / 10; return r.toLocaleString(lang(h)); };
+  const dec = (h, v, u) => { const n = num(v); if (n === null) return '–'; const f = u === 'in' ? 100 : 10; const r = n >= 10 ? Math.round(n) : Math.round(n * f) / f; return r.toLocaleString(lang(h)); };
   const hhmm = (h, d) => d.toLocaleTimeString(lang(h), { hour: '2-digit', minute: '2-digit' });
-  const sensor = (h, id) => (id && h.states[id] ? num(h.states[id].state) : null);
+  // unit conversion, so own sensors fit the weather entity's units (set in Home Assistant)
+  const toBase = { '°C': (v) => v, '°F': (v) => ((v - 32) * 5) / 9, K: (v) => v - 273.15,
+    'km/h': (v) => v, 'm/s': (v) => v * 3.6, mph: (v) => v * 1.609344, kn: (v) => v * 1.852, 'ft/s': (v) => v * 1.09728,
+    mm: (v) => v, cm: (v) => v * 10, in: (v) => v * 25.4 };
+  const fromBase = { '°C': (v) => v, '°F': (v) => (v * 9) / 5 + 32, K: (v) => v + 273.15,
+    'km/h': (v) => v, 'm/s': (v) => v / 3.6, mph: (v) => v / 1.609344, kn: (v) => v / 1.852, 'ft/s': (v) => v / 1.09728,
+    mm: (v) => v, cm: (v) => v / 10, in: (v) => v / 25.4 };
+  const conv = (v, from, to) => {
+    if (v === null || !from || !to || from === to) return v;
+    const f = from.replace(/\/h$/, ''), t = to.replace(/\/h$/, '');
+    return toBase[f] && fromBase[t] ? fromBase[t](toBase[f](v)) : v;
+  };
+  const units = (s) => ({ t: s.attributes.temperature_unit || '°C', w: s.attributes.wind_speed_unit || 'km/h', p: s.attributes.precipitation_unit || 'mm' });
+  const sensor = (h, id, unit) => {
+    const e = id && h.states[id];
+    if (!e) return null;
+    return conv(num(e.state), e.attributes.unit_of_measurement, unit);
+  };
 
   // base class: config, forecast subscription, re-render only on visible change
   class WSBase extends HTMLElement {
@@ -129,7 +146,7 @@
     getCardSize() { return 3; }
     getGridOptions() { return { columns: 12, rows: 3, min_rows: 2 }; }
     _html(h, s, t) {
-      const temp = sensor(h, this._c.temperature) ?? s.attributes.temperature;
+      const temp = sensor(h, this._c.temperature, units(s).t) ?? s.attributes.temperature;
       const cond = h.formatEntityState ? h.formatEntityState(s) : s.state;
       const today = (this._fc || [])[0];
       const name = this._c.name || (h.config && h.config.location_name) || t.home;
@@ -174,27 +191,27 @@ ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;ali
       }
     }
     _html(h, s, t) {
-      const M = this._mode || this._c.mode || 'temp', c = this._c;
+      const M = this._mode || this._c.mode || 'temp', c = this._c, U = units(s);
       const list = (this._fc || []).slice(0, Math.max(1, Math.min(48, Number(c.hours) || 24)));
       const sun = h.states['sun.sun'];
       const evs = sun && sun.attributes.next_rising
         ? [[new Date(sun.attributes.next_setting), 'mdi:weather-sunset-down', t.sunset], [new Date(sun.attributes.next_rising), 'mdi:weather-sunset-up', t.sunrise]]
         : [];
-      const rmax = Math.max(4, ...list.map((f) => f.precipitation || 0));
+      const rmax = Math.max(conv(4, 'mm', U.p), ...list.map((f) => f.precipitation || 0));
       const cell = (f, i) => {
         const d = new Date(f.datetime), tm = `<span class="tm">${i === 0 ? t.now : hhmm(h, d)}</span>`;
         const pp = num(f.precipitation_probability);
         if (M === 'rain') {
-          const mm = f.precipitation || 0, hgt = mm > 0 ? Math.max(6, Math.min(100, (mm / rmax) * 100)) : 0;
-          return `<div class="h">${tm}<span class="vb"><i style="height:${hgt}%"></i></span><span>${dec(h, mm)}</span><span class="u">mm</span><span class="pr">${pp === null ? '' : `${Math.round(pp)} %`}</span></div>`;
+          const mm = (i === 0 ? sensor(h, c.rain_rate, U.p) : null) ?? f.precipitation ?? 0, hgt = mm > 0 ? Math.max(6, Math.min(100, (mm / rmax) * 100)) : 0;
+          return `<div class="h">${tm}<span class="vb"><i style="height:${hgt}%"></i></span><span>${dec(h, mm, U.p)}</span><span class="u">${U.p}</span><span class="pr">${pp === null ? '' : `${Math.round(pp)} %`}</span></div>`;
         }
         if (M === 'wind') {
-          const ws = i === 0 ? sensor(h, c.wind_speed) ?? f.wind_speed : f.wind_speed;
-          const wg = i === 0 ? sensor(h, c.wind_gust) ?? f.wind_gust_speed : f.wind_gust_speed;
+          const ws = i === 0 ? sensor(h, c.wind_speed, U.w) ?? f.wind_speed : f.wind_speed;
+          const wg = i === 0 ? sensor(h, c.wind_gust, U.w) ?? f.wind_gust_speed : f.wind_gust_speed;
           const wb = i === 0 ? sensor(h, c.wind_bearing) ?? f.wind_bearing : f.wind_bearing;
           return `<div class="h">${tm}<ha-icon icon="mdi:navigation" style="transform:rotate(${(num(wb) || 0) + 180}deg)"></ha-icon><span>${int(ws)}</span><span class="u">${wg === null || wg === undefined ? '&nbsp;' : `${t.max} ${int(wg)}`}</span></div>`;
         }
-        const temp = i === 0 ? sensor(h, c.temperature) ?? f.temperature : f.temperature;
+        const temp = i === 0 ? sensor(h, c.temperature, U.t) ?? f.temperature : f.temperature;
         return `<div class="h">${tm}<ha-icon icon="${icon(f.condition, f.is_daytime)}"></ha-icon><span class="pp">${pp !== null && pp >= 20 ? `${Math.round(pp)} %` : ''}</span><span>${deg(temp)}</span></div>`;
       };
       const ev = (e) => `<div class="h ev"><span class="tm">${hhmm(h, e[0])}</span><ha-icon icon="${e[1]}"></ha-icon><span class="pp"></span><span>${e[2]}</span></div>`;
@@ -202,7 +219,7 @@ ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;ali
         const d0 = new Date(f.datetime), d1 = new Date(d0.getTime() + 36e5);
         return cell(f, i) + evs.filter((e) => e[0] >= d0 && e[0] < d1).map(ev).join('');
       }).join('');
-      const btn = (m, ic) => `<button data-mode="${m}" class="${M === m ? 'on' : ''}" aria-label="${t[`m_${m}`]}"><ha-icon icon="${ic}"></ha-icon></button>`;
+      const btn = (m, ic) => `<button data-mode="${m}" class="${M === m ? 'on' : ''}" aria-label="${t[`m_${m}`].replace(' ({u})', '')}"><ha-icon icon="${ic}"></ha-icon></button>`;
       return `
 <style>
 :host{display:block;height:100%}
@@ -224,7 +241,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:
 .dim{opacity:.7;font-size:13px}
 </style>
 <ha-card>
-  <div class="hd"><div><div class="ti">${t.hourly}</div><div class="mn">${t[`m_${M}`]}</div></div>
+  <div class="hd"><div><div class="ti">${t.hourly}</div><div class="mn">${t[`m_${M}`].replace('{u}', { temp: U.t, rain: U.p, wind: U.w }[M])}</div></div>
   <div class="seg">${btn('temp', 'mdi:weather-partly-cloudy')}${btn('rain', 'mdi:water')}${btn('wind', 'mdi:weather-windy')}</div></div>
   <div class="hours">${cells || `<span class="dim">${t.loading}</span>`}</div>
 </ha-card>`;
@@ -232,14 +249,15 @@ ha-card{height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:
   }
   register('weatherscope-hourly-card', HourlyCard, makeEditor((t) => [
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
-    { name: 'mode', selector: { select: { mode: 'dropdown', options: [{ value: 'temp', label: t.m_temp }, { value: 'rain', label: t.m_rain }, { value: 'wind', label: t.m_wind }] } } },
+    { name: 'mode', selector: { select: { mode: 'dropdown', options: [{ value: 'temp', label: t.m_temp.replace(' ({u})', '') }, { value: 'rain', label: t.m_rain.replace(' ({u})', '') }, { value: 'wind', label: t.m_wind.replace(' ({u})', '') }] } } },
     { name: 'hours', selector: { number: { min: 6, max: 48, step: 1, mode: 'box' } } },
     { name: 'temperature', ...sensorSel('temperature') },
     { name: 'wind_speed', ...sensorSel('wind_speed') },
     { name: 'wind_gust', ...sensorSel('wind_speed') },
     { name: 'wind_bearing', ...sensorSel() },
+    { name: 'rain_rate', ...sensorSel() },
     bgSchema(t),
-  ], { temperature: 'e_own_h', background: 'e_background_h' }), 'WeatherScope – Hourly', 'd_hourly');
+  ], { temperature: 'e_own_h', rain_rate: 'e_rain_rate_h', background: 'e_background_h' }), 'WeatherScope – Hourly', 'd_hourly');
 
   console.info(`%c WEATHERSCOPE CARDS %c ${VERSION} `, 'background:#2b7de0;color:#fff;border-radius:3px 0 0 3px', 'background:#444;color:#fff;border-radius:0 3px 3px 0');
 })();
