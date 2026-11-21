@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.6.2';
+  const VERSION = '0.7.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -8,8 +8,8 @@
       hi: 'H', lo: 'T', home: 'Zuhause', now: 'Jetzt', hourly: 'Stündlich', sunrise: 'Sonnenaufgang', sunset: 'Sonnenuntergang',
       m_temp: 'Temperatur ({u})', m_rain: 'Niederschlag ({u})', m_wind: 'Wind und Böen ({u})', max: 'max', loading: 'Vorhersage wird geladen …',
       e_entity: 'Wetter-Entität', e_temperature: 'Eigener Temperatursensor (optional)', e_name: 'Ortsname (optional)', e_background: 'Hintergrund',
-      e_sky: 'Eigener Himmel', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
-      e_background_h: '„Durchsichtig“ passt zu einer Wetterseite mit eigenem Hintergrund.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
+      e_sky: 'Eigener Himmel', e_glass: 'Glas', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
+      e_background_h: '„Glas“ und „Durchsichtig“ passen zu einer Wetterseite mit der WeatherScope-Himmel-Animation dahinter.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
       e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
       d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
@@ -17,8 +17,8 @@
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
       m_temp: 'Temperature ({u})', m_rain: 'Precipitation ({u})', m_wind: 'Wind and gusts ({u})', max: 'max', loading: 'Loading forecast …',
       e_entity: 'Weather entity', e_temperature: 'Own temperature sensor (optional)', e_name: 'Place name (optional)', e_background: 'Background',
-      e_sky: 'Own sky', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
-      e_background_h: '“Transparent” suits a weather page with its own background.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
+      e_sky: 'Own sky', e_glass: 'Glass', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
+      e_background_h: '“Glass” and “Transparent” suit a weather page with the WeatherScope sky animation behind it.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
       e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
       d_now: 'Place, temperature, condition, high and low.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
     },
@@ -36,11 +36,23 @@
   };
   const NIGHT = { partlycloudy: ['#1f2a44', '#3b4868'], cloudy: ['#262c38', '#454d5c'], rainy: ['#20252e', '#3b424e'], pouring: ['#1b2028', '#343a45'], snowy: ['#3a4250', '#5e6676'], fog: ['#2c3138', '#4b5058'] };
   const isNight = (h, s) => s.state === 'clear-night' || (h.states['sun.sun'] && h.states['sun.sun'].state === 'below_horizon');
-  const skyCss = (h, s, own) => {
-    if (!own) return 'background:none;border:none;box-shadow:none';
+  // design rules: see "WeatherScope Design-Regeln" – same background, type sizes, spacing for every card
+  const bgCss = (h, s, bg) => {
+    if (bg === 'none') return 'background:none;box-shadow:none;border:none';
+    if (bg === 'glass') return 'background:rgba(32,62,112,.38);-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.18)';
     const k = (isNight(h, s) && NIGHT[s.state]) || SKY[s.state] || SKY.partlycloudy;
-    return `background:linear-gradient(180deg,${k[0]},${k[1]});border:none`;
+    return `background:linear-gradient(180deg,${k[0]},${k[1]});border:none;box-shadow:none`;
   };
+  const baseCss = (h, s, bg) => `
+:host{display:block;height:100%}
+ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${bgCss(h, s, bg)}}
+.lab{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.lab ha-icon{--mdc-icon-size:14px}
+.big{font-size:30px;font-weight:400;line-height:1.15}
+.sub{font-size:15px;font-weight:500}
+.note{font-size:12px;color:rgba(255,255,255,.85);margin-top:auto}
+.dim{color:rgba(255,255,255,.7);font-size:13px}
+`;
 
   const ICON = {
     sunny: 'mdi:weather-sunny', 'clear-night': 'mdi:weather-night', partlycloudy: 'mdi:weather-partly-cloudy', cloudy: 'mdi:weather-cloudy',
@@ -126,7 +138,7 @@
       this._f.data = this._c;
     }
   };
-  const bgSchema = (t) => ({ name: 'background', selector: { select: { mode: 'dropdown', options: [{ value: 'sky', label: t.e_sky }, { value: 'none', label: t.e_none }] } } });
+  const bgSchema = (t) => ({ name: 'background', selector: { select: { mode: 'dropdown', options: [{ value: 'sky', label: t.e_sky }, { value: 'glass', label: t.e_glass }, { value: 'none', label: t.e_none }] } } });
   const sensorSel = (dc) => ({ selector: { entity: { domain: 'sensor', ...(dc ? { device_class: dc } : {}) } } });
 
   const register = (tag, cls, editor, name, descKey) => {
@@ -151,9 +163,9 @@
       const today = (this._fc || [])[0];
       const name = this._c.name || (h.config && h.config.location_name) || t.home;
       return `
-<style>
-:host{display:block;height:100%;container-type:inline-size}
-ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px 12px;color:#fff;overflow:hidden;${skyCss(h, s, this._c.background !== 'none')}}
+<style>${baseCss(h, s, this._c.background)}
+:host{container-type:inline-size}
+ha-card{align-items:center;justify-content:center;text-align:center;padding:16px 12px}
 .o{font-size:clamp(18px,4.2cqw,28px);font-weight:400;text-shadow:0 1px 3px rgba(0,0,0,.25)}
 .t{font-size:clamp(56px,16cqw,104px);font-weight:var(--ws-temp-weight,300);line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.2)}
 .c{font-size:clamp(15px,3.4cqw,20px);font-weight:500;margin-top:4px}
@@ -175,8 +187,8 @@ ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;ali
     static defaults = { entity: 'weather.weatherscope', background: 'sky', hours: 24, mode: 'temp' };
     static forecast = 'hourly';
     getCardSize() { return 3; }
-    // height follows the content (the rain view is taller than the others)
-    getGridOptions() { return { columns: 12, min_columns: 6 }; }
+    // fixed height in every view (design rules)
+    getGridOptions() { return { columns: 12, rows: 3, min_columns: 6, min_rows: 3 }; }
     _click(e) {
       const b = e.composedPath().find((x) => x.dataset && x.dataset.mode);
       if (b) { this._mode = b.dataset.mode; this._render(); }
@@ -199,50 +211,50 @@ ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;ali
         ? [[new Date(sun.attributes.next_setting), 'mdi:weather-sunset-down', t.sunset], [new Date(sun.attributes.next_rising), 'mdi:weather-sunset-up', t.sunrise]]
         : [];
       const rmax = Math.max(conv(4, 'mm', U.p), ...list.map((f) => f.precipitation || 0));
+      // every hour has the same four rows: time · picture · value · extra
       const cell = (f, i) => {
         const d = new Date(f.datetime), tm = `<span class="tm">${i === 0 ? t.now : hhmm(h, d)}</span>`;
         const pp = num(f.precipitation_probability);
         if (M === 'rain') {
           const mm = (i === 0 ? sensor(h, c.rain_rate, U.p) : null) ?? f.precipitation ?? 0, hgt = mm > 0 ? Math.max(6, Math.min(100, (mm / rmax) * 100)) : 0;
-          return `<div class="h">${tm}<span class="vb"><i style="height:${hgt}%"></i></span><span>${dec(h, mm, U.p)}</span><span class="u">${U.p}</span><span class="pr">${pp === null ? '' : `${Math.round(pp)} %`}</span></div>`;
+          return `<div class="h">${tm}<span class="vb"><i style="height:${hgt}%"></i></span><span class="v">${dec(h, mm, U.p)}</span><span class="x pp">${pp === null ? '' : `${Math.round(pp)} %`}</span></div>`;
         }
         if (M === 'wind') {
           const ws = i === 0 ? sensor(h, c.wind_speed, U.w) ?? f.wind_speed : f.wind_speed;
           const wg = i === 0 ? sensor(h, c.wind_gust, U.w) ?? f.wind_gust_speed : f.wind_gust_speed;
           const wb = i === 0 ? sensor(h, c.wind_bearing) ?? f.wind_bearing : f.wind_bearing;
-          return `<div class="h">${tm}<ha-icon icon="mdi:navigation" style="transform:rotate(${(num(wb) || 0) + 180}deg)"></ha-icon><span>${int(ws)}</span><span class="u">${wg === null || wg === undefined ? '&nbsp;' : `${t.max} ${int(wg)}`}</span></div>`;
+          return `<div class="h">${tm}<ha-icon icon="mdi:navigation" style="transform:rotate(${(num(wb) || 0) + 180}deg)"></ha-icon><span class="v">${int(ws)}</span><span class="x">${wg === null || wg === undefined ? '' : `${t.max} ${int(wg)}`}</span></div>`;
         }
         const temp = i === 0 ? sensor(h, c.temperature, U.t) ?? f.temperature : f.temperature;
-        return `<div class="h">${tm}<ha-icon icon="${icon(f.condition, f.is_daytime)}"></ha-icon><span class="pp">${pp !== null && pp >= 20 ? `${Math.round(pp)} %` : ''}</span><span>${deg(temp)}</span></div>`;
+        return `<div class="h">${tm}<ha-icon icon="${icon(f.condition, f.is_daytime)}"></ha-icon><span class="v">${deg(temp)}</span><span class="x pp">${pp !== null && pp >= 20 ? `${Math.round(pp)} %` : ''}</span></div>`;
       };
-      const ev = (e) => `<div class="h ev"><span class="tm">${hhmm(h, e[0])}</span><ha-icon icon="${e[1]}"></ha-icon><span class="pp"></span><span>${e[2]}</span></div>`;
+      const ev = (e) => `<div class="h ev"><span class="tm">${hhmm(h, e[0])}</span><ha-icon icon="${e[1]}"></ha-icon><span class="v">${e[2]}</span><span class="x"></span></div>`;
       const cells = list.map((f, i) => {
         const d0 = new Date(f.datetime), d1 = new Date(d0.getTime() + 36e5);
         return cell(f, i) + evs.filter((e) => e[0] >= d0 && e[0] < d1).map(ev).join('');
       }).join('');
       const btn = (m, ic) => `<button data-mode="${m}" class="${M === m ? 'on' : ''}" aria-label="${t[`m_${m}`].replace(' ({u})', '')}"><ha-icon icon="${ic}"></ha-icon></button>`;
+      const unit = { temp: U.t, rain: U.p, wind: U.w }[M];
       return `
-<style>
-:host{display:block;height:100%}
-ha-card{min-height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${skyCss(h, s, c.background !== 'none')}}
-.hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-.ti{font-size:18px;font-weight:600}.mn{font-size:12px;font-weight:500;opacity:.9}
+<style>${baseCss(h, s, c.background)}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.mode{font-size:13px;font-weight:500;margin-top:3px}
 .seg{display:flex;gap:2px;background:rgba(0,0,0,.18);border-radius:999px;padding:3px}
-.seg button{all:unset;cursor:pointer;width:38px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:rgba(235,240,255,.7)}
-.seg button.on{background:rgba(255,255,255,.28);color:#fff}.seg ha-icon{--mdc-icon-size:18px}
-.hours{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-top:2px}.hours::-webkit-scrollbar{display:none}
-.h{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;font-weight:600}
-.h>*{flex-shrink:0}.h ha-icon{--mdc-icon-size:24px}
-.h .pp{font-size:11px;color:#bfe9ff;height:12px;margin:-6px 0 -4px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
-.h .u{font-size:10px;font-weight:500;color:rgba(235,240,255,.62);margin-top:-6px;white-space:nowrap}
-.h .pr{font-size:11px;font-weight:600;color:#fff;opacity:.85;margin-top:-4px;height:13px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
-.h.ev{flex-basis:auto;padding:0 8px;color:#ffe7a3;white-space:nowrap}
+.seg button{all:unset;cursor:pointer;width:34px;height:24px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:rgba(235,240,255,.7)}
+.seg button.on{background:rgba(255,255,255,.28);color:#fff}.seg ha-icon{--mdc-icon-size:16px}
+.hours{flex:1;display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;align-items:center}.hours::-webkit-scrollbar{display:none}
+.h{flex:0 0 52px;display:grid;grid-template-rows:16px 34px 18px 14px;row-gap:6px;justify-items:center;align-items:center}
+.h .tm{font-size:13px;font-weight:600}
+.h ha-icon{--mdc-icon-size:24px}
+.h .v{font-size:15px;font-weight:600;white-space:nowrap}
+.h .x{font-size:11px;font-weight:600;color:rgba(255,255,255,.85);text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap}
+.h .x.pp{color:#bfe9ff}
+.h.ev{flex:0 0 auto;padding:0 8px;color:#ffe7a3}.h.ev .v{font-size:13px}
 .vb{width:14px;height:34px;border-radius:4px;background:rgba(0,0,0,.2);position:relative;overflow:hidden}
 .vb i{position:absolute;left:0;right:0;bottom:0;background:#5ac8fa}
-.dim{opacity:.7;font-size:13px}
 </style>
 <ha-card>
-  <div class="hd"><div><div class="ti">${t.hourly}</div><div class="mn">${t[`m_${M}`].replace('{u}', { temp: U.t, rain: U.p, wind: U.w }[M])}</div></div>
+  <div class="hd"><div><div class="lab"><ha-icon icon="mdi:clock-outline"></ha-icon>${t.hourly}</div><div class="mode">${t[`m_${M}`].replace('{u}', unit)}</div></div>
   <div class="seg">${btn('temp', 'mdi:weather-partly-cloudy')}${btn('rain', 'mdi:water')}${btn('wind', 'mdi:weather-windy')}</div></div>
   <div class="hours">${cells || `<span class="dim">${t.loading}</span>`}</div>
 </ha-card>`;
