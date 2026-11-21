@@ -131,8 +131,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #ct #lg{position:static;background:none;border-radius:0;padding:0 12px 6px 2px;display:flex;align-items:flex-start;gap:7px}
 #ct #lg .w{flex:1;min-width:0}
 #ct{padding:4px 6px 4px}#ct #lg{padding:0 12px 2px 2px}
-#pl{width:38px;height:38px}#pl ha-icon{--mdc-icon-size:22px}
-#mo{flex:none;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.12);opacity:1;padding:0;margin-left:0;justify-content:center}#mo ha-icon{--mdc-icon-size:22px}
+#pl{width:30px;height:30px;position:relative}#pl ha-icon{--mdc-icon-size:18px}
+#mo{flex:none;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);opacity:1;padding:0;margin-left:0;justify-content:center;position:relative}#mo ha-icon{--mdc-icon-size:18px}
+/* all round buttons look 30 px; the area that reacts to a finger is about 40 px */
+#pl::after,#mo::after{content:'';position:absolute;inset:-5px;border-radius:50%}
+.mb i{width:30px;height:30px;position:relative}.mb i::after{content:'';position:absolute;inset:-5px;border-radius:50%}
 #tl{margin-right:4px}#r2{margin-top:4px}#ct #lg .b,#ct #lg.tr .b,#ct #lg.tr.rd .b{width:100%}
 #tl.fm{height:38px}#tl.fm #tk{top:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.1)}#tl.fm #pg{background:rgba(255,255,255,.16)}#tl.fm #fc{display:none}
 #tl.fm #nm{top:15px;height:24px}#tl.fm #dl{top:18px;height:18px}
