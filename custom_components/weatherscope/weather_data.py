@@ -134,7 +134,7 @@ class WeatherScopeData(DataUpdateCoordinator[dict[str, Any]]):
         fc, air = await asyncio.gather(
             self._get(
                 FORECAST_URL,
-                {**self._base(), "current": CURRENT, "hourly": HOURLY, "daily": DAILY, "forecast_days": 10, "forecast_hours": 48},
+                {**self._base(), "current": CURRENT, "hourly": HOURLY, "daily": DAILY, "forecast_days": 10, "forecast_hours": 240},
             ),
             self._get(AIR_URL, {**self._base(), "current": AIR}),
         )

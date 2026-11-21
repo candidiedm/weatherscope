@@ -23,7 +23,7 @@ More radar sources (other countries) are welcome – see *Contributing*.
 
 Unless switched off in the setup, WeatherScope also provides weather data for your home location (Open-Meteo, worldwide, updated every 15 minutes):
 
-- `weather.weatherscope` – current weather with hourly (48 h) and daily (10 days) forecast; works with every weather card
+- `weather.weatherscope` – current weather with hourly and daily forecast for 10 days; works with every weather card
 - Sensors: air quality index, PM2.5, PM10, NO₂, O₃, CO, SO₂, UV index, visibility, precipitation today, sunrise, sunset
 - Moon (calculated locally): phase, illumination, moonrise, moonset, next full moon
 - Climate normals 1991–2020 (average high, low and rain for every month)
