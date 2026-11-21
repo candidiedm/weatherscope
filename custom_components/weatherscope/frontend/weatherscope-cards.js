@@ -1,6 +1,6 @@
-/* WeatherScope weather cards: Now, Hourly, Daily, Sky. Every value can come from any weather entity or the user's own sensors. */
+/* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.8.0';
+  const VERSION = '0.9.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -11,7 +11,15 @@
       e_sky: 'Eigener Himmel', e_glass: 'Glas', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
       e_background_h: '„Glas“ und „Durchsichtig“ passen zu einer Wetterseite mit der WeatherScope-Himmel-Animation dahinter.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
       e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
-      d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
+      d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_value: 'Einzelwert: Gefühlt, Sonne, UV-Index, Durchschnitt, Niederschlag, Sichtweite, Feuchtigkeit oder Luftdruck.',
+      k_feels: 'Gefühlt', k_sun: 'Sonne', k_uv: 'UV-Index', k_normal: 'Durchschnitt', k_precip: 'Niederschlag', k_visibility: 'Sichtweite', k_humidity: 'Feuchtigkeit', k_pressure: 'Luftdruck',
+      sunrise_l: 'Sonnenaufgang', sunset_l: 'Sonnenuntergang', actual: (v) => `Tatsächlich: ${v}`, f_colder: 'Fühlt sich kälter an als die tatsächliche Temperatur.', f_colder_wind: 'Fühlt sich durch den Wind kälter an.',
+      f_warmer: 'Fühlt sich wärmer an als die tatsächliche Temperatur.', f_warmer_hum: 'Fühlt sich durch die Luftfeuchtigkeit wärmer an.', f_same: 'Ähnlich wie die tatsächliche Temperatur.',
+      uv0: 'Niedrig', uv1: 'Mäßig', uv2: 'Hoch', uv3: 'Sehr hoch', uv4: 'Extrem', uv_low_day: 'Ganztägig niedrig.', uv_max: (v, l) => `Höchstwert heute: ${v} (${l}).`,
+      n_above: 'über dem durchschnittlichen Tageshöchstwert', n_below: 'unter dem durchschnittlichen Tageshöchstwert', n_same: 'entspricht dem durchschnittlichen Tageshöchstwert', n_note: (a, b) => `Heute H: ${a} · Durchschnitt H: ${b}`, n_none: 'Klimawerte werden geladen …',
+      p_today: 'Heute', p_tomorrow: (v) => `Morgen ${v} erwartet.`, p_tomorrow0: 'Morgen kein Niederschlag erwartet.',
+      v0: 'Nebel.', v1: 'Dunst.', v2: 'Leicht dunstig.', v3: 'Gute Sicht.', v4: 'Klare Sicht.', h_dew: (v) => `Der Taupunkt liegt bei ${v}.`,
+      pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', e_kind: 'Wert', e_sensor: 'Eigener Sensor (optional)', e_sensor_h: 'Ersetzt den Hauptwert, z. B. von deiner Wetterstation.', e_sensor2: 'Zweiter eigener Sensor (optional)', e_sensor2_h: 'Gefühlt: tatsächliche Temperatur · Feuchtigkeit: Taupunkt.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
@@ -20,7 +28,15 @@
       e_sky: 'Own sky', e_glass: 'Glass', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
       e_background_h: '“Glass” and “Transparent” suit a weather page with the WeatherScope sky animation behind it.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
       e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
-      d_now: 'Place, temperature, condition, high and low.', today: 'Today', days: (n) => `${n} days`, d_rain: 'Precipitation', d_wind: 'Wind', e_days: 'Number of days', e_link: 'Link with other cards', e_link_h: 'Switching between temperature, precipitation and wind applies to all linked cards on the page.', d_daily: 'Daily forecast: temperature, precipitation, wind.', d_sky: 'Animated sky as background of the whole page, matching the weather.', e_test: 'Test a condition (optional)', e_test_h: 'Always shows this condition – for trying out. Leave empty for normal use.', e_fps: 'Frames per second', e_fps_h: 'Fewer frames are easier on older tablets.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
+      d_now: 'Place, temperature, condition, high and low.', d_value: 'Single value: feels like, sun, UV index, average, precipitation, visibility, humidity or pressure.',
+      k_feels: 'Feels like', k_sun: 'Sun', k_uv: 'UV index', k_normal: 'Average', k_precip: 'Precipitation', k_visibility: 'Visibility', k_humidity: 'Humidity', k_pressure: 'Pressure',
+      sunrise_l: 'Sunrise', sunset_l: 'Sunset', actual: (v) => `Actual: ${v}`, f_colder: 'Feels colder than the actual temperature.', f_colder_wind: 'Wind makes it feel colder.',
+      f_warmer: 'Feels warmer than the actual temperature.', f_warmer_hum: 'Humidity makes it feel warmer.', f_same: 'Similar to the actual temperature.',
+      uv0: 'Low', uv1: 'Moderate', uv2: 'High', uv3: 'Very high', uv4: 'Extreme', uv_low_day: 'Low for the rest of the day.', uv_max: (v, l) => `Today's maximum: ${v} (${l}).`,
+      n_above: 'above the average daily high', n_below: 'below the average daily high', n_same: 'equal to the average daily high', n_note: (a, b) => `Today H: ${a} · Average H: ${b}`, n_none: 'Loading climate normals …',
+      p_today: 'Today', p_tomorrow: (v) => `${v} expected tomorrow.`, p_tomorrow0: 'None expected tomorrow.',
+      v0: 'Fog.', v1: 'Haze.', v2: 'Slightly hazy.', v3: 'Good visibility.', v4: 'Clear view.', h_dew: (v) => `The dew point is ${v} right now.`,
+      pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', e_kind: 'Value', e_sensor: 'Own sensor (optional)', e_sensor_h: 'Replaces the main value, e.g. from your weather station.', e_sensor2: 'Second own sensor (optional)', e_sensor2_h: 'Feels like: actual temperature · Humidity: dew point.', today: 'Today', days: (n) => `${n} days`, d_rain: 'Precipitation', d_wind: 'Wind', e_days: 'Number of days', e_link: 'Link with other cards', e_link_h: 'Switching between temperature, precipitation and wind applies to all linked cards on the page.', d_daily: 'Daily forecast: temperature, precipitation, wind.', d_sky: 'Animated sky as background of the whole page, matching the weather.', e_test: 'Test a condition (optional)', e_test_h: 'Always shows this condition – for trying out. Leave empty for normal use.', e_fps: 'Frames per second', e_fps_h: 'Fewer frames are easier on older tablets.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
     },
   };
   const lang = (h) => ((h && ((h.locale && h.locale.language) || h.language)) || navigator.language || 'en').slice(0, 2);
@@ -407,6 +423,107 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     { name: 'temperature', ...sensorSel('temperature') },
     bgSchema(t),
   ], { link: 'e_link_h', temperature: 'e_own_h', background: 'e_background_h' }), 'WeatherScope – Daily', 'd_daily');
+
+  // ---------------------------------------------------------------- Value (small tiles)
+  // WHO UV index colours (INTERSUN): green, yellow, orange, red, violet
+  const UVC = ['#3ea72d', '#fff300', '#f18b00', '#e53210', '#b567a4'];
+  const uvStage = (v) => (v < 3 ? 0 : v < 6 ? 1 : v < 8 ? 2 : v < 11 ? 3 : 4);
+  const KINDS = ['feels', 'sun', 'uv', 'normal', 'precip', 'visibility', 'humidity', 'pressure'];
+  const KICON = { feels: 'mdi:thermometer', sun: 'mdi:weather-sunset', uv: 'mdi:sun-wireless-outline', normal: 'mdi:chart-bell-curve-cumulative', precip: 'mdi:water', visibility: 'mdi:eye-outline', humidity: 'mdi:water-percent', pressure: 'mdi:gauge' };
+  class ValueCard extends WSBase {
+    static defaults = { entity: 'weather.weatherscope', kind: 'feels', background: 'sky' };
+    static forecast = 'daily';
+    static getStubConfig(h) { return { ...WSBase.getStubConfig(h), kind: 'feels' }; }
+    getCardSize() { return 2; }
+    getGridOptions() { return { columns: 3, rows: 2, min_columns: 3, min_rows: 2 }; }
+    connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { if (this._c && (this._c.kind === 'sun' || this._c.kind === 'pressure')) { this._last = null; this._render(); } }, 60000); }
+    disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
+    // pressure trend: change over the last 3 hours from the recorder
+    async _trend(h, id, attr) {
+      const key = `${id}|${Math.floor(Date.now() / 6e5)}`;
+      if (this._trK === key || this._trBusy) return;
+      this._trBusy = true;
+      try {
+        const start = new Date(Date.now() - 3 * 36e5).toISOString();
+        const r = await h.callWS({ type: 'history/history_during_period', start_time: start, entity_ids: [id], minimal_response: !attr, no_attributes: !attr, significant_changes_only: false });
+        const L = (r && r[id]) || [], first = L[0];
+        const v0 = first ? num(attr ? (first.a || first.attributes || {})[attr] : first.s ?? first.state) : null;
+        this._trV = v0; this._trK = key; this._last = null; this._render();
+      } catch (e) { this._trK = key; } finally { this._trBusy = false; }
+    }
+    _html(h, s, t) {
+      const c = this._c, K = KINDS.includes(c.kind) ? c.kind : 'feels', U = units(s), A = s.attributes, today = (this._fc || [])[0], tomorrow = (this._fc || [])[1];
+      const own = (unit) => sensor(h, c.sensor, unit), own2 = (unit) => sensor(h, c.sensor2, unit);
+      let label = t[`k_${K}`], ic = KICON[K], big = '–', sub = '', viz = '', note = '';
+      if (K === 'feels') {
+        const f = own(U.t) ?? num(A.apparent_temperature), a = own2(U.t) ?? num(A.temperature);
+        big = deg(f); sub = t.actual(deg(a));
+        const d = f !== null && a !== null ? f - a : 0, wind = num(A.wind_speed), hum = num(A.humidity);
+        note = d <= -1.5 ? (wind !== null && conv(wind, U.w, 'km/h') > 10 ? t.f_colder_wind : t.f_colder) : d >= 1.5 ? (hum !== null && hum > 60 && conv(a, U.t, '°C') > 20 ? t.f_warmer_hum : t.f_warmer) : t.f_same;
+      } else if (K === 'sun') {
+        const sun = h.states['sun.sun'], sa = sun ? sun.attributes : {}, rise = sa.next_rising ? new Date(sa.next_rising) : null, set = sa.next_setting ? new Date(sa.next_setting) : null;
+        const up = sun && sun.state === 'above_horizon', next = up ? set : rise, other = up ? rise : set;
+        label = up ? t.sunset_l : t.sunrise_l; ic = up ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up';
+        big = next ? hhmm(h, next) : '–'; note = other ? `${up ? t.sunrise_l : t.sunset_l}: ${hhmm(h, other)}` : '';
+        // sun path over 24 h; the line is the horizon (depends on day length)
+        let dayLen = 12;
+        if (rise && set) { dayLen = up ? 24 - (rise - set) / 36e5 : (set - rise) / 36e5; dayLen = Math.max(0, Math.min(24, dayLen)); }
+        const W = 120, H = 40, yc = (x) => H / 2 - Math.cos(2 * Math.PI * (x - 0.5)) * (H / 2 - 4), hz = H / 2 - Math.cos(Math.PI * dayLen / 24) * (H / 2 - 4);
+        const nowD = new Date(), xf = (nowD.getHours() * 60 + nowD.getMinutes()) / 1440;
+        let path = ''; for (let k = 0; k <= 48; k++) { const x = k / 48; path += `${k ? 'L' : 'M'}${(x * W).toFixed(1)} ${yc(x).toFixed(1)}`; }
+        viz = `<svg class="sv" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/><circle cx="${xf * W}" cy="${yc(xf)}" r="3.5" fill="#fff"/></svg>`;
+      } else if (K === 'uv') {
+        const v = own() ?? num(A.uv_index), st = v === null ? 0 : uvStage(v), mx = today ? num(today.uv_index) : null;
+        big = v === null ? '–' : String(Math.round(v)); sub = v === null ? '' : t[`uv${st}`];
+        const pos = v === null ? 0 : Math.min(100, (v / 12) * 100);
+        viz = `<div class="uvb">${[3, 3, 2, 3, 1].map((w, k) => `<i style="flex:${w};background:${UVC[k]}"></i>`).join('')}${v === null ? '' : `<b style="left:${pos}%"></b>`}</div>`;
+        note = mx === null ? '' : mx < 3 ? t.uv_low_day : t.uv_max(Math.round(mx), t[`uv${uvStage(mx)}`]);
+      } else if (K === 'normal') {
+        const nid = c.sensor || 'sensor.weatherscope_normal_high', ns = h.states[nid];
+        const nh = ns ? conv(num(ns.state), ns.attributes.unit_of_measurement, U.t) : null, th = today ? num(today.temperature) : null;
+        if (nh === null || th === null) { big = '–'; note = t.n_none; } else {
+          const d = Math.round(th - nh); big = `${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d)}°`; sub = d > 0 ? t.n_above : d < 0 ? t.n_below : t.n_same; note = t.n_note(deg(th), deg(nh));
+        }
+      } else if (K === 'precip') {
+        const v = own(U.p) ?? (today ? num(today.precipitation) : null), tm = tomorrow ? num(tomorrow.precipitation) : null;
+        big = v === null ? '–' : `${dec(h, v, U.p)} ${U.p}`; sub = t.p_today;
+        note = tm === null ? '' : tm >= conv(0.1, 'mm', U.p) ? t.p_tomorrow(`${dec(h, tm, U.p)} ${U.p}`) : t.p_tomorrow0;
+      } else if (K === 'visibility') {
+        const vu = A.visibility_unit || 'km', v = own(vu) ?? num(A.visibility), km = v === null ? null : vu === 'mi' ? v * 1.609 : v;
+        big = v === null ? '–' : `${dec(h, v)} ${vu}`;
+        note = km === null ? '' : t[`v${km < 1 ? 0 : km < 4 ? 1 : km < 10 ? 2 : km < 20 ? 3 : 4}`];
+      } else if (K === 'humidity') {
+        const v = own() ?? num(A.humidity), dp = own2(U.t) ?? num(A.dew_point);
+        big = v === null ? '–' : `${Math.round(v)} %`; note = dp === null ? '' : t.h_dew(deg(dp));
+      } else if (K === 'pressure') {
+        const pu = A.pressure_unit || 'hPa', v = c.sensor ? sensor(h, c.sensor, pu) : num(A.pressure);
+        this._trend(h, c.sensor || c.entity, c.sensor ? null : 'pressure');
+        const v0 = this._trV === null || this._trV === undefined ? null : c.sensor ? conv(this._trV, h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : this._trV;
+        const d = v !== null && v0 !== null ? v - v0 : 0, arrow = d > 1 ? 'mdi:arrow-up' : d < -1 ? 'mdi:arrow-down' : 'mdi:equal';
+        const hpa = v === null ? 1013 : conv(v, pu === 'inHg' ? 'inHg' : pu, 'hPa') ?? v, f = Math.max(0, Math.min(1, ((pu === 'inHg' ? v * 33.8639 : hpa) - 960) / 90));
+        const R = 34, cx = 60, cy = 42, a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, ang = a0 + (a1 - a0) * f;
+        let ticks = ''; for (let k = 0; k <= 30; k++) { const a = a0 + ((a1 - a0) * k) / 30; ticks += `<line x1="${cx + Math.cos(a) * (R - 6)}" y1="${cy + Math.sin(a) * (R - 6)}" x2="${cx + Math.cos(a) * R}" y2="${cy + Math.sin(a) * R}" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`; }
+        viz = `<svg class="gv" viewBox="0 0 120 80">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy + 3}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
+        big = ''; note = `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}`;
+      }
+      return `
+<style>${baseCss(h, s, c.background)}
+.big{margin-top:6px}.sub{margin-top:2px}
+.sv{width:100%;height:40px;margin-top:6px;display:block}
+.gv{width:100%;max-height:86px;margin-top:2px;display:block}
+.uvb{position:relative;display:flex;gap:2px;height:6px;margin-top:10px}.uvb i{border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
+.note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
+</style>
+<ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div>${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}<div class="note">${note}</div></ha-card>`;
+    }
+  }
+  register('weatherscope-value-card', ValueCard, makeEditor((t) => [
+    { name: 'kind', required: true, selector: { select: { mode: 'dropdown', options: KINDS.map((k) => ({ value: k, label: t[`k_${k}`] })) } } },
+    { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
+    { name: 'sensor', ...sensorSel() },
+    { name: 'sensor2', ...sensorSel() },
+    bgSchema(t),
+  ], { sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' }), 'WeatherScope – Value', 'd_value');
 
   // ---------------------------------------------------------------- Sky (animated page background)
   class SkyCard extends HTMLElement {
