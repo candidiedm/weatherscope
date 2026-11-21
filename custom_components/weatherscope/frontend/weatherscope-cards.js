@@ -387,7 +387,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .tr b{position:absolute;top:0;bottom:0;border-radius:3px}
 .dot{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .r.rn{grid-template-columns:48px 1fr 68px 58px}.r.wn{grid-template-columns:48px 1fr 76px}
-.bk{display:flex;gap:3px;height:22px;align-items:stretch}.bk i{flex:1;max-width:12px;border-radius:2px;background:rgba(0,0,0,.2);position:relative;overflow:hidden}.bk i b{position:absolute;left:0;right:0;bottom:0}
+.bk{display:flex;gap:3px;height:22px;align-items:stretch}.bk i{flex:1;border-radius:2px;background:rgba(0,0,0,.2);position:relative;overflow:hidden}.bk i b{position:absolute;left:0;right:0;bottom:0}
 .am{text-align:right;white-space:nowrap}.pb{text-align:right;font-size:12px;color:#bfe9ff;white-space:nowrap}.pb ha-icon{--mdc-icon-size:12px;margin-right:2px;vertical-align:-1px}
 .r.dry .am,.r.dry .pb{color:rgba(255,255,255,.45)}
 .wc{width:100%;height:22px;display:block}
