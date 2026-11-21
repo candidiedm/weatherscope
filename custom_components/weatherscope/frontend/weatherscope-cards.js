@@ -92,6 +92,9 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
 .dim{color:rgba(255,255,255,.7);font-size:13px}
 `;
 
+  // round graphics in small tiles (moon, compass, pressure gauge): same circle size and position everywhere
+  const picCss = '.pic{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}.pic svg{height:100%;max-height:96px;width:auto;display:block}';
+
   const ICON = {
     sunny: 'mdi:weather-sunny', 'clear-night': 'mdi:weather-night', partlycloudy: 'mdi:weather-partly-cloudy', cloudy: 'mdi:weather-cloudy',
     fog: 'mdi:weather-fog', rainy: 'mdi:weather-rainy', pouring: 'mdi:weather-pouring', lightning: 'mdi:weather-lightning',
@@ -622,6 +625,11 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         let ticks = ''; for (let k = 0; k <= 30; k++) { const a = a0 + ((a1 - a0) * k) / 30; ticks += `<line x1="${cx + Math.cos(a) * (R - 6)}" y1="${cy + Math.sin(a) * (R - 6)}" x2="${cx + Math.cos(a) * R}" y2="${cy + Math.sin(a) * R}" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`; }
         viz = `<svg class="gv" viewBox="0 0 120 88">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy - 11}" text-anchor="middle" fill="#fff" font-size="11">${d > 1 ? '↑' : d < -1 ? '↓' : '='}</text><text x="${cx - 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↓</text><text x="${cx + 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↑</text><text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
         big = ''; note = med ? `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}` : '';
+        if (!med) {
+          // small: crop to the gauge circle so it matches the moon; low/high marks move to the bottom corners
+          viz = `<div class="pic">${viz.replace(/<text[^>]*>↓<\/text><text[^>]*>↑<\/text>/, '').replace('class="gv" viewBox="0 0 120 88"', `viewBox="${cx - 36.96} ${cy - 36.96} 73.92 73.92"`)}</div>`;
+          note = '<div class="ends"><span>↓</span><span>↑</span></div>';
+        }
         if (med && this._series && this._series.length > 1) {
           const P = this._series.map((q) => [q[0], c.sensor ? conv(q[1], h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : q[1]]);
           const t0 = now - 24 * 36e5, lo = Math.min(...P.map((q) => q[1])), hi = Math.max(...P.map((q) => q[1])), pad = Math.max(1, (hi - lo) * 0.15);
@@ -637,6 +645,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .svw{position:relative;width:100%;height:40px;margin-top:6px}.svw svg{width:100%;height:100%;display:block}
 .sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(0,0,0,.3);box-shadow:none}
 .gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
+${picCss}.ends{display:flex;justify-content:space-between;color:rgba(255,255,255,.8)}
 .uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
 .md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:14px;align-items:stretch}
@@ -696,8 +705,8 @@ ${med && chart
       const comp = `<svg class="cmp" viewBox="0 0 112 112">${ticks}${letters}${arrow}<circle cx="${cx}" cy="${cy}" r="19" fill="rgba(20,40,80,.55)"/><text x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="16" font-weight="600" fill="#fff">${int(ws)}</text><text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,.8)">${U.w}</text></svg>`;
       // small: compass fills the tile, gusts below (wind speed is in the middle of the compass)
       if (c.size === 'small') {
-        return `<style>${baseCss(h, s, c.background)}.cw{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 0}.cmp{height:100%;max-height:112px;aspect-ratio:1;display:block}.note{margin-top:0}</style>
-<ha-card><div class="lab"><ha-icon icon="mdi:weather-windy"></ha-icon>${t.n_wind}</div><div class="cw">${comp}</div><div class="note">${t.w_gust}: ${int(wg)} ${U.w}</div></ha-card>`;
+        return `<style>${baseCss(h, s, c.background)}${picCss}</style>
+<ha-card><div class="lab"><ha-icon icon="mdi:weather-windy"></ha-icon>${t.n_wind}</div><div class="pic">${comp.replace('viewBox="0 0 112 112"', 'viewBox="6 6 100 100"')}</div><div class="note">${t.w_gust}: ${int(wg)} ${U.w}</div></ha-card>`;
       }
       return `<style>${baseCss(h, s, c.background)}${rowsCss}.cmp{width:112px;height:112px;display:block}</style>
 <ha-card><div class="lab"><ha-icon icon="mdi:weather-windy"></ha-icon>${t.n_wind}</div><div class="md">${rowList([[t.w_wind, `${int(ws)} ${U.w}`], [t.w_gust, `${int(wg)} ${U.w}`], [t.w_dir, dir]])}${comp}</div></ha-card>`;
@@ -749,7 +758,7 @@ ${med && chart
       const ev = nx ? `${nx.rise ? t.m_rise : t.m_set} ${hhmm(h, nx.at)}` : '';
       const lab = `<div class="lab"><ha-icon icon="mdi:moon-${ph.replace('_moon', '').replace('_', '-')}"></ha-icon>${t.mp[ph]}</div>`;
       if (c.size === 'small') {
-        return `<style>${baseCss(h, s, c.background)}.pic{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}.pic svg{height:100%;max-height:96px;width:auto}</style>
+        return `<style>${baseCss(h, s, c.background)}${picCss}</style>
 <ha-card>${lab}<div class="pic">${moonSvg(age, 96, lat < 0)}</div><div class="note">${ev}</div></ha-card>`;
       }
       return `<style>${baseCss(h, s, c.background)}${rowsCss}.moon{display:block}</style>
