@@ -129,7 +129,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 .sep{display:none}
 #dl{position:absolute;left:0;right:0;top:30px;height:12px;pointer-events:none}#dl span{position:absolute;transform:translateX(-50%);opacity:.8;white-space:nowrap}#dl span.j{transform:none}
 #ct #lg{position:static;background:none;border-radius:0;padding:0 12px 6px 2px;display:flex;align-items:flex-start;gap:7px}
-#ct #lg .w{flex:1;min-width:0}#ct #lg .b,#ct #lg.tr .b,#ct #lg.tr.rd .b{width:100%}
+#ct #lg .w{flex:1;min-width:0}
+#ct{padding:4px 6px 4px}#ct #lg{padding:0 12px 2px 2px}
+#pl{width:38px;height:38px}#pl ha-icon{--mdc-icon-size:22px}
+#mo{flex:none;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.12);opacity:1;padding:0;margin-left:0;justify-content:center}#mo ha-icon{--mdc-icon-size:22px}
+#tl{margin-right:4px}#r2{margin-top:4px}#ct #lg .b,#ct #lg.tr .b,#ct #lg.tr.rd .b{width:100%}
 #tl.fm{height:38px}#tl.fm #tk{top:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.1)}#tl.fm #pg{background:rgba(255,255,255,.16)}#tl.fm #fc{display:none}
 #tl.fm #nm{top:15px;height:24px}#tl.fm #dl{top:18px;height:18px}
 #tl.fm #dl span{transform:none;top:0;height:18px;line-height:18px;text-align:center;opacity:1;color:rgba(255,255,255,.85);border-left:1px solid rgba(0,0,0,.35);box-sizing:border-box;overflow:hidden;font-size:11px}
@@ -158,8 +162,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="fr"></div><div id="hd"><ha-icon></ha-icon><span></span></div><div id="m"><canvas id="cv"></canvas>
 <div id="mb">${MAPS.map((m) => `${m.sep ? '<i class="sep"></i>' : ''}<button class="mb" data-m="${m.id}"><span>${T[m.id]}</span><i style="background:${m.bg}"><ha-icon icon="${m.icon}"></ha-icon></i></button>`).join('')}</div>
 <div id="ct"><div id="lg"><span id="lgu"></span><div class="w"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div></div><div id="r1"><button id="pl" aria-label="${T.play}"><ha-icon icon="mdi:play"></ha-icon></button>
-<div id="tl"><div id="tk"><div id="fc"></div><div id="pg"></div></div><div id="nm"></div><div id="tb">–</div><div id="nc">${T.now}</div><span id="l0"></span><span id="l1">${T.plus1}</span><div id="dl"></div></div><div id="bi"></div></div>
-<div id="r2"><div id="sm">${SATM.map(([k, t]) => `<button data-s="${k}">${T[t]}</button>`).join('')}</div><button id="mo"><ha-icon icon="mdi:chevron-down"></ha-icon><span>${T.more}</span></button></div>
+<div id="tl"><div id="tk"><div id="fc"></div><div id="pg"></div></div><div id="nm"></div><div id="tb">–</div><div id="nc">${T.now}</div><span id="l0"></span><span id="l1">${T.plus1}</span><div id="dl"></div></div><div id="bi"></div><button id="mo" aria-label="${T.more}" title="${T.more}"><ha-icon icon="mdi:chevron-down"></ha-icon></button></div>
+<div id="r2"><div id="sm">${SATM.map(([k, t]) => `<button data-s="${k}">${T[t]}</button>`).join('')}</div></div>
 <div id="op">${sw('s_fc', T.fc)}${sw('s_ort', T.ort)}${sw('s_bz', T.bz)}${sw('s_ov', T.ov)}${sw('s_iso', T.iso)}${sw('s_ws', T.ws)}</div></div>
 <div id="ld">${T.loading}</div></div>`;
       const s = this.shadowRoot, $ = (id) => s.getElementById(id);
@@ -607,7 +611,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       s.querySelectorAll('.mb').forEach((b) => b.classList.toggle('on', b.dataset.m === map));
       const mm = MAPS.find((q) => q.id === map); if (mm) { s.querySelector('#hd span').textContent = T[map]; s.querySelector('#hd ha-icon').setAttribute('icon', mm.icon); }
       s.querySelectorAll('#sm button').forEach((b) => b.classList.toggle('on', b.dataset.s === o.sm));
-      $('sm').style.visibility = map === 'sat' ? 'visible' : 'hidden';
+      $('r2').style.display = map === 'sat' ? '' : 'none'; // satellite channel buttons only; no empty row otherwise
       [['s_fc', 'fc', map === 'radar'], ['s_ort', 'ort', true], ['s_bz', 'bz', av.blitz && (map === 'radar' || map === 'sat')], ['s_ov', 'ov', map === 'sat' && av.radar], ['s_iso', 'iso', FMAPS.includes(map)], ['s_ws', 'ws', map === 'rain' || map === 'temp']].forEach(([id, k, vis]) => { $(id).style.display = vis ? '' : 'none'; $(id).classList.toggle('on', !!o[k]); });
       const blitz = map === 'blitz';
       $('pl').style.display = blitz ? 'none' : ''; $('tl').style.display = blitz ? 'none' : ''; $('bi').style.display = blitz ? '' : 'none';
