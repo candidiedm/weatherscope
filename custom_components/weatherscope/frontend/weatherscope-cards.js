@@ -1,6 +1,6 @@
-/* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
+/* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.10.3';
+  const VERSION = '0.11.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -11,6 +11,13 @@
       e_sky: 'Eigener Himmel', e_glass: 'Glas', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
       e_background_h: '„Glas“ und „Durchsichtig“ passen zu einer Wetterseite mit der WeatherScope-Himmel-Animation dahinter.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
       e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
+      n_wind: 'Wind', n_moon: 'Mond', n_air: 'Luftqualität', n_warning: 'Wetterwarnung', d_wind: 'Wind, Böen und Richtung mit Kompass.', d_moon: 'Mondphase mit Bild, Beleuchtung, Mondauf- und -untergang.', d_air: 'Luftqualität nach dem Europäischen Luftqualitätsindex.', d_warning: 'Amtliche Wetterwarnungen (DWD), nur sichtbar wenn aktiv.',
+      w_wind: 'Wind', w_gust: 'Böen', w_dir: 'Richtung', dirs: ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'],
+      mp: { new_moon: 'Neumond', waxing_crescent: 'Zunehmende Sichel', first_quarter: 'Erstes Viertel', waxing_gibbous: 'Zunehmender Mond', full_moon: 'Vollmond', waning_gibbous: 'Abnehmender Mond', last_quarter: 'Letztes Viertel', waning_crescent: 'Abnehmende Sichel' },
+      m_illum: 'Beleuchtung', m_rise: 'Mondaufgang', m_set: 'Monduntergang', m_full: 'Vollmond', m_in: (d) => (d < 1 ? 'heute' : d < 2 ? 'morgen' : `in ${Math.round(d)} Tagen`),
+      aq: ['Gut', 'Ordentlich', 'Mäßig', 'Schlecht', 'Sehr schlecht', 'Extrem schlecht'], aq_main: (p) => `Hauptursache: ${p}`, aq_scale: 'Index nach EU-Skala', aq_idx: (v) => `Index ${v}`,
+      wr_title: 'Wetterwarnung', wr_more: (n) => `+${n} weitere`, wr_none: 'Keine Warnungen', wr_until: (a, b) => `${a} bis ${b}`, wr_adv: 'Vorabinformation',
+      e_wind_entity: 'Wetter-Entität', e_warning: 'Warnungs-Sensor (z. B. DWD „Aktuelle Warnstufe“)', e_advance: 'Vorwarnungs-Sensor (optional)', e_hide: 'Ausblenden, wenn keine Warnung', e_aqi: 'Eigener Luftqualitätsindex (optional, EU-Skala)', e_pm25: 'PM2,5 (optional)', e_pm10: 'PM10 (optional)', e_no2: 'NO₂ (optional)', e_o3: 'O₃ (optional)',
       n_now: 'Aktuell', n_hourly: 'Stündlich', n_daily: 'Tagesvorhersage', n_value: 'Wert (alle)', n_sky: 'Himmel-Animation', d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_value: 'Einzelwert: Gefühlt, Sonne, UV-Index, Durchschnitt, Niederschlag, Sichtweite, Feuchtigkeit oder Luftdruck.',
       k_feels: 'Gefühlt', k_sun: 'Sonne', k_uv: 'UV-Index', k_normal: 'Durchschnitt', k_precip: 'Niederschlag', k_visibility: 'Sichtweite', k_humidity: 'Feuchtigkeit', k_pressure: 'Luftdruck',
       sunrise_l: 'Sonnenaufgang', sunset_l: 'Sonnenuntergang', actual: (v) => `Tatsächlich: ${v}`, f_colder: 'Fühlt sich kälter an als die tatsächliche Temperatur.', f_colder_wind: 'Fühlt sich durch den Wind kälter an.',
@@ -32,6 +39,13 @@
       e_sky: 'Own sky', e_glass: 'Glass', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
       e_background_h: '“Glass” and “Transparent” suit a weather page with the WeatherScope sky animation behind it.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
       e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
+      n_wind: 'Wind', n_moon: 'Moon', n_air: 'Air quality', n_warning: 'Weather warning', d_wind: 'Wind, gusts and direction with compass.', d_moon: 'Moon phase with picture, illumination, moonrise and moonset.', d_air: 'Air quality on the European Air Quality Index.', d_warning: 'Official weather warnings (DWD), only visible when active.',
+      w_wind: 'Wind', w_gust: 'Gusts', w_dir: 'Direction', dirs: ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'],
+      mp: { new_moon: 'New moon', waxing_crescent: 'Waxing crescent', first_quarter: 'First quarter', waxing_gibbous: 'Waxing gibbous', full_moon: 'Full moon', waning_gibbous: 'Waning gibbous', last_quarter: 'Last quarter', waning_crescent: 'Waning crescent' },
+      m_illum: 'Illumination', m_rise: 'Moonrise', m_set: 'Moonset', m_full: 'Full moon', m_in: (d) => (d < 1 ? 'today' : d < 2 ? 'tomorrow' : `in ${Math.round(d)} days`),
+      aq: ['Good', 'Fair', 'Moderate', 'Poor', 'Very poor', 'Extremely poor'], aq_main: (p) => `Main pollutant: ${p}`, aq_scale: 'European index', aq_idx: (v) => `Index ${v}`,
+      wr_title: 'Weather warning', wr_more: (n) => `+${n} more`, wr_none: 'No warnings', wr_until: (a, b) => `${a} to ${b}`, wr_adv: 'Advance notice',
+      e_wind_entity: 'Weather entity', e_warning: 'Warning sensor (e.g. DWD “current warning level”)', e_advance: 'Advance warning sensor (optional)', e_hide: 'Hide when there is no warning', e_aqi: 'Own air quality index (optional, European scale)', e_pm25: 'PM2.5 (optional)', e_pm10: 'PM10 (optional)', e_no2: 'NO₂ (optional)', e_o3: 'O₃ (optional)',
       n_now: 'Now', n_hourly: 'Hourly', n_daily: 'Daily forecast', n_value: 'Value (all)', n_sky: 'Sky animation', d_now: 'Place, temperature, condition, high and low.', d_value: 'Single value: feels like, sun, UV index, average, precipitation, visibility, humidity or pressure.',
       k_feels: 'Feels like', k_sun: 'Sun', k_uv: 'UV index', k_normal: 'Average', k_precip: 'Precipitation', k_visibility: 'Visibility', k_humidity: 'Humidity', k_pressure: 'Pressure',
       sunrise_l: 'Sunrise', sunset_l: 'Sunset', actual: (v) => `Actual: ${v}`, f_colder: 'Feels colder than the actual temperature.', f_colder_wind: 'Wind makes it feel colder.',
@@ -626,6 +640,158 @@ ${med && chart
     };
     register(`weatherscope-${k}-card`, Cls, class extends valueEditor {}, `WeatherScope – ${tr(hass0())[`k_${k}`]}`, 'd_value');
   });
+
+  // ---------------------------------------------------------------- shared row list (Wind, Moon)
+  const rowsCss = `.md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center}
+.rows{display:flex;flex-direction:column}.rw{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.12);font-size:15px;font-weight:600;white-space:nowrap}
+.rw:first-child{border-top:none}.rw span:last-child{color:rgba(255,255,255,.7);font-weight:500}`;
+  const rowList = (L) => `<div class="rows">${L.map(([a, b]) => `<div class="rw"><span>${a}</span><span>${b}</span></div>`).join('')}</div>`;
+
+  // ---------------------------------------------------------------- Wind
+  class WindCard extends WSBase {
+    static defaults = { entity: 'weather.weatherscope', background: 'sky' };
+    getCardSize() { return 3; }
+    getGridOptions() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    _html(h, s, t) {
+      const c = this._c, U = units(s), A = s.attributes;
+      const ws = sensor(h, c.wind_speed, U.w) ?? num(A.wind_speed), wg = sensor(h, c.wind_gust, U.w) ?? num(A.wind_gust_speed), wb = sensor(h, c.wind_bearing) ?? num(A.wind_bearing);
+      const dir = wb === null ? '–' : `${Math.round(wb)}° ${t.dirs[Math.round(wb / 22.5) % 16]}`;
+      const R = 46, cx = 56, cy = 56;
+      let ticks = ''; for (let k = 0; k < 72; k++) { const a = (k / 72) * 2 * Math.PI, l = k % 18 === 0 ? 7 : k % 2 === 0 ? 4 : 2.5; ticks += `<line x1="${cx + Math.sin(a) * R}" y1="${cy - Math.cos(a) * R}" x2="${cx + Math.sin(a) * (R - l)}" y2="${cy - Math.cos(a) * (R - l)}" stroke="rgba(255,255,255,${k % 18 === 0 ? 0.8 : 0.35})" stroke-width="1.2"/>`; }
+      const letters = [['N', 0], [t.dirs[4], 90], ['S', 180], ['W', 270]].map(([l, d]) => { const a = (d * Math.PI) / 180; return `<text x="${cx + Math.sin(a) * (R - 15)}" y="${cy - Math.cos(a) * (R - 15) + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">${l}</text>`; }).join('');
+      // the arrow points where the wind blows to (from the bearing it comes from)
+      const arrow = wb === null ? '' : `<g transform="rotate(${wb + 180} ${cx} ${cy})"><line x1="${cx}" y1="${cy + R - 4}" x2="${cx}" y2="${cy - R + 10}" stroke="#fff" stroke-width="2.2"/><polygon points="${cx},${cy - R + 2} ${cx - 6},${cy - R + 13} ${cx + 6},${cy - R + 13}" fill="#fff"/><circle cx="${cx}" cy="${cy + R - 4}" r="4" fill="none" stroke="#fff" stroke-width="2"/></g>`;
+      const comp = `<svg class="cmp" viewBox="0 0 112 112">${ticks}${letters}${arrow}<circle cx="${cx}" cy="${cy}" r="19" fill="rgba(20,40,80,.55)"/><text x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="16" font-weight="600" fill="#fff">${int(ws)}</text><text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,.8)">${U.w}</text></svg>`;
+      return `<style>${baseCss(h, s, c.background)}${rowsCss}.cmp{width:112px;height:112px;display:block}</style>
+<ha-card><div class="lab"><ha-icon icon="mdi:weather-windy"></ha-icon>${t.n_wind}</div><div class="md">${rowList([[t.w_wind, `${int(ws)} ${U.w}`], [t.w_gust, `${int(wg)} ${U.w}`], [t.w_dir, dir]])}${comp}</div></ha-card>`;
+    }
+  }
+  register('weatherscope-wind-card', WindCard, makeEditor((t) => [
+    { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
+    { name: 'wind_speed', ...sensorSel('wind_speed') }, { name: 'wind_gust', ...sensorSel('wind_speed') }, { name: 'wind_bearing', ...sensorSel() },
+    bgSchema(t),
+  ], { background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_wind}`, 'd_wind');
+
+  // ---------------------------------------------------------------- Moon (calculated locally, no sensors needed)
+  const SYN = 29.530588853, NEW0 = Date.UTC(2000, 0, 6, 18, 14);
+  const moonAge = (ms) => ((((ms - NEW0) / 864e5) % SYN) + SYN) % SYN;
+  const moonPhase = (age) => { const a = age / SYN, d = 1 / SYN / 2; if (a < d || a > 1 - d) return 'new_moon'; if (Math.abs(a - 0.25) < d) return 'first_quarter'; if (Math.abs(a - 0.5) < d) return 'full_moon'; if (Math.abs(a - 0.75) < d) return 'last_quarter'; return a < 0.25 ? 'waxing_crescent' : a < 0.5 ? 'waxing_gibbous' : a < 0.75 ? 'waning_gibbous' : 'waning_crescent'; };
+  const moonAlt = (ms, lat, lon) => {
+    const rad = Math.PI / 180, d = (ms - Date.UTC(2000, 0, 1, 12)) / 864e5;
+    const L = rad * (218.316 + 13.176396 * d), M = rad * (134.963 + 13.064993 * d), F = rad * (93.272 + 13.22935 * d);
+    const lam = L + rad * 6.289 * Math.sin(M), bet = rad * 5.128 * Math.sin(F), e = rad * 23.4397;
+    const ra = Math.atan2(Math.sin(lam) * Math.cos(e) - Math.tan(bet) * Math.sin(e), Math.cos(lam)), dec = Math.asin(Math.sin(bet) * Math.cos(e) + Math.cos(bet) * Math.sin(e) * Math.sin(lam));
+    const H = rad * ((280.16 + 360.9856235 * d) % 360) + rad * lon - ra, phi = rad * lat;
+    return Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H)) / rad;
+  };
+  // next moonrise or moonset after now (10-minute steps, 2 days ahead)
+  const moonNext = (lat, lon) => {
+    let t0 = Date.now(), a0 = moonAlt(t0, lat, lon) - 0.125;
+    for (let i = 0; i < 288; i++) { const t1 = t0 + 6e5, a1 = moonAlt(t1, lat, lon) - 0.125; if ((a0 < 0) !== (a1 < 0)) return { rise: a1 >= 0, at: new Date(t0 + 6e5 * (-a0 / (a1 - a0))) }; t0 = t1; a0 = a1; }
+    return null;
+  };
+  // moon picture: lit part from the phase; mirrored on the southern hemisphere
+  const moonSvg = (age, size, south) => {
+    const r = 46, f = age / SYN, k = (1 - Math.cos(2 * Math.PI * f)) / 2, wax = f < 0.5, rx = Math.abs(1 - 2 * k) * r;
+    const right = wax !== !!south, sweepOuter = right ? 1 : 0, sweepInner = k > 0.5 ? (right ? 1 : 0) : right ? 0 : 1;
+    const lit = k < 0.01 ? '' : k > 0.99 ? `<circle cx="50" cy="50" r="${r}" fill="url(#mlit)"/>` : `<path d="M50 ${50 - r} A${r} ${r} 0 0 ${sweepOuter} 50 ${50 + r} A${rx} ${r} 0 0 ${sweepInner} 50 ${50 - r} Z" fill="url(#mlit)"/>`;
+    const id = `m${Math.random().toString(36).slice(2, 7)}`;
+    return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" class="moon"><defs><radialGradient id="mlit" cx="42%" cy="38%"><stop offset="0" stop-color="#f4f7fb"/><stop offset="1" stop-color="#b7c4d6"/></radialGradient><clipPath id="${id}"><circle cx="50" cy="50" r="${r}"/></clipPath></defs>
+<circle cx="50" cy="50" r="${r}" fill="rgba(10,20,45,.45)"/>${lit}<g clip-path="url(#${id})" fill="#7f8ea6" opacity=".28"><circle cx="38" cy="36" r="9"/><circle cx="58" cy="30" r="6"/><circle cx="62" cy="56" r="11"/><circle cx="40" cy="64" r="7"/><circle cx="70" cy="40" r="4"/></g></svg>`;
+  };
+  class MoonCard extends WSBase {
+    static defaults = { entity: 'weather.weatherscope', background: 'sky', size: 'medium' };
+    getCardSize() { return 3; }
+    getGridOptions() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { this._last = null; this._render(); }, 300000); }
+    disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
+    _html(h, s, t) {
+      const c = this._c, lat = h.config.latitude, lon = h.config.longitude, now = Date.now(), age = moonAge(now), ph = moonPhase(age);
+      const k = (1 - Math.cos((2 * Math.PI * age) / SYN)) / 2, nx = moonNext(lat, lon), full = ((SYN / 2 - age) % SYN + SYN) % SYN;
+      const ev = nx ? `${nx.rise ? t.m_rise : t.m_set} ${hhmm(h, nx.at)}` : '';
+      const lab = `<div class="lab"><ha-icon icon="mdi:moon-${ph.replace('_moon', '').replace('_', '-')}"></ha-icon>${t.mp[ph]}</div>`;
+      if (c.size === 'small') {
+        return `<style>${baseCss(h, s, c.background)}.pic{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}.pic svg{height:100%;max-height:96px;width:auto}</style>
+<ha-card>${lab}<div class="pic">${moonSvg(age, 96, lat < 0)}</div><div class="note">${ev}</div></ha-card>`;
+      }
+      return `<style>${baseCss(h, s, c.background)}${rowsCss}.moon{display:block}</style>
+<ha-card>${lab}<div class="md">${rowList([[t.m_illum, `${Math.round(k * 100)} %`], [nx ? (nx.rise ? t.m_rise : t.m_set) : t.m_rise, nx ? hhmm(h, nx.at) : '–'], [t.m_full, t.m_in(full)]])}${moonSvg(age, 104, lat < 0)}</div></ha-card>`;
+    }
+  }
+  register('weatherscope-moon-card', MoonCard, makeEditor((t) => [
+    { name: 'size', selector: { select: { mode: 'dropdown', options: [{ value: 'small', label: t.e_small }, { value: 'medium', label: t.e_medium }] } } },
+    bgSchema(t),
+  ], { background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_moon}`, 'd_moon');
+
+  // ---------------------------------------------------------------- Air quality (European Air Quality Index)
+  // EEA colours: good, fair, moderate, poor, very poor, extremely poor; index 0-20-40-60-80-100+
+  const AQG = 'linear-gradient(90deg,#50f0e6 0%,#50f0e6 13%,#50ccaa 20%,#50ccaa 30%,#f0e641 37%,#f0e641 47%,#ff5050 53%,#ff5050 63%,#960032 70%,#960032 80%,#7d2181 87%,#7d2181 100%)';
+  const aqStage = (v) => (v < 20 ? 0 : v < 40 ? 1 : v < 60 ? 2 : v < 80 ? 3 : v < 100 ? 4 : 5);
+  class AirCard extends WSBase {
+    static defaults = { entity: 'weather.weatherscope', background: 'sky', size: 'medium' };
+    static getStubConfig(h) { return { ...WSBase.getStubConfig(h), size: 'medium' }; }
+    getCardSize() { return 3; }
+    getGridOptions() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    _html(h, s, t) {
+      const c = this._c, val = (key, def) => { const e = h.states[c[key] || def]; return e ? num(e.state) : null; };
+      const v = val('aqi', 'sensor.weatherscope_air_quality_index');
+      const P = [['PM2,5', val('pm25', 'sensor.weatherscope_pm2_5'), 15], ['PM10', val('pm10', 'sensor.weatherscope_pm10'), 45], ['NO₂', val('no2', 'sensor.weatherscope_no2'), 25], ['O₃', val('o3', 'sensor.weatherscope_o3'), 100]];
+      const st = v === null ? null : aqStage(v), pos = v === null ? 0 : Math.min(100, (v / 120) * 100);
+      // main pollutant: highest share of its WHO guideline value (2021)
+      const main = P.filter((q) => q[1] !== null).sort((a, b) => b[1] / b[2] - a[1] / a[2])[0];
+      const bar = `<div class="aqb" style="background:${AQG}">${v === null ? '' : `<b style="left:${pos}%"></b>`}</div>`;
+      const lab = `<div class="lab"><ha-icon icon="mdi:air-filter"></ha-icon>${t.n_air}</div>`;
+      const css = `${baseCss(h, s, c.background)}.aqb{position:relative;height:6px;border-radius:3px;margin-top:10px}.aqb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}`;
+      if (c.size === 'small') return `<style>${css}</style><ha-card>${lab}<div class="big">${v === null ? '–' : Math.round(v)}</div><div class="sub">${st === null ? '' : t.aq[st]}</div>${bar}<div class="note">${t.aq_scale}</div></ha-card>`;
+      const pol = P.filter((q) => q[1] !== null).map((q) => `${q[0]} ${Math.round(q[1])}`).join(' · ');
+      return `<style>${css}.big{font-size:22px;font-weight:500;margin-top:8px}</style><ha-card>${lab}<div class="big">${st === null ? '–' : t.aq[st]}</div>${bar}
+<div class="note">${v === null ? '' : t.aq_idx(Math.round(v))}${pol ? ` · ${pol} µg/m³` : ''}${main ? `<br>${t.aq_main(main[0])}` : ''}</div></ha-card>`;
+    }
+  }
+  register('weatherscope-air-card', AirCard, makeEditor((t) => [
+    { name: 'size', selector: { select: { mode: 'dropdown', options: [{ value: 'small', label: t.e_small }, { value: 'medium', label: t.e_medium }] } } },
+    { name: 'aqi', ...sensorSel() }, { name: 'pm25', ...sensorSel() }, { name: 'pm10', ...sensorSel() }, { name: 'no2', ...sensorSel() }, { name: 'o3', ...sensorSel() },
+    bgSchema(t),
+  ], { background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_air}`, 'd_air');
+
+  // ---------------------------------------------------------------- Weather warning (DWD integration)
+  class WarningCard extends HTMLElement {
+    static getStubConfig(h) { const w = Object.keys(h.states).find((e) => e.startsWith('sensor.') && /warnstufe|warning_level/i.test(e) && !/vorwarn|advance/i.test(e)); return { warning: w || '' }; }
+    setConfig(c) { this._c = Object.assign({ hide: true }, c || {}); if (!this.shadowRoot) this.attachShadow({ mode: 'open' }); this._render(); }
+    set hass(h) { this._h = h; this._render(); }
+    getCardSize() { return 3; }
+    getGridOptions() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 2 }; }
+    _list(id, adv) {
+      const e = id && this._h.states[id]; if (!e) return [];
+      const a = e.attributes, n = Number(a.warning_count) || 0, out = [];
+      for (let i = 1; i <= n; i++) if (a[`warning_${i}_name`]) out.push({ name: a[`warning_${i}_name`], level: Number(a[`warning_${i}_level`]) || 1, start: a[`warning_${i}_start`], end: a[`warning_${i}_end`], desc: a[`warning_${i}_description`] || '', color: a[`warning_${i}_color`], adv });
+      return out;
+    }
+    _render() {
+      if (!this.shadowRoot || !this._c || !this._h) return;
+      const h = this._h, t = tr(h), c = this._c;
+      const all = [...this._list(c.warning, false), ...this._list(c.advance, true)].sort((a, b) => b.level - a.level);
+      const edit = !!this.closest && (this.preview || document.querySelector('home-assistant')?.shadowRoot?.querySelector('ha-panel-lovelace')?.lovelace?.editMode);
+      let html;
+      if (!all.length) {
+        this.style.display = c.hide && !edit ? 'none' : '';
+        html = `<style>${baseCss(h, { state: 'sunny', attributes: {} }, c.background || 'sky')}</style><ha-card><div class="lab"><ha-icon icon="mdi:alert-outline"></ha-icon>${t.wr_title}</div><div class="sub" style="margin-top:8px">${t.wr_none}</div></ha-card>`;
+      } else {
+        this.style.display = '';
+        const w = all[0], col = w.color || ['#ffeb3b', '#ffeb3b', '#fb8c00', '#e53935', '#880e4f'][Math.min(4, w.level)], dark = w.level <= 2;
+        const fg = dark ? '#3a2600' : '#fff', d = (x) => { const q = new Date(x); return `${q.toLocaleDateString(lang(h), { weekday: 'short' }).replace('.', '')} ${hhmm(h, q)}`; };
+        const name = String(w.name).charAt(0) + String(w.name).slice(1).toLowerCase();
+        html = `<style>${baseCss(h, { state: 'sunny', attributes: {} }, 'none')}ha-card{background:${col};color:${fg}}.lab{color:${fg};opacity:.75}.ttl{font-size:22px;font-weight:500;margin-top:6px}.tm{font-size:13px;margin-top:2px}.ds{font-size:13px;margin-top:6px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.note{color:${fg};opacity:.8}</style>
+<ha-card><div class="lab"><ha-icon icon="mdi:alert"></ha-icon>${w.adv ? t.wr_adv : t.wr_title}</div><div class="ttl">${name}</div><div class="tm">${w.start && w.end ? t.wr_until(d(w.start), d(w.end)) : ''}</div><div class="ds">${w.desc}</div><div class="note">Deutscher Wetterdienst${all.length > 1 ? ` · ${t.wr_more(all.length - 1)}` : ''}</div></ha-card>`;
+      }
+      if (html !== this._last) { this._last = html; this.shadowRoot.innerHTML = html; }
+    }
+  }
+  register('weatherscope-warning-card', WarningCard, makeEditor((t) => [
+    { name: 'warning', required: true, selector: { entity: { domain: 'sensor' } } },
+    { name: 'advance', selector: { entity: { domain: 'sensor' } } },
+    { name: 'hide', selector: { boolean: {} } },
+  ], {}), `WeatherScope – ${tr(hass0()).n_warning}`, 'd_warning');
 
   // ---------------------------------------------------------------- Sky (animated page background)
   class SkyCard extends HTMLElement {
