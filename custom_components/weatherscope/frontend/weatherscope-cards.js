@@ -239,7 +239,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     static defaults = { entity: 'weather.weatherscope', background: 'sky' };
     static forecast = 'daily';
     getCardSize() { return 3; }
-    _grid() { return { columns: 'full', rows: 3, min_rows: 2 }; }
+    _grid() { return { columns: 'full', rows: 'auto' }; }
     _html(h, s, t) {
       const temp = sensor(h, this._c.temperature, units(s).t) ?? s.attributes.temperature;
       const cond = h.formatEntityState ? h.formatEntityState(s) : s.state;
