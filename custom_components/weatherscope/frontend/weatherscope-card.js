@@ -128,6 +128,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #s_ort.on i{background:#2b7de0}#s_bz.on i{background:#a8489e}#s_ov.on i{background:#2f9e5a}#s_iso.on i{background:#8a8a8a}#s_ws.on i{background:#3a8fb7}
 .sep{display:none}
 #dl{position:absolute;left:0;right:0;top:30px;height:12px;pointer-events:none}#dl span{position:absolute;transform:translateX(-50%);opacity:.8;white-space:nowrap}#dl span.j{transform:none}
+#ct #lg{position:static;background:none;border-radius:0;padding:0 12px 6px 2px;display:flex;align-items:flex-start;gap:7px}
+#ct #lg .w{flex:1;min-width:0}#ct #lg .b,#ct #lg.tr .b,#ct #lg.tr.rd .b{width:100%}
 #tl.fm{height:38px}#tl.fm #tk{top:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.1)}#tl.fm #pg{background:rgba(255,255,255,.16)}#tl.fm #fc{display:none}
 #tl.fm #nm{top:15px;height:24px}#tl.fm #dl{top:18px;height:18px}
 #tl.fm #dl span{transform:none;top:0;height:18px;line-height:18px;text-align:center;opacity:1;color:rgba(255,255,255,.85);border-left:1px solid rgba(0,0,0,.35);box-sizing:border-box;overflow:hidden;font-size:11px}
@@ -155,8 +157,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const sw = (id, t) => `<button class="sw" id="${id}"><i></i><span>${t}</span></button>`;
       this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="fr"></div><div id="hd"><ha-icon></ha-icon><span></span></div><div id="m"><canvas id="cv"></canvas>
 <div id="mb">${MAPS.map((m) => `${m.sep ? '<i class="sep"></i>' : ''}<button class="mb" data-m="${m.id}"><span>${T[m.id]}</span><i style="background:${m.bg}"><ha-icon icon="${m.icon}"></ha-icon></i></button>`).join('')}</div>
-<div id="lg"><span id="lgu"></span><div class="w"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div></div>
-<div id="ct"><div id="r1"><button id="pl" aria-label="${T.play}"><ha-icon icon="mdi:play"></ha-icon></button>
+<div id="ct"><div id="lg"><span id="lgu"></span><div class="w"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div></div><div id="r1"><button id="pl" aria-label="${T.play}"><ha-icon icon="mdi:play"></ha-icon></button>
 <div id="tl"><div id="tk"><div id="fc"></div><div id="pg"></div></div><div id="nm"></div><div id="tb">–</div><div id="nc">${T.now}</div><span id="l0"></span><span id="l1">${T.plus1}</span><div id="dl"></div></div><div id="bi"></div></div>
 <div id="r2"><div id="sm">${SATM.map(([k, t]) => `<button data-s="${k}">${T[t]}</button>`).join('')}</div><button id="mo"><ha-icon icon="mdi:chevron-down"></ha-icon><span>${T.more}</span></button></div>
 <div id="op">${sw('s_fc', T.fc)}${sw('s_ort', T.ort)}${sw('s_bz', T.bz)}${sw('s_ov', T.ov)}${sw('s_iso', T.iso)}${sw('s_ws', T.ws)}</div></div>
@@ -648,8 +649,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         lg.innerHTML = h;
         if (map === 'temp') {
           const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v), z = B.indexOf(0);
-          tick(sg(B[i0]), i0 / n * 100); tick(sg(B[i1]), i1 / n * 100);
-          if (Math.abs(z - i0) >= 2 && Math.abs(z - i1) >= 2) tick('0', z / n * 100);
+          // the full-width scale has room for every 10 °C inside the forecast range, plus its two ends
+          const tens = []; for (let k = i0; k <= i1; k++) if (B[k] % 10 === 0) tens.push(k);
+          if (!tens.includes(z) && z > i0 && z < i1) tens.push(z);
+          tens.forEach((k) => tick(sg(B[k]), k / n * 100));
+          [i0, i1].forEach((k) => { if (!tens.some((q) => Math.abs(q - k) < 2)) tick(sg(B[k]), k / n * 100); });
         } else for (let k = 0; k <= n; k += 2) tick(f(B[k]), k / n * 100);
       } else { lg.innerHTML = cols.map((c) => `<i style="background:${c}"></i>`).join(''); $('lga').textContent = a; $('lgb').textContent = b; }
       this._layout();
@@ -662,7 +666,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       return (G.fr[map] = lo > hi ? null : [lo, hi]);
     }
 
-    _layout() { const s = this.shadowRoot; if (!s) return; const h = s.getElementById('ct').offsetHeight; s.getElementById('lg').style.bottom = `${h + 14}px`; }
+    // the colour scale now sits inside the control box, so nothing has to follow its height
+    _layout() {}
 
     _draw() {
       const s = this.shadowRoot; if (!s || !this._c || !this._J) return;
