@@ -1,6 +1,6 @@
 /* WeatherScope – "Now" card: place, temperature, condition, today's high and low. */
 (() => {
-  const VERSION = '0.5.0';
+  const VERSION = '0.5.1';
   const TAG = 'weatherscope-now-card';
   const T = {
     de: { hi: 'H', lo: 'T', home: 'Zuhause', e_entity: 'Wetter-Entität', e_temp: 'Eigener Temperatursensor (optional)', e_name: 'Ortsname (optional)', e_bg: 'Hintergrund', e_sky: 'Eigener Himmel', e_none: 'Durchsichtig', e_temp_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.', e_bg_h: '„Durchsichtig“ passt zu einer Wetterseite mit eigenem Hintergrund.', desc: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.' },
@@ -74,7 +74,7 @@
 ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px 12px;color:#fff;overflow:hidden;
   ${own ? `background:linear-gradient(180deg,${sky[0]},${sky[1]});border:none` : 'background:none;border:none;box-shadow:none'}}
 .o{font-size:clamp(18px,4.2cqw,28px);font-weight:400;text-shadow:0 1px 3px rgba(0,0,0,.25)}
-.t{font-size:clamp(56px,16cqw,104px);font-weight:200;line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.2)}
+.t{font-size:clamp(56px,16cqw,104px);font-weight:var(--ws-temp-weight,300);line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.2)}
 .c{font-size:clamp(15px,3.4cqw,20px);font-weight:500;margin-top:4px}
 .h{font-size:clamp(13px,3cqw,17px);opacity:.9;margin-top:2px}
 :host{display:block;height:100%;container-type:inline-size}
