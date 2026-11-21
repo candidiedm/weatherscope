@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CARD_FILE, CONF_WEATHER, DOMAIN, URL_DATA, URL_STATIC, VERSION
+from .const import CARD_FILES, CONF_WEATHER, DOMAIN, URL_DATA, URL_STATIC, VERSION
 from .manager import WeatherScopeManager
 from .weather_data import WeatherScopeData
 
@@ -34,7 +34,8 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
             StaticPathConfig(URL_DATA, str(files), cache_headers=False),
         ]
     )
-    add_extra_js_url(hass, f"{URL_STATIC}/{CARD_FILE}?v={VERSION}")
+    for name in CARD_FILES:
+        add_extra_js_url(hass, f"{URL_STATIC}/{name}?v={VERSION}")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: WeatherScopeConfigEntry) -> bool:
