@@ -805,8 +805,11 @@ ${med && chart
       this._place();
       if (this._h) this.hass = this._h;
     }
-    getCardSize() { return this.preview ? 2 : 0; }
-    getGridOptions() { return this.preview ? { rows: 2, columns: 12 } : { rows: 0, columns: 12 }; }
+    // small tile in the card editor and while the dashboard is being edited;
+    // full screen would otherwise cover the cards in edit mode
+    _small() { return !!this.preview || !!document.querySelector('home-assistant')?.shadowRoot?.querySelector('ha-panel-lovelace')?.lovelace?.editMode; }
+    getCardSize() { return this._small() ? 2 : 0; }
+    getGridOptions() { return this._small() ? { rows: 2, columns: 12 } : { rows: 0, columns: 12 }; }
     set hass(h) {
       this._h = h;
       if (!this._c) return;
@@ -821,7 +824,8 @@ ${med && chart
     // full-screen behind all cards; inside the card editor only a small preview
     _place() {
       if (!this._cv) this._cv = document.createElement('canvas');
-      const pv = !!this.preview;
+      const pv = this._small();
+      this._sm = pv;
       this.style.height = pv ? '112px' : '0';
       this.style.margin = '0';
       this._cv.style.cssText = pv
@@ -839,6 +843,8 @@ ${med && chart
       this._onVis = () => { if (!document.hidden) this._last = 0; };
       document.addEventListener('visibilitychange', this._onVis);
       this._resize();
+      // follow switching into and out of edit mode
+      this._edit = setInterval(() => { if (this._small() !== this._sm) this._place(); }, 500);
       this._run = true;
       const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const loop = (t) => {
@@ -855,6 +861,7 @@ ${med && chart
     }
     disconnectedCallback() {
       this._run = false;
+      clearInterval(this._edit);
       cancelAnimationFrame(this._raf);
       window.removeEventListener('resize', this._onResize);
       document.removeEventListener('visibilitychange', this._onVis);
@@ -862,8 +869,8 @@ ${med && chart
     _resize() {
       const d = Math.min(window.devicePixelRatio || 1, 1.25), r = this._cv.getBoundingClientRect();
       this._d = d;
-      this._W = this.preview ? Math.max(100, r.width || 400) : window.innerWidth;
-      this._H = this.preview ? 112 : window.innerHeight;
+      this._W = this._sm ? Math.max(100, r.width || 400) : window.innerWidth;
+      this._H = this._sm ? 112 : window.innerHeight;
       this._cv.width = Math.round(this._W * d); this._cv.height = Math.round(this._H * d);
       this._ctx = this._cv.getContext('2d');
       this._ctx.setTransform(d, 0, 0, d, 0, 0);
