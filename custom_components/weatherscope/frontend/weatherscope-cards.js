@@ -527,20 +527,24 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const up = sun && sun.state === 'above_horizon', next = up ? set : rise, other = up ? rise : set;
         label = up ? t.sunset_l : t.sunrise_l; ic = up ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up';
         big = next ? hhmm(h, next) : '–'; note = other ? `${up ? t.sunrise_l : t.sunset_l}: ${hhmm(h, other)}` : '';
-        // sun path over 24 h; the line is the horizon (depends on day length)
-        let dayLen = 12;
-        if (rise && set) { dayLen = up ? 24 - (rise - set) / 36e5 : (set - rise) / 36e5; dayLen = Math.max(0, Math.min(24, dayLen)); }
-        const W = 120, H = 40, yc = (x) => H / 2 - Math.cos(2 * Math.PI * (x - 0.5)) * (H / 2 - 4), hz = H / 2 - Math.cos(Math.PI * dayLen / 24) * (H / 2 - 4);
-        const nowD = new Date(), xf = (nowD.getHours() * 60 + nowD.getMinutes()) / 1440;
+        // sun path over 24 h, centred on today's solar noon; the line is the horizon (depends on day length).
+        // Calculated locally, so it does not depend on when sun.sun updates its next_* times.
+        const lat0 = h.config.latitude, lng0 = h.config.longitude, noon0 = new Date(); noon0.setHours(12, 0, 0, 0);
+        const rs0 = sunTimes(noon0, lat0, lng0, -0.833), mid = (d) => (d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60) / 1440;
+        const dayLen = rs0 ? Math.max(0, Math.min(24, (rs0[1] - rs0[0]) / 36e5)) : (up ? 24 : 0);
+        const xn = rs0 ? (mid(rs0[0]) + mid(rs0[1])) / 2 : 0.5;
+        const W = 120, H = 40, yc = (x) => H / 2 - Math.cos(2 * Math.PI * (x - xn)) * (H / 2 - 4), hz = H / 2 - Math.cos(Math.PI * dayLen / 24) * (H / 2 - 4);
+        const xf = mid(new Date()), yf = yc(xf);
         let path = ''; for (let k = 0; k <= 48; k++) { const x = k / 48; path += `${k ? 'L' : 'M'}${(x * W).toFixed(1)} ${yc(x).toFixed(1)}`; }
         const cid = `sc${Math.random().toString(36).slice(2, 7)}`;
-        viz = `<svg class="sv" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><clipPath id="${cid}"><rect x="0" y="0" width="${W}" height="${hz}"/></clipPath><radialGradient id="${cid}g"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+        // the sun is an HTML dot on top of the stretched SVG, so it stays round at every tile size
+        viz = `<div class="svw"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><clipPath id="${cid}"><rect x="0" y="0" width="${W}" height="${hz}"/></clipPath></defs>
 <path d="${path}" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><path d="${path}" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" vector-effect="non-scaling-stroke" clip-path="url(#${cid})"/>
-<line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/><ellipse cx="${xf * W}" cy="${yc(xf)}" rx="9" ry="7" fill="url(#${cid}g)"/><circle cx="${xf * W}" cy="${yc(xf)}" r="3.5" fill="#fff"/></svg>`;
+<line x1="0" x2="${W}" y1="${hz}" y2="${hz}" stroke="rgba(255,255,255,.35)" vector-effect="non-scaling-stroke"/></svg><i class="sd${yf > hz ? ' dn' : ''}" style="left:${(xf * 100).toFixed(2)}%;top:${((yf / H) * 100).toFixed(2)}%"></i></div>`;
         if (med) {
           const lat = h.config.latitude, lng = h.config.longitude, today0 = new Date(); today0.setHours(12, 0, 0, 0);
           const rs = sunTimes(today0, lat, lng, -0.833), tw = sunTimes(today0, lat, lng, -6), gh = sunTimes(today0, lat, lng, 6);
-          chart = viz.replace('class="sv"', 'class="sv big"'); viz = '';
+          chart = viz.replace('class="svw"', 'class="svw big"'); viz = '';
           const parts = [];
           if (rs) { const m = Math.round((rs[1] - rs[0]) / 6e4); parts.push(t.daylen(Math.floor(m / 60), m % 60)); }
           if (tw) parts.push(up || now > (rs ? rs[1].getTime() : 0) ? t.dusk(hhmm(h, tw[1])) : t.dawn(hhmm(h, tw[0])));
@@ -630,7 +634,8 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
       return `
 <style>${baseCss(h, s, c.background)}
 .big{margin-top:6px}.sub{margin-top:2px}
-.sv{width:100%;height:40px;margin-top:6px;display:block}
+.svw{position:relative;width:100%;height:40px;margin-top:6px}.svw svg{width:100%;height:100%;display:block}
+.sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(255,255,255,.55);box-shadow:none}
 .gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
 .uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
@@ -643,7 +648,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .ch .base{position:absolute;left:0;right:0;bottom:0;border-top:1px solid rgba(255,255,255,.25)}
 .nw{position:absolute;top:-4px;bottom:0;border-left:1.5px dashed rgba(255,255,255,.85)}
 .pc{position:absolute;inset:6px 0 4px 0}.pc svg{width:100%;height:100%;display:block}.pc span{position:absolute;right:0;font-size:12px;color:rgba(255,255,255,.75)}.pc .hi{top:0}.pc .lo{bottom:16px}.pc .ax{left:0;bottom:-2px;right:auto}
-.sv.big{height:100%;min-height:60px;margin-top:0}
+.svw.big{height:100%;min-height:60px;margin-top:0}
 </style>
 ${med && chart
   ? `<ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div><div class="md"><div class="ml">${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}</div><div class="mr">${chart}</div></div><div class="note">${note}</div></ha-card>`
