@@ -215,9 +215,9 @@ ha-card{height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:
 .hours{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-top:2px}.hours::-webkit-scrollbar{display:none}
 .h{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;font-weight:600}
 .h ha-icon{--mdc-icon-size:24px}
-.h .pp{font-size:11px;color:#7fd4ff;height:12px;margin:-6px 0 -4px}
+.h .pp{font-size:11px;color:#bfe9ff;height:12px;margin:-6px 0 -4px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
 .h .u{font-size:10px;font-weight:500;color:rgba(235,240,255,.62);margin-top:-6px;white-space:nowrap}
-.h .pr{font-size:10px;font-weight:500;color:#7fd4ff;margin-top:-6px;height:12px}
+.h .pr{font-size:11px;font-weight:600;color:#fff;opacity:.85;margin-top:-4px;height:13px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
 .h.ev{flex-basis:auto;padding:0 8px;color:#ffe7a3;white-space:nowrap}
 .vb{width:14px;height:34px;border-radius:4px;background:rgba(0,0,0,.2);position:relative;overflow:hidden}
 .vb i{position:absolute;left:0;right:0;bottom:0;background:#5ac8fa}
