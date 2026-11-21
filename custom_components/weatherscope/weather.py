@@ -136,6 +136,7 @@ class WeatherScopeWeather(CoordinatorEntity[WeatherScopeData], WeatherEntity):
                     native_precipitation=_at(h.get("precipitation"), i),
                     precipitation_probability=_at(h.get("precipitation_probability"), i),
                     native_wind_speed=_at(h.get("wind_speed_10m"), i),
+                    native_wind_gust_speed=_at(h.get("wind_gusts_10m"), i),
                     wind_bearing=_at(h.get("wind_direction_10m"), i),
                     uv_index=_at(h.get("uv_index"), i),
                     is_daytime=bool(day) if day is not None else None,

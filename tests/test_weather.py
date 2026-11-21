@@ -25,7 +25,7 @@ FORECAST = {
     },
     "hourly": {
         "time": [T0 + 3600 * i for i in range(48)], "temperature_2m": [3.0] * 48, "weather_code": [0] * 48,
-        "precipitation": [0.0] * 48, "precipitation_probability": [5] * 48, "wind_speed_10m": [5.0] * 48,
+        "precipitation": [0.0] * 48, "precipitation_probability": [5] * 48, "wind_speed_10m": [5.0] * 48, "wind_gusts_10m": [11.0] * 48,
         "wind_direction_10m": [200] * 48, "uv_index": [0.1] * 48, "is_day": [0] * 48,
     },
     "daily": {
@@ -96,6 +96,7 @@ async def test_weather_entities(hass: HomeAssistant, aioclient_mock: AiohttpClie
     )
     hourly = res["weather.weatherscope"]["forecast"]
     assert len(hourly) == 48 and hourly[0]["condition"] == "clear-night"
+    assert hourly[0]["wind_gust_speed"] == 11.0
 
     assert hass.states.get("sensor.weatherscope_air_quality_index").state == "35"
     assert hass.states.get("sensor.weatherscope_pm2_5").state == "12"
