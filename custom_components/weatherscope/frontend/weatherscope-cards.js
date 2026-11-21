@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.10.2';
+  const VERSION = '0.10.3';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -609,14 +609,23 @@ ${med && chart
   : `<ha-card><div class="lab"><ha-icon icon="${ic}"></ha-icon>${label}</div>${big ? `<div class="big">${big}</div>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${viz}<div class="note">${note}</div></ha-card>`}`;
     }
   }
-  register('weatherscope-value-card', ValueCard, makeEditor((t) => [
+  const valueEditor = makeEditor((t) => [
     { name: 'kind', required: true, selector: { select: { mode: 'dropdown', options: KINDS.map((k) => ({ value: k, label: t[`k_${k}`] })) } } },
     { name: 'size', selector: { select: { mode: 'dropdown', options: [{ value: 'small', label: t.e_small }, { value: 'medium', label: t.e_medium }] } } },
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
     { name: 'sensor', ...sensorSel() },
     { name: 'sensor2', ...sensorSel() },
     bgSchema(t),
-  ], { size: 'e_size_h', sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' }), 'WeatherScope – Value', 'd_value');
+  ], { size: 'e_size_h', sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' });
+  register('weatherscope-value-card', ValueCard, valueEditor, 'WeatherScope – Value', 'd_value');
+  // every value also as its own entry in the card picker (same card, preset value)
+  KINDS.forEach((k) => {
+    const Cls = class extends ValueCard {
+      static defaults = { ...ValueCard.defaults, kind: k };
+      static getStubConfig(h) { return { ...WSBase.getStubConfig(h), kind: k }; }
+    };
+    register(`weatherscope-${k}-card`, Cls, class extends valueEditor {}, `WeatherScope – ${tr(hass0())[`k_${k}`]}`, 'd_value');
+  });
 
   // ---------------------------------------------------------------- Sky (animated page background)
   class SkyCard extends HTMLElement {
