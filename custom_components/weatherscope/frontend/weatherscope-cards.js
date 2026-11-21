@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.9.0';
+  const VERSION = '0.9.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -193,7 +193,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     static defaults = { entity: 'weather.weatherscope', background: 'sky' };
     static forecast = 'daily';
     getCardSize() { return 3; }
-    getGridOptions() { return { columns: 12, rows: 3, min_rows: 2 }; }
+    getGridOptions() { return { columns: 'full', rows: 3, min_rows: 2 }; }
     _html(h, s, t) {
       const temp = sensor(h, this._c.temperature, units(s).t) ?? s.attributes.temperature;
       const cond = h.formatEntityState ? h.formatEntityState(s) : s.state;
@@ -227,7 +227,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     static forecast = 'hourly';
     getCardSize() { return 3; }
     // fixed height in every view (design rules)
-    getGridOptions() { return { columns: 12, rows: 3, min_columns: 6, min_rows: 3 }; }
+    getGridOptions() { return { columns: 16, rows: 3, min_columns: 8, min_rows: 3 }; }
     _click(e) {
       const b = e.composedPath().find((x) => x.dataset && x.dataset.mode);
       if (b) this._setMode(b.dataset.mode);
@@ -318,8 +318,8 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
   class DailyCard extends WSBase {
     static defaults = { entity: 'weather.weatherscope', background: 'sky', days: 10, mode: 'temp', link: true };
     static forecast = ['daily', 'hourly'];
-    getCardSize() { return 8; }
-    getGridOptions() { return { columns: 6, rows: 8, min_columns: 6, min_rows: 4 }; }
+    getCardSize() { return 6; }
+    getGridOptions() { return { columns: 8, rows: 6, min_columns: 6, min_rows: 4 }; }
     connectedCallback() {
       super.connectedCallback();
       // how many rows fit decides how many days are shown (the card never grows)
@@ -435,7 +435,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     static forecast = 'daily';
     static getStubConfig(h) { return { ...WSBase.getStubConfig(h), kind: 'feels' }; }
     getCardSize() { return 2; }
-    getGridOptions() { return { columns: 3, rows: 2, min_columns: 3, min_rows: 2 }; }
+    getGridOptions() { return { columns: 4, rows: 3, min_columns: 4, min_rows: 3 }; }
     connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { if (this._c && (this._c.kind === 'sun' || this._c.kind === 'pressure')) { this._last = null; this._render(); } }, 60000); }
     disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
     // pressure trend: change over the last 3 hours from the recorder

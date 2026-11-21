@@ -49,9 +49,10 @@ The card is loaded automatically by the integration – you don't need to add a 
 | `custom:weatherscope-now-card` | Place, temperature, condition, today's high and low |
 | `custom:weatherscope-hourly-card` | Hourly forecast: temperature, precipitation (amount and probability), wind and gusts |
 | `custom:weatherscope-daily-card` | Daily forecast (10 days): temperature range in WeatherScope colours, precipitation per 3 hours, wind curve with gusts |
+| `custom:weatherscope-value-card` | Small tile: feels like, sun, UV index (WHO colours), average vs. climate normal, precipitation, visibility, humidity, pressure with trend |
 | `custom:weatherscope-sky-card` | Animated sky as background of the whole page (sun, clouds, rain, snow, thunderstorm, fog, night) |
 
-Every card has a visual editor and the same three backgrounds: *own sky* (default), *glass* (for a page with the animated sky behind it) and *transparent*. Values come from `weather.weatherscope` by default; you can pick any other weather entity and, where it makes sense, your own sensors (e.g. your weather station).
+All cards share one grid: a small tile is 4 × 3, medium 8 × 3, large 8 × 6, hourly 16 × 3 – use a section spanning two columns (24 grid columns) for a full weather page. Every card has a visual editor and the same three backgrounds: *own sky* (default), *glass* (for a page with the animated sky behind it) and *transparent*. Values come from `weather.weatherscope` by default; you can pick any other weather entity and, where it makes sense, your own sensors (e.g. your weather station).
 
 ### Card options
 
