@@ -128,6 +128,10 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #s_ort.on i{background:#2b7de0}#s_bz.on i{background:#a8489e}#s_ov.on i{background:#2f9e5a}#s_iso.on i{background:#8a8a8a}#s_ws.on i{background:#3a8fb7}
 .sep{display:none}
 #dl{position:absolute;left:0;right:0;top:30px;height:12px;pointer-events:none}#dl span{position:absolute;transform:translateX(-50%);opacity:.8;white-space:nowrap}#dl span.j{transform:none}
+#tl.fm{height:38px}#tl.fm #tk{top:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.1)}#tl.fm #pg{background:rgba(255,255,255,.16)}#tl.fm #fc{display:none}
+#tl.fm #nm{top:15px;height:24px}#tl.fm #dl{top:18px;height:18px}
+#tl.fm #dl span{transform:none;top:0;height:18px;line-height:18px;text-align:center;opacity:1;color:rgba(255,255,255,.85);border-left:1px solid rgba(0,0,0,.35);box-sizing:border-box;overflow:hidden;font-size:11px}
+#tl.fm #dl span:first-child{border-left:none}#tl.fm #dl span.we{color:#f0c94a}
 #ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;background:rgba(0,0,0,.25);pointer-events:none;text-align:center;padding:0 20px}`;
 
   class WeatherScopeCard extends HTMLElement {
@@ -485,13 +489,20 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       $('fc').style.width = nf >= 0 ? `${(1 - fn) * 100}%` : '0';
       $('nm').style.left = pos; $('nc').style.left = pos;
       $('l1').style.display = nf >= 0 ? '' : 'none';
-      $('l0').style.display = $('nc').style.display = fm ? 'none' : ''; $('dl').style.display = fm ? '' : 'none';
+      $('l0').style.display = $('nc').style.display = fm ? 'none' : ''; $('dl').style.display = fm ? '' : 'none'; $('tl').classList.toggle('fm', !!fm);
       if (fm && L) {
         const wd = new Intl.DateTimeFormat(this._lang, { weekday: 'short' });
-        let h = `<span class="j" style="left:0">${T.jetzt}</span>`; const d = new Date(this._t0); d.setHours(24, 0, 0, 0);
-        // day labels sit centred at noon; skip one if it would touch "jetzt" or run past the end (in pixels, so it works at every width)
-        const W = $('dl').getBoundingClientRect().width || 300, half = 24, jw = 34;
-        for (; d.getTime() < this._t1; d.setDate(d.getDate() + 1)) { const p = (d.getTime() + 432e5 - this._t0) / (this._t1 - this._t0), x = p * W; if (x - half > jw && x + half < W) h += `<span style="left:${p * 100}%">${wd.format(d).replace('.', '')} ${d.getDate()}</span>`; }
+        // forecast maps: the bar is a band of day fields with the day name inside (like Windy); weekend in yellow.
+        // A field too narrow for "Mo 23" shows "Mo", one too narrow for that stays empty.
+        const W = $('dl').getBoundingClientRect().width || 300, span = this._t1 - this._t0;
+        let h = ''; const d = new Date(this._t0); d.setHours(0, 0, 0, 0);
+        for (; d.getTime() < this._t1; d.setDate(d.getDate() + 1)) {
+          const e = new Date(d); e.setDate(e.getDate() + 1);
+          const x0 = Math.max(0, (d.getTime() - this._t0) / span), x1 = Math.min(1, (e.getTime() - this._t0) / span), w = (x1 - x0) * W;
+          if (w <= 0) continue;
+          const name = wd.format(d).replace('.', ''), txt = w >= 46 ? `${name} ${d.getDate()}` : w >= 22 ? name : '';
+          h += `<span class="${d.getDay() % 6 === 0 ? 'we' : ''}" style="left:${x0 * 100}%;width:${(x1 - x0) * 100}%">${txt}</span>`;
+        }
         $('dl').innerHTML = h;
       }
       const h0 = L ? Math.round((this._fr[this._now].t - this._fr[0].t) / 36e5) : 0;
