@@ -21,7 +21,7 @@ from .const import DOMAIN, SIGNAL_UPDATE, VERSION
 from .manager import WeatherScopeManager
 from .weather_data import WeatherScopeData
 
-ATTRS = ("version", "url", "bbox", "size", "center", "grid", "radar", "satellite", "forecast", "errors", "attribution")
+ATTRS = ("updated", "version", "url", "bbox", "size", "center", "grid", "radar", "satellite", "forecast", "errors", "attribution")
 
 
 def device_info(entry: Any) -> DeviceInfo:
@@ -78,13 +78,14 @@ WEATHER_SENSORS: tuple[WSSensorDescription, ...] = (
     WSSensorDescription(key="o3", translation_key="o3", device_class=SensorDeviceClass.OZONE, native_unit_of_measurement=AQ, state_class=MEAS,
                         value_fn=lambda d: d["air"].get("ozone")),
     WSSensorDescription(key="co", translation_key="co", device_class=SensorDeviceClass.CO, native_unit_of_measurement=AQ, state_class=MEAS,
+                        suggested_display_precision=0,
                         value_fn=lambda d: d["air"].get("carbon_monoxide")),
     WSSensorDescription(key="so2", translation_key="so2", device_class=SensorDeviceClass.SULPHUR_DIOXIDE, native_unit_of_measurement=AQ,
                         state_class=MEAS, value_fn=lambda d: d["air"].get("sulphur_dioxide")),
-    WSSensorDescription(key="uv_index", translation_key="uv_index", icon="mdi:sun-wireless", state_class=MEAS,
+    WSSensorDescription(key="uv_index", translation_key="uv_index", icon="mdi:sun-wireless", state_class=MEAS, suggested_display_precision=1,
                         value_fn=lambda d: d["current"].get("uv_index")),
     WSSensorDescription(key="visibility", translation_key="visibility", icon="mdi:eye", device_class=SensorDeviceClass.DISTANCE,
-                        native_unit_of_measurement=UnitOfLength.KILOMETERS, state_class=MEAS,
+                        native_unit_of_measurement=UnitOfLength.KILOMETERS, state_class=MEAS, suggested_display_precision=0,
                         value_fn=lambda d: round(d["current"]["visibility"] / 1000, 1) if d["current"].get("visibility") is not None else None),
     WSSensorDescription(key="precipitation_today", translation_key="precipitation_today", device_class=SensorDeviceClass.PRECIPITATION,
                         native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS, value_fn=lambda d: _today(d, "precipitation_sum")),
@@ -150,6 +151,12 @@ class WeatherSensor(CoordinatorEntity[WeatherScopeData], SensorEntity):
             return None
 
     @property
+    def icon(self) -> str | None:
+        if self.entity_description.key == "moon_phase" and self.coordinator.data:
+            return f"mdi:moon-{self.coordinator.data['moon']['phase'].replace('_moon', '').replace('_', '-')}"
+        return self.entity_description.icon
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         fn = self.entity_description.attrs_fn
         return fn(self.coordinator.data) if fn and self.coordinator.data else None
@@ -160,7 +167,8 @@ class WeatherScopeSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_translation_key = "status"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    # only "ok" / "error": a timestamp here would flood the activity log every 5 minutes
+    _attr_device_class = SensorDeviceClass.ENUM
     _attr_icon = "mdi:map-clock"
     _attr_should_poll = False
     # Map settings change rarely and would only bloat the database.
@@ -170,6 +178,7 @@ class WeatherScopeSensor(SensorEntity):
         self._m = manager
         entry = manager.entry
         self._attr_unique_id = f"{entry.entry_id}_status"
+        self._attr_options = ["ok", "error"]
         self._attr_device_info = device_info(entry)
 
     async def async_added_to_hass(self) -> None:
@@ -180,10 +189,10 @@ class WeatherScopeSensor(SensorEntity):
         self.async_write_ha_state()
 
     @property
-    def native_value(self) -> datetime | None:
-        ts = max((t for t in (self._m.radar_basis, self._m.sat_basis, self._m.fc_basis) if t), default=None)
-        return dt_util.utc_from_timestamp(ts) if ts else None
+    def native_value(self) -> str:
+        return "error" if self._m.errors else "ok"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return self._m.attributes()
+        ts = max((t for t in (self._m.radar_basis, self._m.sat_basis, self._m.fc_basis) if t), default=None)
+        return {**self._m.attributes(), "updated": dt_util.utc_from_timestamp(ts).isoformat() if ts else None}

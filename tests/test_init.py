@@ -87,7 +87,9 @@ async def test_setup_downloads(hass: HomeAssistant, aioclient_mock: AiohttpClien
     assert {f"om_{i}.json" for i in range(4)} <= set(names)
 
     state = hass.states.get("sensor.weatherscope_map_data")
+    assert state.state == "ok"
     a = state.attributes
+    assert a["updated"]
     assert a["radar"]["provider"] == "dwd" and a["radar"]["basis"]
     assert a["satellite"]["provider"] == "eumetsat" and a["satellite"]["basis"]
     assert a["forecast"]["basis"]

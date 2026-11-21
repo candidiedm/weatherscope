@@ -59,7 +59,11 @@
   "entity": {
     "sensor": {
       "status": {
-        "name": "Kartendaten"
+        "name": "Kartendaten",
+        "state": {
+          "ok": "OK",
+          "error": "Fehler"
+        }
       },
       "air_quality_index": {
         "name": "Luftqualitätsindex"
