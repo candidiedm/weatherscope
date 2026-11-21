@@ -9,13 +9,15 @@
           "location": "Map centre",
           "width_km": "Map width",
           "radar": "Weather radar",
-          "satellite": "Satellite images"
+          "satellite": "Satellite images",
+          "weather_data": "Weather data"
         },
         "data_description": {
           "location": "Click on the map to move the centre. Your home location is shown on the map either way.",
           "width_km": "Visible width of the map, e.g. 750 km for Germany. A margin around it is loaded automatically so the card is always filled.",
           "radar": "Automatic chooses a radar that covers your map. At the moment only Germany (DWD) is available.",
-          "satellite": "Automatic uses EUMETSAT (Europe, Africa, Atlantic)."
+          "satellite": "Automatic uses EUMETSAT (Europe, Africa, Atlantic).",
+          "weather_data": "Current weather, forecast, air quality, sun and moon for your home (Open-Meteo). Switch off if you only want the map."
         }
       }
     }
@@ -28,10 +30,12 @@
           "location": "Map centre",
           "width_km": "Map width",
           "radar": "Weather radar",
-          "satellite": "Satellite images"
+          "satellite": "Satellite images",
+          "weather_data": "Weather data"
         },
         "data_description": {
-          "width_km": "Visible width of the map, e.g. 750 km for Germany. A margin around it is loaded automatically so the card is always filled."
+          "width_km": "Visible width of the map, e.g. 750 km for Germany. A margin around it is loaded automatically so the card is always filled.",
+          "weather_data": "Current weather, forecast, air quality, sun and moon for your home (Open-Meteo). Switch off if you only want the map."
         }
       }
     }
@@ -56,6 +60,70 @@
     "sensor": {
       "status": {
         "name": "Map data"
+      },
+      "air_quality_index": {
+        "name": "Air quality index"
+      },
+      "pm2_5": {
+        "name": "PM2.5"
+      },
+      "pm10": {
+        "name": "PM10"
+      },
+      "no2": {
+        "name": "Nitrogen dioxide"
+      },
+      "o3": {
+        "name": "Ozone"
+      },
+      "co": {
+        "name": "Carbon monoxide"
+      },
+      "so2": {
+        "name": "Sulphur dioxide"
+      },
+      "uv_index": {
+        "name": "UV index"
+      },
+      "visibility": {
+        "name": "Visibility"
+      },
+      "precipitation_today": {
+        "name": "Precipitation today"
+      },
+      "sunrise": {
+        "name": "Sunrise"
+      },
+      "sunset": {
+        "name": "Sunset"
+      },
+      "moon_phase": {
+        "name": "Moon phase",
+        "state": {
+          "new_moon": "New moon",
+          "waxing_crescent": "Waxing crescent",
+          "first_quarter": "First quarter",
+          "waxing_gibbous": "Waxing gibbous",
+          "full_moon": "Full moon",
+          "waning_gibbous": "Waning gibbous",
+          "last_quarter": "Last quarter",
+          "waning_crescent": "Waning crescent"
+        }
+      },
+      "moon_illumination": {
+        "name": "Moon illumination"
+      },
+      "moonrise": {
+        "name": "Moonrise"
+      },
+      "moonset": {
+        "name": "Moonset"
+      },
+      "next_full_moon": {
+        "name": "Next full moon"
+      },
+      "normal_high": {
+        "name": "Normal high"
       }
     }
   }

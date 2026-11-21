@@ -10,10 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CARD_FILE, DOMAIN, URL_DATA, URL_STATIC, VERSION
+from .const import CARD_FILE, CONF_WEATHER, DOMAIN, URL_DATA, URL_STATIC, VERSION
 from .manager import WeatherScopeManager
+from .weather_data import WeatherScopeData
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
 
 type WeatherScopeConfigEntry = ConfigEntry[WeatherScopeManager]
 
@@ -42,6 +43,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: WeatherScopeConfigEntry)
     manager = WeatherScopeManager(hass, entry)
     entry.runtime_data = manager
     await manager.async_start()
+    if {**entry.data, **entry.options}.get(CONF_WEATHER, True):
+        manager.weather = WeatherScopeData(hass, entry, manager.dir)
+        # a failed first fetch must not block the map; the coordinator retries by itself
+        await manager.weather.async_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True

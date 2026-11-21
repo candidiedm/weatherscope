@@ -19,6 +19,15 @@ Animated weather maps for Home Assistant dashboards: rain radar, satellite, ligh
 
 More radar sources (other countries) are welcome – see *Contributing*.
 
+## Weather data
+
+Unless switched off in the setup, WeatherScope also provides weather data for your home location (Open-Meteo, worldwide, updated every 15 minutes):
+
+- `weather.weatherscope` – current weather with hourly (48 h) and daily (10 days) forecast; works with every weather card
+- Sensors: air quality index, PM2.5, PM10, NO₂, O₃, CO, SO₂, UV index, visibility, precipitation today, sunrise, sunset
+- Moon (calculated locally): phase, illumination, moonrise, moonset, next full moon
+- Climate normals 1991–2020 (average high, low and rain for every month)
+
 ## Installation
 
 1. Home Assistant → **Settings → Marketplace** → ⋮ → **Custom repositories** → add `https://github.com/candidiedm/weatherscope` as *Integration*.
@@ -44,7 +53,7 @@ The card is loaded automatically by the integration – you don't need to add a 
 
 ## Data sources and terms
 
-- **Open-Meteo** – free for non-commercial use, [CC BY 4.0](https://open-meteo.com/en/license). The integration asks for a 32 × 33 grid four times a day (about 4,200 of the 10,000 free daily calls).
+- **Open-Meteo** – free for non-commercial use, [CC BY 4.0](https://open-meteo.com/en/license). The maps ask for a 32 × 33 grid four times a day (about 4,200 of the 10,000 free daily calls); the weather data adds about 200 calls a day.
 - **DWD** – [open data](https://www.dwd.de/EN/service/copyright/copyright_node.html), attribution required.
 - **EUMETSAT** – [view service](https://view.eumetsat.int), attribution required.
 - **Blitzortung.org** – community network, non-commercial use only.
@@ -75,3 +84,7 @@ entity: sensor.weatherscope_map_data
 ```
 
 Wetterradar gibt es derzeit für Deutschland (DWD). Satellit, Blitze und die Vorhersagekarten funktionieren auch außerhalb.
+
+### Wetterdaten
+
+Wenn bei der Einrichtung nicht ausgeschaltet, liefert WeatherScope zusätzlich Wetterdaten für dein Zuhause (Open-Meteo, weltweit, alle 15 Minuten): eine Wetter-Entität `weather.weatherscope` mit Stunden- und 10-Tage-Vorhersage, Sensoren für Luftqualität, UV, Sichtweite, Niederschlag, Sonnenauf- und -untergang, Mond (Phase, Beleuchtung, Auf- und Untergang, nächster Vollmond) und Klimawerte 1991–2020.

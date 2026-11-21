@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 DOMAIN = "weatherscope"
-VERSION = "0.3.5"
+VERSION = "0.4.0"
 
 # Config entry keys
 CONF_LOCATION = "location"
 CONF_WIDTH_KM = "width_km"
 CONF_RADAR = "radar"
 CONF_SATELLITE = "satellite"
+CONF_WEATHER = "weather_data"
 
 DEFAULT_NAME = "WeatherScope"
 DEFAULT_WIDTH_KM = 750

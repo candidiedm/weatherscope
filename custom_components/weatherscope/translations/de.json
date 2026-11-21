@@ -9,13 +9,15 @@
           "location": "Kartenmittelpunkt",
           "width_km": "Kartenbreite",
           "radar": "Wetterradar",
-          "satellite": "Satellitenbilder"
+          "satellite": "Satellitenbilder",
+          "weather_data": "Wetterdaten"
         },
         "data_description": {
           "location": "Klicke auf die Karte, um den Mittelpunkt zu verschieben. Dein Zuhause wird in jedem Fall angezeigt.",
           "width_km": "Sichtbare Breite der Karte, z. B. 750 km für Deutschland. Rundherum wird automatisch etwas mehr geladen, damit die Kachel immer gefüllt ist.",
           "radar": "Automatisch wählt ein Radar, das deine Karte abdeckt. Derzeit gibt es nur Deutschland (DWD).",
-          "satellite": "Automatisch nutzt EUMETSAT (Europa, Afrika, Atlantik)."
+          "satellite": "Automatisch nutzt EUMETSAT (Europa, Afrika, Atlantik).",
+          "weather_data": "Aktuelles Wetter, Vorhersage, Luftqualität, Sonne und Mond für dein Zuhause (Open-Meteo). Ausschalten, wenn du nur die Karte möchtest."
         }
       }
     }
@@ -28,10 +30,12 @@
           "location": "Kartenmittelpunkt",
           "width_km": "Kartenbreite",
           "radar": "Wetterradar",
-          "satellite": "Satellitenbilder"
+          "satellite": "Satellitenbilder",
+          "weather_data": "Wetterdaten"
         },
         "data_description": {
-          "width_km": "Sichtbare Breite der Karte, z. B. 750 km für Deutschland. Rundherum wird automatisch etwas mehr geladen, damit die Kachel immer gefüllt ist."
+          "width_km": "Sichtbare Breite der Karte, z. B. 750 km für Deutschland. Rundherum wird automatisch etwas mehr geladen, damit die Kachel immer gefüllt ist.",
+          "weather_data": "Aktuelles Wetter, Vorhersage, Luftqualität, Sonne und Mond für dein Zuhause (Open-Meteo). Ausschalten, wenn du nur die Karte möchtest."
         }
       }
     }
@@ -56,6 +60,70 @@
     "sensor": {
       "status": {
         "name": "Kartendaten"
+      },
+      "air_quality_index": {
+        "name": "Luftqualitätsindex"
+      },
+      "pm2_5": {
+        "name": "Feinstaub PM2,5"
+      },
+      "pm10": {
+        "name": "Feinstaub PM10"
+      },
+      "no2": {
+        "name": "Stickstoffdioxid"
+      },
+      "o3": {
+        "name": "Ozon"
+      },
+      "co": {
+        "name": "Kohlenmonoxid"
+      },
+      "so2": {
+        "name": "Schwefeldioxid"
+      },
+      "uv_index": {
+        "name": "UV-Index"
+      },
+      "visibility": {
+        "name": "Sichtweite"
+      },
+      "precipitation_today": {
+        "name": "Niederschlag heute"
+      },
+      "sunrise": {
+        "name": "Sonnenaufgang"
+      },
+      "sunset": {
+        "name": "Sonnenuntergang"
+      },
+      "moon_phase": {
+        "name": "Mondphase",
+        "state": {
+          "new_moon": "Neumond",
+          "waxing_crescent": "Zunehmende Sichel",
+          "first_quarter": "Erstes Viertel",
+          "waxing_gibbous": "Zunehmender Mond",
+          "full_moon": "Vollmond",
+          "waning_gibbous": "Abnehmender Mond",
+          "last_quarter": "Letztes Viertel",
+          "waning_crescent": "Abnehmende Sichel"
+        }
+      },
+      "moon_illumination": {
+        "name": "Mondbeleuchtung"
+      },
+      "moonrise": {
+        "name": "Mondaufgang"
+      },
+      "moonset": {
+        "name": "Monduntergang"
+      },
+      "next_full_moon": {
+        "name": "Nächster Vollmond"
+      },
+      "normal_high": {
+        "name": "Durchschnittliche Höchsttemperatur"
       }
     }
   }

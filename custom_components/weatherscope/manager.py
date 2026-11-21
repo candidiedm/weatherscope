@@ -96,6 +96,8 @@ class WeatherScopeManager:
         self.fc_updated: str | None = None
         self.errors: dict[str, str] = {}
         self._unsubs: list[Callable[[], None]] = []
+        self.weather: Any = None
+        self._stopped = False
         self._locks = {k: asyncio.Lock() for k in ("radar", "sat", "fc")}
         # one queue per provider, so a slow radar server never holds up satellite or forecast downloads
         self._sem = {DWD_WMS: asyncio.Semaphore(3), EUMETSAT_WMS: asyncio.Semaphore(4), OPEN_METEO: asyncio.Semaphore(1)}
@@ -127,6 +129,7 @@ class WeatherScopeManager:
 
     async def async_stop(self) -> None:
         """Stop all loops."""
+        self._stopped = True
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
@@ -165,6 +168,8 @@ class WeatherScopeManager:
     # ------------------------------------------------------------- helpers
     async def _get(self, url: str, params: dict[str, Any], kind: str) -> bytes | None:
         """GET with timeout; returns the body only if it has the expected type."""
+        if self._stopped:
+            return None
         async with self._sem[url]:
             try:
                 timeout = TIMEOUT_FC if url == OPEN_METEO else TIMEOUT
@@ -175,7 +180,8 @@ class WeatherScopeManager:
                         _LOGGER.debug("%s -> HTTP %s %s", url, resp.status, ctype)
                         return None
                     return body
-            except (TimeoutError, aiohttp.ClientError) as err:
+            except (TimeoutError, aiohttp.ClientError, RuntimeError) as err:
+                # RuntimeError: session closed while Home Assistant shuts down
                 _LOGGER.debug("%s failed: %s", url, err)
                 return None
 

@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResu
 from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     LocationSelector,
     LocationSelectorConfig,
     NumberSelector,
@@ -25,6 +26,7 @@ from .const import (
     CONF_LOCATION,
     CONF_RADAR,
     CONF_SATELLITE,
+    CONF_WEATHER,
     CONF_WIDTH_KM,
     DEFAULT_NAME,
     DEFAULT_WIDTH_KM,
@@ -46,6 +48,7 @@ def _map_schema(defaults: dict[str, Any]) -> dict[Any, Any]:
         vol.Required(CONF_SATELLITE, default=defaults[CONF_SATELLITE]): SelectSelector(
             SelectSelectorConfig(options=SATELLITE_CHOICES, translation_key="satellite", mode=SelectSelectorMode.DROPDOWN)
         ),
+        vol.Required(CONF_WEATHER, default=defaults[CONF_WEATHER]): BooleanSelector(),
     }
 
 
@@ -63,6 +66,7 @@ class WeatherScopeConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_WIDTH_KM: DEFAULT_WIDTH_KM,
             CONF_RADAR: AUTO,
             CONF_SATELLITE: AUTO,
+            CONF_WEATHER: True,
         }
         schema = vol.Schema({vol.Optional(CONF_NAME, default=DEFAULT_NAME): TextSelector(), **_map_schema(defaults)})
         return self.async_show_form(step_id="user", data_schema=schema)
@@ -85,5 +89,6 @@ class WeatherScopeOptionsFlow(OptionsFlow):
             CONF_WIDTH_KM: current.get(CONF_WIDTH_KM, DEFAULT_WIDTH_KM),
             CONF_RADAR: current.get(CONF_RADAR, AUTO),
             CONF_SATELLITE: current.get(CONF_SATELLITE, AUTO),
+            CONF_WEATHER: current.get(CONF_WEATHER, True),
         }
         return self.async_show_form(step_id="init", data_schema=vol.Schema(_map_schema(defaults)))
