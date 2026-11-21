@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.6.1';
+  const VERSION = '0.6.2';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -175,7 +175,8 @@ ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;ali
     static defaults = { entity: 'weather.weatherscope', background: 'sky', hours: 24, mode: 'temp' };
     static forecast = 'hourly';
     getCardSize() { return 3; }
-    getGridOptions() { return { columns: 12, rows: 3, min_rows: 3 }; }
+    // height follows the content (the rain view is taller than the others)
+    getGridOptions() { return { columns: 12, min_columns: 6 }; }
     _click(e) {
       const b = e.composedPath().find((x) => x.dataset && x.dataset.mode);
       if (b) { this._mode = b.dataset.mode; this._render(); }
@@ -223,7 +224,7 @@ ha-card{height:100%;box-sizing:border-box;display:flex;flex-direction:column;ali
       return `
 <style>
 :host{display:block;height:100%}
-ha-card{height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${skyCss(h, s, c.background !== 'none')}}
+ha-card{min-height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${skyCss(h, s, c.background !== 'none')}}
 .hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .ti{font-size:18px;font-weight:600}.mn{font-size:12px;font-weight:500;opacity:.9}
 .seg{display:flex;gap:2px;background:rgba(0,0,0,.18);border-radius:999px;padding:3px}
@@ -231,7 +232,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px 14px;color:#fff;overflow:
 .seg button.on{background:rgba(255,255,255,.28);color:#fff}.seg ha-icon{--mdc-icon-size:18px}
 .hours{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-top:2px}.hours::-webkit-scrollbar{display:none}
 .h{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;font-weight:600}
-.h ha-icon{--mdc-icon-size:24px}
+.h>*{flex-shrink:0}.h ha-icon{--mdc-icon-size:24px}
 .h .pp{font-size:11px;color:#bfe9ff;height:12px;margin:-6px 0 -4px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
 .h .u{font-size:10px;font-weight:500;color:rgba(235,240,255,.62);margin-top:-6px;white-space:nowrap}
 .h .pr{font-size:11px;font-weight:600;color:#fff;opacity:.85;margin-top:-4px;height:13px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
