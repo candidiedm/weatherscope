@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.10.0';
+  const VERSION = '0.10.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -70,8 +70,8 @@
   const baseCss = (h, s, bg) => `
 :host{display:block;height:100%}
 ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${bgCss(h, s, bg)}}
-.lab{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lab ha-icon{--mdc-icon-size:14px}
+.lab{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;letter-spacing:.01em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab ha-icon{--mdc-icon-size:13px}
 .big{font-size:30px;font-weight:400;line-height:1.15}
 .sub{font-size:15px;font-weight:500}
 .note{font-size:12px;color:rgba(255,255,255,.85);margin-top:auto}
