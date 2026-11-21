@@ -489,7 +489,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       if (fm && L) {
         const wd = new Intl.DateTimeFormat(this._lang, { weekday: 'short' });
         let h = `<span class="j" style="left:0">${T.jetzt}</span>`; const d = new Date(this._t0); d.setHours(24, 0, 0, 0);
-        for (; d.getTime() < this._t1; d.setDate(d.getDate() + 1)) { const p = (d.getTime() + 432e5 - this._t0) / (this._t1 - this._t0); if (p > 0.08 && p < 0.97) h += `<span style="left:${p * 100}%">${wd.format(d).replace('.', '')} ${d.getDate()}</span>`; }
+        // day labels sit centred at noon; skip one if it would touch "jetzt" or run past the end (in pixels, so it works at every width)
+        const W = $('dl').getBoundingClientRect().width || 300, half = 24, jw = 34;
+        for (; d.getTime() < this._t1; d.setDate(d.getDate() + 1)) { const p = (d.getTime() + 432e5 - this._t0) / (this._t1 - this._t0), x = p * W; if (x - half > jw && x + half < W) h += `<span style="left:${p * 100}%">${wd.format(d).replace('.', '')} ${d.getDate()}</span>`; }
         $('dl').innerHTML = h;
       }
       const h0 = L ? Math.round((this._fr[this._now].t - this._fr[0].t) / 36e5) : 0;
