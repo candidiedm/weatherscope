@@ -1,8 +1,24 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.11.2';
+  const VERSION = '0.12.0';
   const BASE = '/weatherscope/static/geo/';
+  // Apple-style grid: a small tile (4 columns) is a square, bigger tiles are multiples of it, gaps included.
+  // Active while the card's height is left on auto ("fit to content"); a fixed row count in the layout turns it off.
+  const sqCols = (c, g) => (c && c.grid_options && c.grid_options.columns) ?? g.columns;
+  const sqOn = (c, g) => !(c && c.grid_options && typeof c.grid_options.rows === 'number') && typeof g.rows === 'number' && typeof sqCols(c, g) === 'number';
+  const sqGrid = (c, g) => (sqOn(c, g) ? { ...g, rows: 'auto' } : g);
+  const sqFit = (el, c, g) => {
+    if (!sqOn(c, g)) { if (el.style.height) el.style.height = ''; return; }
+    const W = el.getBoundingClientRect().width; if (!W) return;
+    const cs = getComputedStyle(el);
+    // only inside a sections grid (it defines --row-height); elsewhere, e.g. inside another card, leave the height alone
+    if (!cs.getPropertyValue('--row-height').trim()) { if (el.style.height) el.style.height = ''; return; }
+    const cg = parseFloat(cs.getPropertyValue('--column-gap')) || 8, rg = parseFloat(cs.getPropertyValue('--row-gap')) || 8;
+    const k = Math.max(1, sqCols(c, g) / 4), n = g.rows / 3, u = (W - (k - 1) * cg) / k, H = `${Math.round(n * u + (n - 1) * rg)}px`;
+    if (el.style.height !== H) el.style.height = H;
+  };
+
 
   // ---------- colour tables ----------
   const DWD = [[51, 255, 255], [26, 204, 154], [1, 153, 52], [77, 179, 27], [153, 204, 1], [204, 230, 1], [255, 255, 1], [255, 196, 1], [255, 137, 1], [255, 69, 1], [254, 0, 0], [229, 0, 76], [204, 0, 152], [102, 0, 203], [0, 0, 254]];
@@ -156,7 +172,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       tl.addEventListener('pointermove', (e) => { if (this._drag) seek(e); });
       tl.addEventListener('pointerup', () => { this._drag = false; });
       this._play = false; this._i = 0; this._fr = []; this._R = []; this._S = []; this._st = []; this._skew = 0; this._seen = new Map(); this._bc = {}; this._avail = {};
-      this._ro = new ResizeObserver(() => { this._layout(); this._draw(); }); this._ro.observe(this);
+      this._ro = new ResizeObserver(() => { sqFit(this, this._c, this._grid()); this._layout(); this._draw(); }); this._ro.observe(this);
       try { this._io = new IntersectionObserver((e) => { this._vis = e[0] && e[0].isIntersecting; if (this._vis) this._draw(); }); this._io.observe(this); } catch (e) {}
       this._ui();
     }
@@ -956,7 +972,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
     }
 
     getCardSize() { return 6; }
-    getGridOptions() { return { columns: 8, rows: 6, min_columns: 6, min_rows: 4 }; }
+    _grid() { return { columns: 8, rows: 9, min_columns: 6, min_rows: 4 }; }
+    getGridOptions() { return sqGrid(this._c, this._grid()); }
   }
 
   // Visual editor shown in the dashboard ("Edit card"), so no YAML is needed

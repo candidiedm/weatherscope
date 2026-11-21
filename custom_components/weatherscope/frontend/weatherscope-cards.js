@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.11.2';
+  const VERSION = '0.12.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -132,13 +132,29 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
   };
 
   // base class: config, forecast subscription, re-render only on visible change
+  // Apple-style grid: a small tile (4 columns) is a square, bigger tiles are multiples of it, gaps included.
+  // Active while the card's height is left on auto ("fit to content"); a fixed row count in the layout turns it off.
+  const sqCols = (c, g) => (c && c.grid_options && c.grid_options.columns) ?? g.columns;
+  const sqOn = (c, g) => !(c && c.grid_options && typeof c.grid_options.rows === 'number') && typeof g.rows === 'number' && typeof sqCols(c, g) === 'number';
+  const sqGrid = (c, g) => (sqOn(c, g) ? { ...g, rows: 'auto' } : g);
+  const sqFit = (el, c, g) => {
+    if (!sqOn(c, g)) { if (el.style.height) el.style.height = ''; return; }
+    const W = el.getBoundingClientRect().width; if (!W) return;
+    const cs = getComputedStyle(el);
+    // only inside a sections grid (it defines --row-height); elsewhere, e.g. inside another card, leave the height alone
+    if (!cs.getPropertyValue('--row-height').trim()) { if (el.style.height) el.style.height = ''; return; }
+    const cg = parseFloat(cs.getPropertyValue('--column-gap')) || 8, rg = parseFloat(cs.getPropertyValue('--row-gap')) || 8;
+    const k = Math.max(1, sqCols(c, g) / 4), n = g.rows / 3, u = (W - (k - 1) * cg) / k, H = `${Math.round(n * u + (n - 1) * rg)}px`;
+    if (el.style.height !== H) el.style.height = H;
+  };
+
   class WSBase extends HTMLElement {
     setConfig(c) {
       this._c = Object.assign({}, this.constructor.defaults, c || {});
       this._fc = null; this._fcs = {};
       this._unsub();
       if (!this.shadowRoot) { this.attachShadow({ mode: 'open' }); this.shadowRoot.addEventListener('click', (e) => this._click(e)); }
-      this._render();
+      this._render();  this._sq();
     }
     set hass(h) { this._h = h; if (!this._sub) this._subscribe(); this._render(); }
     connectedCallback() {
@@ -146,8 +162,12 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
       // "link": switching temperature/rain/wind on one card switches the others on the page too
       this._onMode = (e) => { if (this._c && this._c.link !== false && e.detail.entity === this._c.entity && e.detail.src !== this) { this._mode = e.detail.mode; this._render(); } };
       window.addEventListener('weatherscope-mode', this._onMode);
+      this._sqro = new ResizeObserver(() => this._sq()); this._sqro.observe(this);
     }
-    disconnectedCallback() { this._unsub(); window.removeEventListener('weatherscope-mode', this._onMode); }
+    disconnectedCallback() { this._unsub(); window.removeEventListener('weatherscope-mode', this._onMode); if (this._sqro) this._sqro.disconnect(); }
+    _grid() { return { columns: 4, rows: 3 }; }
+    getGridOptions() { return sqGrid(this._c, this._grid()); }
+    _sq() { if (this._c) sqFit(this, this._c, this._grid()); }
     _click() {}
     _setMode(m) {
       this._mode = m; this._render();
@@ -218,7 +238,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     static defaults = { entity: 'weather.weatherscope', background: 'sky' };
     static forecast = 'daily';
     getCardSize() { return 3; }
-    getGridOptions() { return { columns: 'full', rows: 3, min_rows: 2 }; }
+    _grid() { return { columns: 'full', rows: 'auto' }; }
     _html(h, s, t) {
       const temp = sensor(h, this._c.temperature, units(s).t) ?? s.attributes.temperature;
       const cond = h.formatEntityState ? h.formatEntityState(s) : s.state;
@@ -252,7 +272,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     static forecast = 'hourly';
     getCardSize() { return 3; }
     // fixed height in every view (design rules)
-    getGridOptions() { return { columns: 16, rows: 3, min_columns: 8, min_rows: 3 }; }
+    _grid() { return { columns: 16, rows: 3, min_columns: 8, min_rows: 3 }; }
     _click(e) {
       const b = e.composedPath().find((x) => x.dataset && x.dataset.mode);
       if (b) this._setMode(b.dataset.mode);
@@ -344,7 +364,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     static defaults = { entity: 'weather.weatherscope', background: 'sky', days: 10, mode: 'temp', link: true };
     static forecast = ['daily', 'hourly'];
     getCardSize() { return 6; }
-    getGridOptions() { return { columns: 8, rows: 6, min_columns: 6, min_rows: 4 }; }
+    _grid() { return { columns: 8, rows: 9, min_columns: 6, min_rows: 4 }; }
     connectedCallback() {
       super.connectedCallback();
       // how many rows fit decides how many days are shown (the card never grows)
@@ -473,7 +493,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     static forecast = ['daily', 'hourly'];
     static getStubConfig(h) { return { ...WSBase.getStubConfig(h), kind: 'feels' }; }
     getCardSize() { return 3; }
-    getGridOptions() { return this._c && this._c.size === 'medium' ? { columns: 8, rows: 3, min_columns: 6, min_rows: 3 } : { columns: 4, rows: 3, min_columns: 4, min_rows: 3 }; }
+    _grid() { return this._c && this._c.size === 'medium' ? { columns: 8, rows: 3, min_columns: 6, min_rows: 3 } : { columns: 4, rows: 3, min_columns: 4, min_rows: 3 }; }
     connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { if (this._c && (this._c.kind === 'sun' || this._c.kind === 'pressure')) { this._last = null; this._render(); } }, 60000); }
     disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
     // pressure trend: change over the last 3 hours from the recorder
@@ -657,7 +677,7 @@ ${med && chart
   class WindCard extends WSBase {
     static defaults = { entity: 'weather.weatherscope', background: 'sky' };
     getCardSize() { return 3; }
-    getGridOptions() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    _grid() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
     _html(h, s, t) {
       const c = this._c, U = units(s), A = s.attributes;
       const ws = sensor(h, c.wind_speed, U.w) ?? num(A.wind_speed), wg = sensor(h, c.wind_gust, U.w) ?? num(A.wind_gust_speed), wb = sensor(h, c.wind_bearing) ?? num(A.wind_bearing);
@@ -708,7 +728,7 @@ ${med && chart
   class MoonCard extends WSBase {
     static defaults = { entity: 'weather.weatherscope', background: 'sky', size: 'medium' };
     getCardSize() { return 3; }
-    getGridOptions() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    _grid() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
     connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { this._last = null; this._render(); }, 300000); }
     disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
     _html(h, s, t) {
@@ -737,7 +757,7 @@ ${med && chart
     static defaults = { entity: 'weather.weatherscope', background: 'sky', size: 'medium' };
     static getStubConfig(h) { return { ...WSBase.getStubConfig(h), size: 'medium' }; }
     getCardSize() { return 3; }
-    getGridOptions() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
+    _grid() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
     _html(h, s, t) {
       const c = this._c, val = (key, def) => { const e = h.states[c[key] || def]; return e ? num(e.state) : null; };
       const v = val('aqi', 'sensor.weatherscope_air_quality_index');
@@ -766,7 +786,10 @@ ${med && chart
     setConfig(c) { this._c = Object.assign({ hide: true }, c || {}); if (!this.shadowRoot) this.attachShadow({ mode: 'open' }); this._render(); }
     set hass(h) { this._h = h; this._render(); }
     getCardSize() { return 3; }
-    getGridOptions() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 2 }; }
+    _grid() { return { columns: 8, rows: 3, min_columns: 6, min_rows: 2 }; }
+    getGridOptions() { return sqGrid(this._c, this._grid()); }
+    connectedCallback() { this._sqro = new ResizeObserver(() => { if (this._c) sqFit(this, this._c, this._grid()); }); this._sqro.observe(this); }
+    disconnectedCallback() { if (this._sqro) this._sqro.disconnect(); }
     _list(id, adv) {
       const e = id && this._h.states[id]; if (!e) return [];
       const a = e.attributes, n = Number(a.warning_count) || 0, out = [];
