@@ -42,6 +42,14 @@ entity: sensor.weatherscope_map_data
 
 The card is loaded automatically by the integration – you don't need to add a resource.
 
+### Weather cards
+
+| Card | Shows |
+|---|---|
+| `custom:weatherscope-now-card` | Place, temperature, condition, today's high and low |
+
+Every card has a visual editor. Values come from `weather.weatherscope` by default; you can pick any other weather entity and, where it makes sense, your own sensors (e.g. your weather station).
+
 ### Card options
 
 | Option | Default | Meaning |

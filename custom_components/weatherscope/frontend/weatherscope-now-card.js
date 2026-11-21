@@ -18,7 +18,7 @@
   };
   const NIGHT = { partlycloudy: ['#1f2a44', '#3b4868'], cloudy: ['#262c38', '#454d5c'], rainy: ['#20252e', '#3b424e'], pouring: ['#1b2028', '#343a45'], snowy: ['#3a4250', '#5e6676'], fog: ['#2c3138', '#4b5058'] };
 
-  const fmt = (v) => (v === null || v === undefined || isNaN(v) ? '–' : `${Math.round(Number(v))}°`);
+  const fmt = (v) => { if (v === null || v === undefined || isNaN(v)) return '–'; const n = Math.round(Number(v)); return `${n < 0 ? '−' : ''}${Math.abs(n)}°`; };
 
   class WeatherScopeNowCard extends HTMLElement {
     static getConfigElement() { return document.createElement(`${TAG}-editor`); }
