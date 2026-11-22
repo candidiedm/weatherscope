@@ -636,7 +636,10 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           if (!med) note = '';
         }
         if (med && this._series && this._series.length > 1) {
-          const P = this._series.map((q) => [q[0], c.sensor ? conv(q[1], h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : q[1]]);
+          const P0 = this._series.map((q) => [q[0], c.sensor ? conv(q[1], h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : q[1]]);
+          // smooth the curve: mean of each 30-minute slot (stations report about every minute with ±0.1 hPa noise)
+          const slots = new Map(); P0.forEach(([tq, vq]) => { const k = Math.floor(tq / 18e5); const a = slots.get(k) || [0, 0]; a[0] += vq; a[1] += 1; slots.set(k, a); });
+          const P = [...slots.entries()].sort((a, b) => a[0] - b[0]).map(([k, a]) => [k * 18e5 + 9e5, a[0] / a[1]]);
           const t0 = now - 24 * 36e5, lo = Math.min(...P.map((q) => q[1])), hi = Math.max(...P.map((q) => q[1])), pad = Math.max(1, (hi - lo) * 0.15);
           const X = (q) => Math.max(0, ((q - t0) / (24 * 36e5)) * 200), Y = (v) => 56 - ((v - (lo - pad)) / (hi - lo + 2 * pad)) * 52;
           const line = P.map((q, k) => `${k ? 'L' : 'M'}${X(q[0]).toFixed(1)} ${Y(q[1]).toFixed(1)}`).join(' ') + (v !== null ? ` L200 ${Y(v).toFixed(1)}` : '');
