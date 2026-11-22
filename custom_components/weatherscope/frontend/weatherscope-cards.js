@@ -644,7 +644,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
       return `
 <style>${baseCss(h, s, c.background)}
 .big{margin-top:6px}.sub{margin-top:2px}
-.svw{position:relative;width:100%;height:40px;margin-top:6px}.svw svg{width:100%;height:100%;display:block}
+.svw{position:relative;width:100%;flex:1;min-height:36px;margin:6px 0 4px}.svw svg{width:100%;height:100%;display:block}
 .sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(0,0,0,.3);box-shadow:none}
 .gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
 ${picCss}
