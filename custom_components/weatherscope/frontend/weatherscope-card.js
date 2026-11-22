@@ -130,6 +130,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 #dl{position:absolute;left:0;right:0;top:30px;height:12px;pointer-events:none}#dl span{position:absolute;transform:translateX(-50%);opacity:.8;white-space:nowrap}#dl span.j{transform:none}
 #ct #lg{position:static;background:none;border-radius:0;padding:0 12px 6px 2px;display:flex;align-items:flex-start;gap:7px}
 #ct #lg .w{flex:1;min-width:0}
+#op{position:absolute;right:48px;z-index:6;flex-direction:column;flex-wrap:nowrap;align-items:flex-start;justify-content:flex-start;gap:4px;padding:8px 12px;background:rgba(30,32,36,.92);border-radius:12px}
+#op .sw{font-size:13px;padding:6px 0;gap:8px}
 #ct{padding:4px 6px 4px}#ct #lg{padding:0 12px 2px 2px}
 #pl{width:30px;height:30px;position:relative}#pl ha-icon{--mdc-icon-size:18px}
 #mo{flex:none;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);opacity:1;padding:0;margin-left:0;justify-content:center;position:relative}#mo ha-icon{--mdc-icon-size:18px}
@@ -163,21 +165,26 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       this.attachShadow({ mode: 'open' });
       const sw = (id, t) => `<button class="sw" id="${id}"><i></i><span>${t}</span></button>`;
       this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="fr"></div><div id="hd"><ha-icon></ha-icon><span></span></div><div id="m"><canvas id="cv"></canvas>
-<div id="mb">${MAPS.map((m) => `${m.sep ? '<i class="sep"></i>' : ''}<button class="mb" data-m="${m.id}"><span>${T[m.id]}</span><i style="background:${m.bg}"><ha-icon icon="${m.icon}"></ha-icon></i></button>`).join('')}</div>
+<div id="mb">${MAPS.map((m) => `${m.sep ? '<i class="sep"></i>' : ''}<button class="mb" data-m="${m.id}"><span>${T[m.id]}</span><i style="background:${m.bg}"><ha-icon icon="${m.icon}"></ha-icon></i></button>`).join('')}<button class="mb mg" id="gear" aria-label="${T.more}" title="${T.more}"><i style="background:#4a505a"><ha-icon icon="mdi:cog"></ha-icon></i></button></div>
 <div id="ct"><div id="lg"><span id="lgu"></span><div class="w"><div class="b"></div><div class="t"><span id="lga"></span><span id="lgb"></span></div></div></div><div id="r1"><button id="pl" aria-label="${T.play}"><ha-icon icon="mdi:play"></ha-icon></button>
-<div id="tl"><div id="tk"><div id="fc"></div><div id="pg"></div></div><div id="nm"></div><div id="tb">–</div><div id="nc">${T.now}</div><span id="l0"></span><span id="l1">${T.plus1}</span><div id="dl"></div></div><div id="bi"></div><button id="mo" aria-label="${T.more}" title="${T.more}"><ha-icon icon="mdi:chevron-down"></ha-icon></button></div>
+<div id="tl"><div id="tk"><div id="fc"></div><div id="pg"></div></div><div id="nm"></div><div id="tb">–</div><div id="nc">${T.now}</div><span id="l0"></span><span id="l1">${T.plus1}</span><div id="dl"></div></div><div id="bi"></div></div>
 <div id="r2"><div id="sm">${SATM.map(([k, t]) => `<button data-s="${k}">${T[t]}</button>`).join('')}</div></div>
-<div id="op">${sw('s_fc', T.fc)}${sw('s_ort', T.ort)}${sw('s_bz', T.bz)}${sw('s_ov', T.ov)}${sw('s_iso', T.iso)}${sw('s_ws', T.ws)}</div></div>
+</div><div id="op">${sw('s_fc', T.fc)}${sw('s_ort', T.ort)}${sw('s_bz', T.bz)}${sw('s_ov', T.ov)}${sw('s_iso', T.iso)}${sw('s_ws', T.ws)}</div>
 <div id="ld">${T.loading}</div></div>`;
       const s = this.shadowRoot, $ = (id) => s.getElementById(id);
       s.addEventListener('click', (e) => e.stopPropagation());
-      s.querySelectorAll('.mb').forEach((b) => b.addEventListener('click', () => {
+      s.querySelectorAll('.mb[data-m]').forEach((b) => b.addEventListener('click', () => {
         this._setMap(b.dataset.m);
         // coupling: temperature, rain and wind also switch the hourly and daily cards on the page
         if (this._c.link !== false && FMAPS.includes(b.dataset.m)) window.dispatchEvent(new CustomEvent('weatherscope-mode', { detail: { entity: '*', mode: b.dataset.m, src: this } }));
       }));
       s.querySelectorAll('#sm button').forEach((b) => b.addEventListener('click', () => { this._o.sm = b.dataset.s; this._save(); this._loadSat(); }));
-      $('mo').addEventListener('click', () => { const o = $('op').classList.toggle('open'); $('mo').querySelector('ha-icon').setAttribute('icon', o ? 'mdi:chevron-up' : 'mdi:chevron-down'); this._layout(); });
+      // settings: the gear at the bottom of the button column opens a small panel over the map; a tap elsewhere closes it
+      $('gear').addEventListener('click', () => {
+        const op = $('op'), o = op.classList.toggle('open'); $('gear').classList.toggle('on', o);
+        if (o) { const g = $('gear'), top = $('mb').offsetTop + g.offsetTop; op.style.top = `${Math.max(8, Math.min(top, $('m').clientHeight - op.offsetHeight - 8))}px`; }
+      });
+      s.addEventListener('click', (e) => { const p = e.composedPath(); if ($('op').classList.contains('open') && !p.includes($('op')) && !p.includes($('gear'))) { $('op').classList.remove('open'); $('gear').classList.remove('on'); } });
       const tog = (id, k, fn) => $(id).addEventListener('click', () => { this._o[k] = !this._o[k]; this._save(); if (fn) fn(); this._ui(); this._draw(); });
       tog('s_fc', 'fc', () => { this._apply(false); this._loop(); });
       tog('s_ort', 'ort'); tog('s_bz', 'bz'); tog('s_ov', 'ov'); tog('s_iso', 'iso', () => this._draw()); tog('s_ws', 'ws', () => this._anim());
@@ -229,7 +236,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       const av = { radar: !!a.radar, sat: !!a.satellite, blitz: blitzOn, wind: true, rain: true, temp: true };
       if (JSON.stringify(av) !== JSON.stringify(this._avail)) {
         this._avail = av;
-        this.shadowRoot.querySelectorAll('.mb').forEach((b) => { b.hidden = !av[b.dataset.m]; });
+        this.shadowRoot.querySelectorAll('.mb[data-m]').forEach((b) => { b.hidden = !av[b.dataset.m]; });
         if (!av[this._o.map]) { this._o.map = av.radar ? 'radar' : av.sat ? 'sat' : 'temp'; this._apply(true); this._ui(); }
       }
       const rb = a.radar && a.radar.basis; if (rb && rb !== this._b) { this._b = rb; this._loadRadar(); }
@@ -619,7 +626,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
     _ui() {
       const s = this.shadowRoot; if (!s) return;
       const $ = (id) => s.getElementById(id), o = this._o, map = o.map, T = this._T, av = this._avail || {};
-      s.querySelectorAll('.mb').forEach((b) => b.classList.toggle('on', b.dataset.m === map));
+      s.querySelectorAll('.mb[data-m]').forEach((b) => b.classList.toggle('on', b.dataset.m === map));
       const mm = MAPS.find((q) => q.id === map); if (mm) { s.querySelector('#hd span').textContent = T[map]; s.querySelector('#hd ha-icon').setAttribute('icon', mm.icon); }
       s.querySelectorAll('#sm button').forEach((b) => b.classList.toggle('on', b.dataset.s === o.sm));
       $('r2').style.display = map === 'sat' ? '' : 'none'; // satellite channel buttons only; no empty row otherwise
@@ -660,7 +667,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
         let i0 = 0, i1 = n;
         if (R) { if (map === 'temp') { while (i0 < n - 1 && B[i0 + 1] <= R[0]) i0++; } i1 = i0 + 1; while (i1 < n && B[i1] < R[1]) i1++; }
         $('lgu').textContent = unit;
-        let h = ''; for (let k = 0; k < n; k++) h += `<i class="${k < i0 || k >= i1 ? 'o' : ''}${map === 'temp' && B[k] === 0 ? ' z' : ''}" style="background:${C[k]}"></i>`;
+        let h = ''; for (let k = 0; k < n; k++) h += `<i class="${k < i0 || k >= i1 ? 'o' : ''}" style="background:${C[k]}"></i>`;
         lg.innerHTML = h;
         if (map === 'temp') {
           const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v), z = B.indexOf(0);
