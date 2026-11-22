@@ -629,11 +629,11 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         let ticks = ''; for (let k = 0; k <= 30; k++) { const a = a0 + ((a1 - a0) * k) / 30; ticks += `<line x1="${cx + Math.cos(a) * (R - 6)}" y1="${cy + Math.sin(a) * (R - 6)}" x2="${cx + Math.cos(a) * R}" y2="${cy + Math.sin(a) * R}" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`; }
         viz = `<svg class="gv" viewBox="0 0 120 88">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy - 11}" text-anchor="middle" fill="#fff" font-size="11">${d > 1 ? '↑' : d < -1 ? '↓' : '='}</text><text x="${cx - 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↓</text><text x="${cx + 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↑</text><text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
         big = ''; note = med ? `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}` : '';
-        if (!med) {
-          // small: crop to the gauge circle so it matches the moon; low/high marks sit at the two ends of the scale
+        {
+          // small and medium: crop to the gauge circle so it matches the moon; low/high marks sit at the two ends of the scale
           const ends = `<text x="${cx - 17}" y="${cy + 33}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="9">↓</text><text x="${cx + 17}" y="${cy + 33}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="9">↑</text>`;
           viz = `<div class="pic">${viz.replace(/<text[^>]*>↓<\/text><text[^>]*>↑<\/text>/, ends).replace('class="gv" viewBox="0 0 120 88"', `viewBox="${cx - 36.96} ${cy - 36.96} 73.92 73.92"`)}</div>`;
-          note = '';
+          if (!med) note = '';
         }
         if (med && this._series && this._series.length > 1) {
           const P = this._series.map((q) => [q[0], c.sensor ? conv(q[1], h.states[c.sensor] && h.states[c.sensor].attributes.unit_of_measurement, pu) : q[1]]);
