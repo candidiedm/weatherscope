@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.14.0';
+  const VERSION = '0.14.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -654,7 +654,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
               if (hh % 3 === 0) axis += `<span class="ax" style="left:${(k + 0.5) * W}%;transform:translateX(-50%)">${hh}</span>`;
             }
             const nowX = ((now - a) / (n * 36e5)) * 100;
-            chart = `<div class="rc"><div class="ch">${cols}${axis}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div><div class="pv"><b>${top}</b>${marks.map((m) => `<span style="top:${100 - (m / top) * 100}%">${m}</span>`).join('')}</div></div>`;
+            chart = `<div class="rc"><div class="ch">${cols}${axis}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div><div class="pv"><b>${marks.map(String).sort((x, y) => y.length - x.length)[0]}</b>${marks.map((m) => `<span style="top:${100 - (m / top) * 100}%">${m}</span>`).join('')}</div></div>`;
           }
           if (hs.length) {
             const pr = hs.filter((x) => num(x.uv_index) >= 3), pk = hs.reduce((p, q) => (num(q.uv_index) > num(p.uv_index) ? q : p));
@@ -683,7 +683,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
             const wdf = new Intl.DateTimeFormat(L, { weekday: 'short' });
             const daily = pp.u === 'd' && pp.n >= 4, every = Math.max(1, Math.ceil(bars.length / 5));
             const lab = (q, k) => ((bars.length - 1 - k) % every !== 0 ? '' : daily ? (pp.n <= 7 ? wdf.format(new Date(q[0])).replace('.', '') : new Date(q[0]).getDate() + '.') : pp.u === 'd' ? wdf.format(new Date(q[0])).replace('.', '') + ' ' + hhmm(h, new Date(q[0])).slice(0, 2) : hhmm(h, new Date(q[0])));
-            chart = `<div class="rc"><div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) && !(k === bars.length - 1 && !daily && bars.length > 10) ? `<span class="ax" style="${k === bars.length - 1 ? 'right:0' : k === 0 ? 'left:0' : `left:${(k + 0.5) * W}%;transform:translateX(-50%)`}">${lab(q, k)}</span>` : ''}`).join('')}</div><div class="pv"><b>${fsc(top)}</b><span style="top:0">${fsc(top)}</span><span style="top:50%">${fsc(top / 2)}</span><span style="top:100%">0</span></div></div>`;
+            chart = `<div class="rc"><div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) && !(k === bars.length - 1 && !daily && bars.length > 10) ? `<span class="ax" style="${k === bars.length - 1 ? 'right:0' : k === 0 ? 'left:0' : `left:${(k + 0.5) * W}%;transform:translateX(-50%)`}">${lab(q, k)}</span>` : ''}`).join('')}</div><div class="pv"><b>${[fsc(top), fsc(top / 2)].sort((x, y) => y.length - x.length)[0]}</b><span style="top:0">${fsc(top)}</span><span style="top:50%">${fsc(top / 2)}</span><span style="top:100%">0</span></div></div>`;
           }
           if (hourly.length) {
             const nx = hourly.filter((x) => { const tt = new Date(x.datetime).getTime(); return tt > now && tt <= now + 864e5; }).reduce((x, q) => x + (num(q.precipitation) || 0), 0);
