@@ -628,7 +628,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         const R = 34, cx = 60, cy = 42, a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, ang = a0 + (a1 - a0) * f;
         let ticks = ''; for (let k = 0; k <= 30; k++) { const a = a0 + ((a1 - a0) * k) / 30; ticks += `<line x1="${cx + Math.cos(a) * (R - 6)}" y1="${cy + Math.sin(a) * (R - 6)}" x2="${cx + Math.cos(a) * R}" y2="${cy + Math.sin(a) * R}" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`; }
         viz = `<svg class="gv" viewBox="0 0 120 88">${ticks}<line x1="${cx + Math.cos(ang) * (R - 9)}" y1="${cy + Math.sin(ang) * (R - 9)}" x2="${cx + Math.cos(ang) * (R + 1)}" y2="${cy + Math.sin(ang) * (R + 1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="${cx}" y="${cy - 11}" text-anchor="middle" fill="#fff" font-size="11">${d > 1 ? '↑' : d < -1 ? '↓' : '='}</text><text x="${cx - 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↓</text><text x="${cx + 27}" y="${cy + 38}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">↑</text><text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">${v === null ? '–' : pu === 'inHg' ? v.toFixed(2) : Math.round(v).toLocaleString(lang(h))}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">${pu}</text></svg>`;
-        big = ''; note = med ? `<ha-icon icon="${arrow}"></ha-icon> ${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}` : '';
+        big = ''; note = med ? `<span class="ti"><ha-icon icon="${arrow}"></ha-icon>${t[d > 1 ? 'pr_up' : d < -1 ? 'pr_down' : 'pr_same']}</span>` : '';
         {
           // small and medium: crop to the gauge circle so it matches the moon; low/high marks sit at the two ends of the scale
           const ends = `<text x="${cx - 17}" y="${cy + 33}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="9">↓</text><text x="${cx + 17}" y="${cy + 33}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="9">↑</text>`;
@@ -650,6 +650,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .svw{position:relative;width:100%;flex:1;min-height:36px;margin:6px 0 4px}.svw svg{width:100%;height:100%;display:block}
 .sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(0,0,0,.3);box-shadow:none}
 .gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
+.ti{display:inline-flex;align-items:center;gap:4px}.ti ha-icon{--mdc-icon-size:14px;display:flex}
 ${picCss}
 .uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
