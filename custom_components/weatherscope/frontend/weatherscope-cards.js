@@ -16,9 +16,9 @@
       w_wind: 'Wind', w_gust: 'Böen', w_dir: 'Richtung', dirs: ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'],
       mp: { new_moon: 'Neumond', waxing_crescent: 'Zunehmende Sichel', first_quarter: 'Erstes Viertel', waxing_gibbous: 'Zunehmender Mond', full_moon: 'Vollmond', waning_gibbous: 'Abnehmender Mond', last_quarter: 'Letztes Viertel', waning_crescent: 'Abnehmende Sichel' },
       m_illum: 'Beleuchtung', m_rise: 'Mondaufgang', m_set: 'Monduntergang', m_full: 'Vollmond', m_in: (d) => (d < 1 ? 'heute' : d < 2 ? 'morgen' : `in ${Math.round(d)} Tagen`),
-      aq: ['Gut', 'Ordentlich', 'Mäßig', 'Schlecht', 'Sehr schlecht', 'Extrem schlecht'], aq_main: (p) => `Hauptursache: ${p}`, aq_scale: 'Index nach EU-Skala', aq_idx: (v) => `Index ${v}`,
+      aq: ['Gut', 'Befriedigend', 'Mäßig', 'Schlecht', 'Sehr schlecht', 'Extrem schlecht'], aq_main: (p) => `Hauptursache: ${p}`, aq_scale: 'Index nach EU-Skala', aq_idx: (v) => `Index ${v}`,
       wr_title: 'Wetterwarnung', wr_more: (n) => `+${n} weitere`, wr_none: 'Keine Warnungen', wr_until: (a, b) => `${a} bis ${b}`, wr_adv: 'Vorabinformation',
-      e_wind_entity: 'Wetter-Entität', e_warning: 'Warnungs-Sensor (z. B. DWD „Aktuelle Warnstufe“)', e_advance: 'Vorwarnungs-Sensor (optional)', e_hide: 'Ausblenden, wenn keine Warnung', e_aqi: 'Eigener Luftqualitätsindex (optional, EU-Skala)', e_pm25: 'PM2,5 (optional)', e_pm10: 'PM10 (optional)', e_no2: 'NO₂ (optional)', e_o3: 'O₃ (optional)',
+      e_wind_entity: 'Wetter-Entität', e_warning: 'Warnungs-Sensor (z. B. DWD „Aktuelle Warnstufe“)', e_advance: 'Vorwarnungs-Sensor (optional)', e_hide: 'Ausblenden, wenn keine Warnung', e_aqi: 'Eigener Luftqualitätsindex (optional, EU-Skala)', e_pm25: 'PM2,5 (optional)', e_pm10: 'PM10 (optional)', e_no2: 'NO₂ (optional)', e_o3: 'O₃ (optional)', e_so2: 'Sulphur dioxide (SO₂)', e_so2: 'Sulphur dioxide (SO₂)',
       n_now: 'Aktuell', n_hourly: 'Stündlich', n_daily: 'Tagesvorhersage', n_value: 'Wert (alle)', n_sky: 'Himmel-Animation', d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_value: 'Einzelwert: Gefühlt, Sonne, UV-Index, Durchschnitt, Niederschlag, Sichtweite, Feuchtigkeit oder Luftdruck.',
       k_feels: 'Gefühlt', k_sun: 'Sonne', k_uv: 'UV-Index', k_normal: 'Durchschnittswert', k_precip: 'Niederschlag', k_visibility: 'Sichtweite', k_humidity: 'Feuchtigkeit', k_pressure: 'Luftdruck',
       sunrise_l: 'Sonnenaufgang', sunset_l: 'Sonnenuntergang', actual: (v) => `Tatsächlich: ${v}`, f_colder: 'Fühlt sich kälter an als die tatsächliche Temperatur.', f_colder_wind: 'Fühlt sich durch den Wind kälter an.',
@@ -779,30 +779,46 @@ ${med && chart
   // EEA colours: good, fair, moderate, poor, very poor, extremely poor; index 0-20-40-60-80-100+
   const AQG = 'linear-gradient(90deg,#50f0e6 0%,#50f0e6 13%,#50ccaa 20%,#50ccaa 30%,#f0e641 37%,#f0e641 47%,#ff5050 53%,#ff5050 63%,#960032 70%,#960032 80%,#7d2181 87%,#7d2181 100%)';
   const aqStage = (v) => (v < 20 ? 0 : v < 40 ? 1 : v < 60 ? 2 : v < 80 ? 3 : v < 100 ? 4 : 5);
+  // European Air Quality Index (EEA, current version): each pollutant gets its own stage from its concentration (µg/m³),
+  // the worst one decides. Upper limits of stages 1-5; above the last one = stage 6 "extremely poor".
+  const EAQI = [['pm25', 'PM2,5', [5, 15, 50, 90, 140]], ['pm10', 'PM10', [15, 45, 120, 195, 270]], ['o3', 'O₃', [60, 100, 120, 160, 180]], ['no2', 'NO₂', [10, 25, 60, 100, 150]], ['so2', 'SO₂', [20, 40, 125, 190, 275]]];
+  const EAQI_DEF = { aqi: 'sensor.weatherscope_air_quality_index', pm25: 'sensor.weatherscope_pm2_5', pm10: 'sensor.weatherscope_pm10', o3: 'sensor.weatherscope_o3', no2: 'sensor.weatherscope_no2', so2: 'sensor.weatherscope_so2' };
+  const airStage = (h, c) => {
+    const val = (key) => { const e = h.states[c[key] || EAQI_DEF[key]]; return e ? num(e.state) : null; };
+    const P = EAQI.map(([k, name, lim]) => {
+      const v = val(k); if (v === null) return null;
+      const st = lim.findIndex((x) => v <= x), s2 = st < 0 ? 5 : st, lo = s2 ? lim[s2 - 1] : 0, hi = s2 < 5 ? lim[s2] : lim[4] * 1.5;
+      return { name, v, st: s2, f: Math.max(0, Math.min(0.95, (v - lo) / (hi - lo))) };
+    }).filter(Boolean);
+    if (P.length) {
+      const main = P.slice().sort((x, y) => y.st - x.st || y.f - x.f)[0];
+      return { st: main.st, pos: ((main.st + main.f) / 6) * 100, main: main.name, P, idx: null };
+    }
+    // no single pollutants: fall back to an overall index number (older 0-100+ scale)
+    const v = val('aqi');
+    return v === null ? { st: null, pos: 0, main: null, P: [], idx: null } : { st: aqStage(v), pos: Math.min(100, (v / 120) * 100), main: null, P: [], idx: v };
+  };
   class AirCard extends WSBase {
     static defaults = { entity: 'weather.weatherscope', background: 'sky', size: 'medium' };
     static getStubConfig(h) { return { ...WSBase.getStubConfig(h), size: 'medium' }; }
     getCardSize() { return 3; }
     _grid() { return this._c && this._c.size === 'small' ? { columns: 4, rows: 3, min_columns: 4, min_rows: 3 } : { columns: 8, rows: 3, min_columns: 6, min_rows: 3 }; }
     _html(h, s, t) {
-      const c = this._c, val = (key, def) => { const e = h.states[c[key] || def]; return e ? num(e.state) : null; };
-      const v = val('aqi', 'sensor.weatherscope_air_quality_index');
-      const P = [['PM2,5', val('pm25', 'sensor.weatherscope_pm2_5'), 15], ['PM10', val('pm10', 'sensor.weatherscope_pm10'), 45], ['NO₂', val('no2', 'sensor.weatherscope_no2'), 25], ['O₃', val('o3', 'sensor.weatherscope_o3'), 100]];
-      const st = v === null ? null : aqStage(v), pos = v === null ? 0 : Math.min(100, (v / 120) * 100);
-      // main pollutant: highest share of its WHO guideline value (2021)
-      const main = P.filter((q) => q[1] !== null).sort((a, b) => b[1] / b[2] - a[1] / a[2])[0];
-      const bar = `<div class="aqb" style="background:${AQG}">${v === null ? '' : `<b style="left:${pos}%"></b>`}</div>`;
+      const c = this._c, A = airStage(h, c);
+      const bar = `<div class="aqb" style="background:${AQG}">${A.st === null ? '' : `<b style="left:${A.pos}%"></b>`}</div>`;
       const lab = `<div class="lab"><ha-icon icon="mdi:air-filter"></ha-icon>${t.n_air}</div>`;
-      const css = `${baseCss(h, s, c.background)}.aqb{position:relative;height:6px;border-radius:3px;margin-top:10px}.aqb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}`;
-      if (c.size === 'small') return `<style>${css}</style><ha-card>${lab}<div class="big">${v === null ? '–' : Math.round(v)}</div><div class="sub">${st === null ? '' : t.aq[st]}</div>${bar}<div class="note">${t.aq_scale}</div></ha-card>`;
-      const pol = P.filter((q) => q[1] !== null).map((q) => `${q[0]} ${Math.round(q[1])}`).join(' · ');
-      return `<style>${css}.big{font-size:22px;font-weight:500;margin-top:8px}</style><ha-card>${lab}<div class="big">${st === null ? '–' : t.aq[st]}</div>${bar}
-<div class="note">${v === null ? '' : t.aq_idx(Math.round(v))}${pol ? ` · ${pol} µg/m³` : ''}${main ? `<br>${t.aq_main(main[0])}` : ''}</div></ha-card>`;
+      const css = `${baseCss(h, s, c.background)}.aqb{position:relative;height:6px;border-radius:3px;margin-top:10px}.aqb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}.big{font-size:22px;font-weight:500;margin-top:8px}`;
+      const name = A.st === null ? '–' : t.aq[A.st];
+      const mainL = A.main ? t.aq_main(A.main) : A.idx !== null ? t.aq_idx(Math.round(A.idx)) : '';
+      if (c.size === 'small') return `<style>${css}</style><ha-card>${lab}<div class="big">${name}</div>${bar}<div class="note">${mainL}</div></ha-card>`;
+      const pol = A.P.map((q) => `${q.name} ${Math.round(q.v)}`).join(' · ');
+      return `<style>${css}</style><ha-card>${lab}<div class="big">${name}</div>${bar}
+<div class="note">${pol ? `${pol} µg/m³` : ''}${pol && mainL ? '<br>' : ''}${mainL}</div></ha-card>`;
     }
   }
   register('weatherscope-air-card', AirCard, makeEditor((t) => [
     { name: 'size', selector: { select: { mode: 'dropdown', options: [{ value: 'small', label: t.e_small }, { value: 'medium', label: t.e_medium }] } } },
-    { name: 'aqi', ...sensorSel() }, { name: 'pm25', ...sensorSel() }, { name: 'pm10', ...sensorSel() }, { name: 'no2', ...sensorSel() }, { name: 'o3', ...sensorSel() },
+    { name: 'aqi', ...sensorSel() }, { name: 'pm25', ...sensorSel() }, { name: 'pm10', ...sensorSel() }, { name: 'no2', ...sensorSel() }, { name: 'o3', ...sensorSel() }, { name: 'so2', ...sensorSel() },
     bgSchema(t),
   ], { background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_air}`, 'd_air');
 
@@ -891,8 +907,8 @@ ${med && chart
       }
       const uv = sensor(h, c.uv) ?? num(A.uv_index);
       if (uv !== null && uv >= 3) I.uv = 70;
-      const aq = st(c.aqi || 'sensor.weatherscope_air_quality_index'), aqi = aq ? num(aq.state) : null;
-      if (aqi !== null && aqi >= 60) I.air = 60;
+      const aqs = airStage(h, c).st; // EU index: stage 4 "poor" or worse
+      if (aqs !== null && aqs >= 3) I.air = 60;
       const sun = st('sun.sun'), up = !sun || sun.state === 'above_horizon';
       const nx = sun ? new Date(up ? sun.attributes.next_setting : sun.attributes.next_rising).getTime() : null;
       if (nx && nx > now && nx - now < 72e5) I.sun = 50;
@@ -931,7 +947,7 @@ ${med && chart
         warning: ['weatherscope-warning-card', { warning: c.warning, advance: c.advance, square: false }],
         hourly: ['weatherscope-hourly-card', base], daily: ['weatherscope-daily-card', base],
         map: ['weatherscope-card', { entity: c.map, frame: 'glass', header: true, square: false }],
-        air: ['weatherscope-air-card', { ...base, size, aqi: c.aqi, pm25: c.pm25, pm10: c.pm10, no2: c.no2, o3: c.o3 }],
+        air: ['weatherscope-air-card', { ...base, size, aqi: c.aqi, pm25: c.pm25, pm10: c.pm10, no2: c.no2, o3: c.o3, so2: c.so2 }],
         wind: ['weatherscope-wind-card', { ...base, size, wind_speed: c.wind_speed, wind_gust: c.wind_gust, wind_bearing: c.wind_bearing }],
         moon: ['weatherscope-moon-card', { ...base, size }],
         sun: V('sun'), uv: V('uv', { sensor: c.uv }), precip: V('precip', { sensor: c.rain_today }), pressure: V('pressure', { sensor: c.pressure }),
@@ -977,7 +993,7 @@ ${med && chart
       Object.values(this._els).forEach((e) => { e.hass = h; });
     }
   }
-  const pageSensors = (t) => ['feels_like', 'humidity', 'dewpoint', 'pressure', 'uv', 'rain_today', 'wind_speed', 'wind_gust', 'wind_bearing', 'aqi', 'pm25', 'pm10', 'no2', 'o3'].map((n) => ({ name: n, ...sensorSel() }));
+  const pageSensors = (t) => ['feels_like', 'humidity', 'dewpoint', 'pressure', 'uv', 'rain_today', 'wind_speed', 'wind_gust', 'wind_bearing', 'aqi', 'pm25', 'pm10', 'no2', 'o3', 'so2'].map((n) => ({ name: n, ...sensorSel() }));
   register('weatherscope-page-card', PageCard, makeEditor((t) => [
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
     { name: 'name', selector: { text: {} } },
