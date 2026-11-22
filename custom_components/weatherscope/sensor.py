@@ -121,8 +121,10 @@ WEATHER_SENSORS: tuple[WSSensorDescription, ...] = (
     WSSensorDescription(key="visibility", translation_key="visibility", icon="mdi:eye", device_class=SensorDeviceClass.DISTANCE,
                         native_unit_of_measurement=UnitOfLength.KILOMETERS, state_class=MEAS, suggested_display_precision=0,
                         value_fn=lambda d: round(d["current"]["visibility"] / 1000, 1) if d["current"].get("visibility") is not None else None),
+    # total_increasing (resets at midnight): Home Assistant then keeps hourly/daily rain in its long-term statistics
     WSSensorDescription(key="precipitation_today", translation_key="precipitation_today", device_class=SensorDeviceClass.PRECIPITATION,
-                        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS, value_fn=lambda d: _today(d, "precipitation_sum")),
+                        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS, state_class=SensorStateClass.TOTAL_INCREASING,
+                        value_fn=lambda d: _today(d, "precipitation_sum")),
     WSSensorDescription(key="precipitation_nowcast", translation_key="precipitation_nowcast", icon="mdi:weather-rainy",
                         device_class=SensorDeviceClass.PRECIPITATION, native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
                         value_fn=lambda d: _next_hour(d), attrs_fn=lambda d: {"steps": _steps(d)}),
