@@ -5,6 +5,7 @@
   // ---------------------------------------------------------------- shared
   const T = {
     de: {
+      n_page: 'Wetterseite', d_page: 'Ganze Wetterseite: ordnet alle Kacheln selbst nach Wichtigkeit an.', e_feels_like: 'Gefühlte Temperatur', e_humidity: 'Luftfeuchtigkeit', e_dewpoint: 'Taupunkt', e_pressure: 'Luftdruck', e_uv: 'UV-Index', e_rain_today: 'Niederschlag heute', e_map: 'Wetterkarte (WeatherScope-Sensor)', e_sensors: 'Eigene Sensoren (ersetzen die Werte des Wetterdienstes)',
       hi: 'H', lo: 'T', home: 'Zuhause', now: 'Jetzt', hourly: 'Stündlich', sunrise: 'Sonnenaufgang', sunset: 'Sonnenuntergang',
       m_temp: 'Temperatur ({u})', m_rain: 'Niederschlag ({u})', m_wind: 'Wind und Böen ({u})', max: 'max', loading: 'Vorhersage wird geladen …',
       e_entity: 'Wetter-Entität', e_temperature: 'Eigener Temperatursensor (optional)', e_name: 'Ortsname (optional)', e_background: 'Hintergrund',
@@ -33,6 +34,7 @@
       e_size: 'Größe', e_small: 'Klein (4 × 3)', e_medium: 'Mittel (8 × 3)', e_size_h: 'Mittel zeigt bei UV, Niederschlag, Luftdruck und Sonne einen Verlauf.', e_kind: 'Wert', e_sensor: 'Eigener Sensor (optional)', e_sensor_h: 'Ersetzt den Hauptwert, z. B. von deiner Wetterstation.', e_sensor2: 'Zweiter eigener Sensor (optional)', e_sensor2_h: 'Gefühlt: tatsächliche Temperatur · Feuchtigkeit: Taupunkt.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
+      n_page: 'Weather page', d_page: 'Whole weather page: arranges all tiles by importance on its own.', e_feels_like: 'Feels-like temperature', e_humidity: 'Humidity', e_dewpoint: 'Dew point', e_pressure: 'Pressure', e_uv: 'UV index', e_rain_today: 'Precipitation today', e_map: 'Weather map (WeatherScope sensor)', e_sensors: 'Own sensors (replace the values of the weather service)',
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
       m_temp: 'Temperature ({u})', m_rain: 'Precipitation ({u})', m_wind: 'Wind and gusts ({u})', max: 'max', loading: 'Loading forecast …',
       e_entity: 'Weather entity', e_temperature: 'Own temperature sensor (optional)', e_name: 'Place name (optional)', e_background: 'Background',
@@ -845,6 +847,147 @@ ${med && chart
     { name: 'advance', selector: { entity: { domain: 'sensor' } } },
     { name: 'hide', selector: { boolean: {} } },
   ], {}), `WeatherScope – ${tr(hass0()).n_warning}`, 'd_warning');
+
+
+  // ---------------------------------------------------------------- Weather page (arranges all tiles by importance)
+  // Grid of 6 squares: row 0 = slot A (2) + hourly (4); rows 1-3 = left column (2 wide) + 10 days (2x3) + map (2x3);
+  // row 4 (and more if needed) = the rest. Important tiles move up and, where they have a medium size, grow.
+  const P_MED = ['air', 'wind', 'moon', 'sun', 'uv', 'precip', 'pressure'];
+  const P_SMALL = ['sun', 'uv', 'moon', 'wind', 'air', 'feels', 'normal', 'precip', 'visibility', 'humidity', 'pressure'];
+  const P_TILES = ['air', 'wind', 'moon', 'sun', 'uv', 'precip', 'pressure', 'feels', 'normal', 'visibility', 'humidity'];
+  class PageCard extends WSBase {
+    static defaults = { entity: 'weather.weatherscope', background: 'glass', map: 'sensor.weatherscope_map_data' };
+    static forecast = ['hourly', 'daily'];
+    getCardSize() { return 20; }
+    _grid() { return { columns: 'full', rows: 'auto' }; }
+    connectedCallback() {
+      super.connectedCallback();
+      this._pro = new ResizeObserver(() => this._unit()); this._pro.observe(this);
+    }
+    disconnectedCallback() { super.disconnectedCallback(); if (this._pro) this._pro.disconnect(); }
+    _unit() {
+      const g = this.shadowRoot && this.shadowRoot.getElementById('gr'); if (!g) return;
+      const W = g.getBoundingClientRect().width; if (W) g.style.setProperty('--u', `${Math.floor((W - 5 * 8) / 6)}px`);
+    }
+    // what is important right now: key -> score (higher = more important)
+    _importance(h, s) {
+      const c = this._c, A = s.attributes, U = units(s), now = Date.now(), I = {};
+      const hourly = this._fcs.hourly || [], daily = this._fcs.daily || [];
+      const st = (id) => (id && h.states[id] ? h.states[id] : null);
+      const warn = [c.warning, c.advance].some((id) => st(id) && num(st(id).state) > 0);
+      // precipitation in the next 2 hours (15-minute steps from WeatherScope, else the hourly forecast)
+      const nc = st(c.nowcast || 'sensor.weatherscope_precipitation_nowcast');
+      let wet = !!(nc && Array.isArray(nc.attributes.steps) && nc.attributes.steps.some((q) => { const t = new Date(q[0]).getTime(); return t + 9e5 > now && t < now + 72e5 && num(q[1]) >= 0.1; }));
+      if (!wet) wet = hourly.some((x) => { const t = new Date(x.datetime).getTime(); return t + 36e5 > now && t < now + 72e5 && (num(x.precipitation) || 0) >= 0.1; });
+      if (wet) I.precip = 90;
+      const vr = A.visibility_unit || 'km', vis = num(A.visibility), vkm = vis === null ? null : vr === 'mi' ? vis * 1.609 : vr === 'm' ? vis / 1000 : vis;
+      if (vkm !== null && vkm < 1) I.visibility = 85;
+      const gust = sensor(h, c.wind_gust, U.w) ?? num(A.wind_gust_speed);
+      if (gust !== null && conv(gust, U.w, 'km/h') >= 40) I.wind = 80;
+      if (c.pressure || A.pressure !== undefined) {
+        ValueCard.prototype._trend.call(this, h, c.pressure || c.entity, c.pressure ? null : 'pressure');
+        const p = c.pressure ? num(st(c.pressure) && st(c.pressure).state) : num(A.pressure);
+        if (p !== null && this._trV !== null && this._trV !== undefined && p - this._trV <= -3) I.pressure = 75;
+      }
+      const uv = sensor(h, c.uv) ?? num(A.uv_index);
+      if (uv !== null && uv >= 3) I.uv = 70;
+      const aq = st(c.aqi || 'sensor.weatherscope_air_quality_index'), aqi = aq ? num(aq.state) : null;
+      if (aqi !== null && aqi >= 60) I.air = 60;
+      const sun = st('sun.sun'), up = !sun || sun.state === 'above_horizon';
+      const nx = sun ? new Date(up ? sun.attributes.next_setting : sun.attributes.next_rising).getTime() : null;
+      if (nx && nx > now && nx - now < 72e5) I.sun = 50;
+      if (!up) I.moon = 40;
+      const t0 = sensor(h, c.temperature, U.t) ?? num(A.temperature), fl = sensor(h, c.feels_like, U.t) ?? num(A.apparent_temperature);
+      if (t0 !== null && fl !== null && Math.abs(fl - t0) >= 3) I.feels = 30;
+      const dp = sensor(h, c.dewpoint, U.t) ?? num(A.dew_point);
+      if (t0 !== null && dp !== null && t0 - dp <= 1.5) I.humidity = 35;
+      const nh = st('sensor.weatherscope_normal_high'), th = daily[0] ? num(daily[0].temperature) : null;
+      if (nh && th !== null && num(nh.state) !== null && Math.abs(th - num(nh.state)) >= 5) I.normal = 20;
+      // moon specials (full moon at night for now; supermoon and eclipses follow)
+      const ill = st('sensor.weatherscope_moon_illumination'), full = !up && ill && num(ill.state) >= 98;
+      return { I, warn, special: full ? 'moon' : null };
+    }
+    _layout(imp) {
+      const { I, warn, special } = imp;
+      const slotA = warn ? 'warning' : special || 'air';
+      const R = P_TILES.filter((k) => k !== slotA);
+      const rows = [{ c: 0, r: 1, cap: 2 }, { c: 0, r: 2, cap: 2 }, { c: 0, r: 3, cap: 2 }, { c: 0, r: 4, cap: 6 }];
+      let cells = 12; while (cells < R.length) { rows.push({ c: 0, r: rows.length + 1, cap: 6 }); cells += 6; }
+      const extra = cells - R.length;
+      const rank = (list) => (k) => (I[k] ? 1000 - I[k] : 0) * 100 + list.indexOf(k);
+      const med = [...R.filter((k) => I[k] && P_MED.includes(k)).sort((a, b) => I[b] - I[a]), ...P_MED.filter((k) => R.includes(k))]
+        .filter((k, i, a) => a.indexOf(k) === i).slice(0, extra);
+      const place = [];
+      const put = (k, w) => { const row = rows.find((q) => q.cap >= w); if (!row) return false; place.push({ k, c: row.c, r: row.r, w, h: 1, size: w > 1 ? 'medium' : 'small' }); row.c += w; row.cap -= w; return true; };
+      med.slice().sort((a, b) => rank(P_MED)(a) - rank(P_MED)(b)).forEach((k) => put(k, 2));
+      R.filter((k) => !med.includes(k)).sort((a, b) => rank(P_SMALL)(a) - rank(P_SMALL)(b)).forEach((k) => put(k, 1));
+      place.push({ k: slotA, c: 0, r: 0, w: 2, h: 1, size: 'medium' }, { k: 'hourly', c: 2, r: 0, w: 4, h: 1 }, { k: 'daily', c: 2, r: 1, w: 2, h: 3 }, { k: 'map', c: 4, r: 1, w: 2, h: 3 });
+      return place;
+    }
+    _child(k, size) {
+      const c = this._c, base = { entity: c.entity, background: c.background, square: false };
+      const V = (kind, extra) => ['weatherscope-value-card', { ...base, kind, size, ...extra }];
+      const def = {
+        warning: ['weatherscope-warning-card', { warning: c.warning, advance: c.advance, square: false }],
+        hourly: ['weatherscope-hourly-card', base], daily: ['weatherscope-daily-card', base],
+        map: ['weatherscope-card', { entity: c.map, frame: 'glass', header: true, square: false }],
+        air: ['weatherscope-air-card', { ...base, size, aqi: c.aqi, pm25: c.pm25, pm10: c.pm10, no2: c.no2, o3: c.o3 }],
+        wind: ['weatherscope-wind-card', { ...base, size, wind_speed: c.wind_speed, wind_gust: c.wind_gust, wind_bearing: c.wind_bearing }],
+        moon: ['weatherscope-moon-card', { ...base, size }],
+        sun: V('sun'), uv: V('uv', { sensor: c.uv }), precip: V('precip', { sensor: c.rain_today }), pressure: V('pressure', { sensor: c.pressure }),
+        feels: V('feels', { sensor: c.feels_like, sensor2: c.temperature }), normal: V('normal'), visibility: V('visibility'),
+        humidity: V('humidity', { sensor: c.humidity, sensor2: c.dewpoint }),
+      }[k];
+      // leave out empty options so the tiles fall back to the weather entity
+      const cfg = Object.fromEntries(Object.entries(def[1]).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+      return [def[0], cfg];
+    }
+    _render() {
+      if (!this.shadowRoot || !this._c || !this._h) return;
+      const h = this._h, s = h.states[this._c.entity];
+      if (!s) { this.shadowRoot.innerHTML = `<ha-card style="padding:16px">${this._c.entity || ''} ?</ha-card>`; this._built = false; return; }
+      if (!this._built) {
+        this.shadowRoot.innerHTML = `<style>:host{display:block}.pg{display:flex;flex-direction:column;gap:8px}
+.gr{--u:160px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:var(--u);gap:8px}.gr>*{min-width:0;min-height:0;height:100%}</style>
+<div class="pg"><div id="hd"></div><div class="gr" id="gr"></div></div>`;
+        this._built = true; this._els = {}; this._sig = null; this._now = null;
+        requestAnimationFrame(() => this._unit());
+      }
+      const c = this._c;
+      if (!this._now) { this._now = document.createElement('weatherscope-now-card'); this.shadowRoot.getElementById('hd').appendChild(this._now); }
+      const nowCfg = JSON.stringify({ entity: c.entity, name: c.name, temperature: c.temperature, background: 'none', square: false });
+      if (nowCfg !== this._nowCfg) { this._nowCfg = nowCfg; this._now.setConfig(Object.fromEntries(Object.entries(JSON.parse(nowCfg)).filter(([, v]) => v !== undefined))); }
+      this._now.hass = h;
+      const place = this._layout(this._importance(h, s));
+      const sig = JSON.stringify(place) + nowCfg + JSON.stringify(c);
+      const gr = this.shadowRoot.getElementById('gr');
+      if (sig !== this._sig) {
+        this._sig = sig;
+        const keep = new Set();
+        place.forEach((q) => {
+          const [tag, cfg] = this._child(q.k, q.size), id = `${q.k}`; keep.add(id);
+          let e = this._els[id];
+          if (!e || e.localName !== tag) { if (e) e.remove(); e = document.createElement(tag); this._els[id] = e; e._cfgS = null; }
+          const cs = JSON.stringify(cfg); if (e._cfgS !== cs) { e._cfgS = cs; e.setConfig(cfg); }
+          e.style.gridColumn = `${q.c + 1} / span ${q.w}`; e.style.gridRow = `${q.r + 1} / span ${q.h}`;
+          gr.appendChild(e);
+        });
+        Object.keys(this._els).forEach((id) => { if (!keep.has(id)) { this._els[id].remove(); delete this._els[id]; } });
+      }
+      Object.values(this._els).forEach((e) => { e.hass = h; });
+    }
+  }
+  const pageSensors = (t) => ['feels_like', 'humidity', 'dewpoint', 'pressure', 'uv', 'rain_today', 'wind_speed', 'wind_gust', 'wind_bearing', 'aqi', 'pm25', 'pm10', 'no2', 'o3'].map((n) => ({ name: n, ...sensorSel() }));
+  register('weatherscope-page-card', PageCard, makeEditor((t) => [
+    { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
+    { name: 'name', selector: { text: {} } },
+    { name: 'temperature', ...sensorSel('temperature') },
+    { name: 'warning', selector: { entity: { domain: 'sensor' } } },
+    { name: 'advance', selector: { entity: { domain: 'sensor' } } },
+    { name: 'map', selector: { entity: { domain: 'sensor', integration: 'weatherscope' } } },
+    bgSchema(t),
+    { type: 'expandable', name: '', title: t.e_sensors, schema: pageSensors(t) },
+  ], { temperature: 'e_temperature_h', background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_page}`, 'd_page');
 
   // ---------------------------------------------------------------- Sky (animated page background)
   class SkyCard extends HTMLElement {
