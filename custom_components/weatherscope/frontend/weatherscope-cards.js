@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.12.7';
+  const VERSION = '0.13.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
