@@ -19,7 +19,7 @@
       wr_title: 'Wetterwarnung', wr_more: (n) => `+${n} weitere`, wr_none: 'Keine Warnungen', wr_until: (a, b) => `${a} bis ${b}`, wr_adv: 'Vorabinformation',
       e_wind_entity: 'Wetter-Entität', e_warning: 'Warnungs-Sensor (z. B. DWD „Aktuelle Warnstufe“)', e_advance: 'Vorwarnungs-Sensor (optional)', e_hide: 'Ausblenden, wenn keine Warnung', e_aqi: 'Eigener Luftqualitätsindex (optional, EU-Skala)', e_pm25: 'PM2,5 (optional)', e_pm10: 'PM10 (optional)', e_no2: 'NO₂ (optional)', e_o3: 'O₃ (optional)',
       n_now: 'Aktuell', n_hourly: 'Stündlich', n_daily: 'Tagesvorhersage', n_value: 'Wert (alle)', n_sky: 'Himmel-Animation', d_now: 'Ort, Temperatur, Wetterlage, Höchst- und Tiefstwert.', d_value: 'Einzelwert: Gefühlt, Sonne, UV-Index, Durchschnitt, Niederschlag, Sichtweite, Feuchtigkeit oder Luftdruck.',
-      k_feels: 'Gefühlt', k_sun: 'Sonne', k_uv: 'UV-Index', k_normal: 'Durchschnitt', k_precip: 'Niederschlag', k_visibility: 'Sichtweite', k_humidity: 'Feuchtigkeit', k_pressure: 'Luftdruck',
+      k_feels: 'Gefühlt', k_sun: 'Sonne', k_uv: 'UV-Index', k_normal: 'Durchschnittswert', k_precip: 'Niederschlag', k_visibility: 'Sichtweite', k_humidity: 'Feuchtigkeit', k_pressure: 'Luftdruck',
       sunrise_l: 'Sonnenaufgang', sunset_l: 'Sonnenuntergang', actual: (v) => `Tatsächlich: ${v}`, f_colder: 'Fühlt sich kälter an als die tatsächliche Temperatur.', f_colder_wind: 'Fühlt sich durch den Wind kälter an.',
       f_warmer: 'Fühlt sich wärmer an als die tatsächliche Temperatur.', f_warmer_hum: 'Fühlt sich durch die Luftfeuchtigkeit wärmer an.', f_same: 'Ähnlich wie die tatsächliche Temperatur.',
       uv0: 'Niedrig', uv1: 'Mäßig', uv2: 'Hoch', uv3: 'Sehr hoch', uv4: 'Extrem', uv_low_day: 'Ganztägig niedrig.', uv_max: (v, l) => `Höchstwert heute: ${v} (${l}).`,
@@ -29,7 +29,7 @@
       pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', pr_24: 'letzte 24 Std.',
       uv_protect: (a, b) => `Sonnenschutz von ${a} bis ${b} empfohlen`, uv_none: 'Kein Sonnenschutz nötig', uv_peak: (v, at) => `Höchstwert ${v} um ${at}`,
       rn_start: (at) => `Niederschlag ab ${at}`, rn_stop: (at) => `Hört gegen ${at} auf`, rn_none: (hh) => `Kein Niederschlag in den nächsten ${hh} Std.`, rn_cont: 'Hält an', rn_next: 'nächste Stunde',
-      daylen: (h, m) => `Tageslänge ${h} Std. ${m} Min.`, dusk: (at) => `Dämmerung bis ${at}`, dawn: (at) => `Dämmerung ab ${at}`, golden: (at) => `Goldene Stunde ab ${at}`,
+      daylen: (h, m) => ['Tageslänge', `${h} Std. ${m} Min.`], dusk: (at) => ['Dämmerung bis', at], dawn: (at) => ['Dämmerung ab', at], golden: (at) => ['Goldene Stunde ab', at],
       e_size: 'Größe', e_small: 'Klein (4 × 3)', e_medium: 'Mittel (8 × 3)', e_size_h: 'Mittel zeigt bei UV, Niederschlag, Luftdruck und Sonne einen Verlauf.', e_kind: 'Wert', e_sensor: 'Eigener Sensor (optional)', e_sensor_h: 'Ersetzt den Hauptwert, z. B. von deiner Wetterstation.', e_sensor2: 'Zweiter eigener Sensor (optional)', e_sensor2_h: 'Gefühlt: tatsächliche Temperatur · Feuchtigkeit: Taupunkt.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
@@ -57,7 +57,7 @@
       pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', pr_24: 'last 24 h',
       uv_protect: (a, b) => `Sun protection recommended ${a}–${b}`, uv_none: 'No sun protection needed', uv_peak: (v, at) => `Maximum ${v} at ${at}`,
       rn_start: (at) => `Precipitation from ${at}`, rn_stop: (at) => `Stopping around ${at}`, rn_none: (hh) => `No precipitation in the next ${hh} h`, rn_cont: 'Continuing', rn_next: 'next hour',
-      daylen: (h, m) => `Day length ${h} h ${m} min`, dusk: (at) => `Dusk until ${at}`, dawn: (at) => `Dawn from ${at}`, golden: (at) => `Golden hour from ${at}`,
+      daylen: (h, m) => ['Day length', `${h} h ${m} min`], dusk: (at) => ['Dusk until', at], dawn: (at) => ['Dawn from', at], golden: (at) => ['Golden hour from', at],
       e_size: 'Size', e_small: 'Small (4 × 3)', e_medium: 'Medium (8 × 3)', e_size_h: 'Medium shows a chart for UV, precipitation, pressure and sun.', e_kind: 'Value', e_sensor: 'Own sensor (optional)', e_sensor_h: 'Replaces the main value, e.g. from your weather station.', e_sensor2: 'Second own sensor (optional)', e_sensor2_h: 'Feels like: actual temperature · Humidity: dew point.', today: 'Today', days: (n) => `${n} days`, d_rain: 'Precipitation', d_wind: 'Wind', e_days: 'Number of days', e_link: 'Link with other cards', e_link_h: 'Switching between temperature, precipitation and wind applies to all linked cards on the page.', d_daily: 'Daily forecast: temperature, precipitation, wind.', d_sky: 'Animated sky as background of the whole page, matching the weather.', e_test: 'Test a condition (optional)', e_test_h: 'Always shows this condition – for trying out. Leave empty for normal use.', e_fps: 'Frames per second', e_fps_h: 'Fewer frames are easier on older tablets.', d_hourly: 'Hourly forecast: temperature, precipitation, wind.',
     },
   };
@@ -553,7 +553,8 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           if (rs) { const m = Math.round((rs[1] - rs[0]) / 6e4); parts.push(t.daylen(Math.floor(m / 60), m % 60)); }
           if (tw) parts.push(up || now > (rs ? rs[1].getTime() : 0) ? t.dusk(hhmm(h, tw[1])) : t.dawn(hhmm(h, tw[0])));
           if (gh && up) parts.push(t.golden(hhmm(h, gh[1])));
-          sub = note; note = parts.join(' · ');
+          // one value per row, label left and value right (like the average tile)
+          sub = note; note = parts.length ? `<span class="nt">${parts.map(([l, v]) => `<span>${l}</span><b>${v}</b>`).join('')}</span>` : '';
         }
       } else if (K === 'uv') {
         const v = own() ?? num(A.uv_index), st = v === null ? 0 : uvStage(v), mx = today ? num(today.uv_index) : null;
