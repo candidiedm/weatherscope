@@ -661,12 +661,15 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           // what has already fallen: 24 hourly bars (or 7 daily bars), ending now; below an outlook for the next 24 hours
           const pp = periodOf(c), bars = this._rainBars(h, c, pp, U.p);
           if (bars && bars.length) {
-            const total = bars.reduce((x, q) => x + q[1], 0), top = Math.max(conv(1, 'mm', U.p), ...bars.map((q) => q[1])), W = 100 / bars.length;
+            const total = bars.reduce((x, q) => x + q[1], 0), W = 100 / bars.length;
+            // scale on the right: grows with the wettest bar, rounded up to a plain number (5, 10, 20, 50, 100 …), at least 5 mm
+            const wet = Math.max(...bars.map((q) => q[1])), steps = U.p === 'in' ? [0.2, 0.5, 1, 2, 5, 10, 20, 50] : [5, 10, 20, 50, 100, 200, 500, 1000];
+            const top = steps.find((x) => wet <= x + 1e-9) ?? Math.ceil(wet), fsc = (x) => x.toLocaleString(L, { maximumFractionDigits: 2 });
             big = `${dec(h, total, U.p)} ${U.p}`; sub = t.last(pp.n, pp.u);
             const wdf = new Intl.DateTimeFormat(L, { weekday: 'short' });
             const daily = pp.u === 'd' && pp.n >= 4, every = Math.max(1, Math.ceil(bars.length / 5));
             const lab = (q, k) => ((bars.length - 1 - k) % every !== 0 ? '' : daily ? (pp.n <= 7 ? wdf.format(new Date(q[0])).replace('.', '') : new Date(q[0]).getDate() + '.') : pp.u === 'd' ? wdf.format(new Date(q[0])).replace('.', '') + ' ' + hhmm(h, new Date(q[0])).slice(0, 2) : hhmm(h, new Date(q[0])));
-            chart = `<div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) ? `<span class="ax" style="${k === bars.length - 1 ? 'right:0' : `left:${k * W}%`}">${lab(q, k)}</span>` : ''}`).join('')}</div>`;
+            chart = `<div class="rc"><div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) ? `<span class="ax" style="${k === bars.length - 1 ? 'right:0' : `left:${k * W}%`}">${lab(q, k)}</span>` : ''}`).join('')}</div><div class="pv"><b>${fsc(top)}</b><span style="top:0">${fsc(top)}</span><span style="top:50%">${fsc(top / 2)}</span><span style="top:100%">0</span></div></div>`;
           }
           if (hourly.length) {
             const nx = hourly.filter((x) => { const tt = new Date(x.datetime).getTime(); return tt > now && tt <= now + 864e5; }).reduce((x, q) => x + (num(q.precipitation) || 0), 0);
@@ -739,7 +742,7 @@ ${picCss}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
 .md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:14px;align-items:stretch}
 .ml{display:flex;flex-direction:column;min-width:0}.mr{position:relative;min-width:0;padding-top:6px}
-.ch{position:absolute;inset:6px 0 16px 0}.cb{position:absolute;top:0;bottom:0;display:flex;justify-content:center}
+.ch{position:absolute;inset:6px 0 16px 0}.rc{position:absolute;inset:6px 0 0 0;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 16px;column-gap:8px;font-size:12px;line-height:12px;color:rgba(255,255,255,.7)}.rc .ch{position:relative;inset:auto}.cb{position:absolute;top:0;bottom:0;display:flex;justify-content:center}
 .cb i{position:absolute;bottom:0;left:15%;right:15%;border-radius:3px 3px 1px 1px;display:block}
 .cb.slot em{position:absolute;top:0;bottom:0;left:15%;right:15%;border-radius:3px;background:rgba(0,0,0,.18)}
 .ch .ax{position:absolute;bottom:-16px;font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap;transform:translateX(0)}
