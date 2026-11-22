@@ -23,7 +23,7 @@
       sunrise_l: 'Sonnenaufgang', sunset_l: 'Sonnenuntergang', actual: (v) => `Tatsächlich: ${v}`, f_colder: 'Fühlt sich kälter an als die tatsächliche Temperatur.', f_colder_wind: 'Fühlt sich durch den Wind kälter an.',
       f_warmer: 'Fühlt sich wärmer an als die tatsächliche Temperatur.', f_warmer_hum: 'Fühlt sich durch die Luftfeuchtigkeit wärmer an.', f_same: 'Ähnlich wie die tatsächliche Temperatur.',
       uv0: 'Niedrig', uv1: 'Mäßig', uv2: 'Hoch', uv3: 'Sehr hoch', uv4: 'Extrem', uv_low_day: 'Ganztägig niedrig.', uv_max: (v, l) => `Höchstwert heute: ${v} (${l}).`,
-      n_above: 'über dem durchschnittlichen Tageshöchstwert', n_below: 'unter dem durchschnittlichen Tageshöchstwert', n_same: 'entspricht dem durchschnittlichen Tageshöchstwert', n_note: (a, b) => `Heute H: ${a} · Durchschnitt H: ${b}`, n_none: 'Klimawerte werden geladen …',
+      n_above: 'über dem durchschnittlichen Tageshöchstwert', n_below: 'unter dem durchschnittlichen Tageshöchstwert', n_same: 'entspricht dem durchschnittlichen Tageshöchstwert', n_note: (a, b) => `<span class="nt"><span>Heute</span><b>H: ${a}</b><span>Durchschnitt</span><b>H: ${b}</b></span>`, n_none: 'Klimawerte werden geladen …',
       p_today: 'Heute', p_tomorrow: (v) => `Morgen ${v} erwartet.`, p_tomorrow0: 'Morgen kein Niederschlag erwartet.',
       v0: 'Nebel.', v1: 'Dunst.', v2: 'Leicht dunstig.', v3: 'Gute Sicht.', v4: 'Klare Sicht.', h_dew: (v) => `Der Taupunkt liegt bei ${v}.`,
       pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', pr_24: 'letzte 24 Std.',
@@ -51,7 +51,7 @@
       sunrise_l: 'Sunrise', sunset_l: 'Sunset', actual: (v) => `Actual: ${v}`, f_colder: 'Feels colder than the actual temperature.', f_colder_wind: 'Wind makes it feel colder.',
       f_warmer: 'Feels warmer than the actual temperature.', f_warmer_hum: 'Humidity makes it feel warmer.', f_same: 'Similar to the actual temperature.',
       uv0: 'Low', uv1: 'Moderate', uv2: 'High', uv3: 'Very high', uv4: 'Extreme', uv_low_day: 'Low for the rest of the day.', uv_max: (v, l) => `Today's maximum: ${v} (${l}).`,
-      n_above: 'above the average daily high', n_below: 'below the average daily high', n_same: 'equal to the average daily high', n_note: (a, b) => `Today H: ${a} · Average H: ${b}`, n_none: 'Loading climate normals …',
+      n_above: 'above the average daily high', n_below: 'below the average daily high', n_same: 'equal to the average daily high', n_note: (a, b) => `<span class="nt"><span>Today</span><b>H: ${a}</b><span>Average</span><b>H: ${b}</b></span>`, n_none: 'Loading climate normals …',
       p_today: 'Today', p_tomorrow: (v) => `${v} expected tomorrow.`, p_tomorrow0: 'None expected tomorrow.',
       v0: 'Fog.', v1: 'Haze.', v2: 'Slightly hazy.', v3: 'Good visibility.', v4: 'Clear view.', h_dew: (v) => `The dew point is ${v} right now.`,
       pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', pr_24: 'last 24 h',
@@ -89,6 +89,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
 .big{font-size:30px;font-weight:400;line-height:1.15}
 .sub{font-size:15px;font-weight:500}
 .note{font-size:12px;color:rgba(255,255,255,.85);margin-top:auto}
+.nt{display:grid;grid-template-columns:1fr auto;column-gap:8px}.nt span{color:rgba(255,255,255,.6)}.nt b{font-weight:600;color:#fff;text-align:right}
 .dim{color:rgba(255,255,255,.7);font-size:13px}
 `;
 
