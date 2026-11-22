@@ -632,17 +632,28 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         note = mx === null ? '' : mx < 3 ? t.uv_low_day : t.uv_max(Math.round(mx), t[`uv${uvStage(mx)}`]);
         if (med) {
           const d0 = new Date(); d0.setHours(0, 0, 0, 0);
-          let hs = hourly.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= d0.getTime() && q < d0.getTime() + 864e5 && num(x.uv_index) !== null; });
-          const on = hs.filter((x) => num(x.uv_index) >= 0.5);
-          if (on.length) { const a = new Date(on[0].datetime).getTime() - 36e5, b = new Date(on[on.length - 1].datetime).getTime() + 36e5; hs = hs.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= a && q <= b; }); }
+          const hs = hourly.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= d0.getTime() && q < d0.getTime() + 864e5 && num(x.uv_index) !== null; });
+          // one column per hour from the hour of sunrise to the hour of sunset (recomputed daily for the location);
+          // an hour outside with UV above 0 from the service is added, polar night shows no columns
+          const rs = sunTimes(new Date(d0.getTime() + 432e5), h.config.latitude, h.config.longitude, -0.833), hr = (q) => Math.floor(q / 36e5) * 36e5;
+          const lit = hs.filter((x) => num(x.uv_index) > 0).map((x) => hr(new Date(x.datetime).getTime()));
+          let a = rs ? hr(rs[0].getTime()) : null, b = rs ? hr(rs[1].getTime()) : null;
+          if (lit.length) { a = Math.min(a ?? Infinity, ...lit); b = Math.max(b ?? -Infinity, ...lit); }
+          if (!rs && !lit.length && hs.length && num(A.uv_index) > 0) { a = d0.getTime(); b = d0.getTime() + 23 * 36e5; }
+          if (a !== null && b !== null && b >= a) {
+            const n = Math.round((b - a) / 36e5) + 1, W = 100 / n, byH = new Map(hs.map((x) => [hr(new Date(x.datetime).getTime()), num(x.uv_index)]));
+            const wmax = Math.max(0, ...byH.values()), LIM = [3, 6, 8, 11], top = LIM.find((x) => wmax <= x) ?? Math.ceil(wmax);
+            const marks = [0, ...LIM.filter((x) => x < top), top];
+            let cols = '', axis = '';
+            for (let k = 0; k < n; k++) {
+              const q = a + k * 36e5, u = byH.get(q), hh = new Date(q).getHours();
+              cols += `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em>${u !== undefined && u > 0 ? `<i style="height:${Math.max(4, Math.min(100, (u / top) * 100))}%;background:${UVC[uvStage(u)]}"></i>` : ''}</div>`;
+              if (hh % 3 === 0) axis += `<span class="ax" style="left:${(k + 0.5) * W}%;transform:translateX(-50%)">${hh}</span>`;
+            }
+            const nowX = ((now - a) / (n * 36e5)) * 100;
+            chart = `<div class="rc"><div class="ch">${cols}${axis}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div><div class="pv"><b>${top}</b>${marks.map((m) => `<span style="top:${100 - (m / top) * 100}%">${m}</span>`).join('')}</div></div>`;
+          }
           if (hs.length) {
-            const rs = sunTimes(new Date(d0.getTime() + 432e5), h.config.latitude, h.config.longitude, -0.833);
-            const a = rs ? Math.floor(rs[0].getTime() / 36e5) * 36e5 - 36e5 : new Date(hs[0].datetime).getTime(), b = rs ? Math.ceil(rs[1].getTime() / 36e5) * 36e5 + 36e5 : new Date(hs[hs.length - 1].datetime).getTime() + 36e5;
-            const span = b - a, W = (36e5 / span) * 100, top = Math.max(8, ...hs.map((x) => num(x.uv_index)));
-            let axis = ''; for (let q = a; q <= b; q += 36e5) { const hh = new Date(q).getHours(); if (hh % 3 === 0) axis += `<span class="ax" style="left:${((q - a) / span) * 100}%">${hh}</span>`; }
-            const bars = hs.filter((x) => { const q = new Date(x.datetime).getTime(); return q >= a && q < b; }).map((x) => { const u = num(x.uv_index), q = new Date(x.datetime).getTime(); return `<div class="cb" style="left:${((q - a) / span) * 100}%;width:${W}%"><i style="height:${Math.max(3, (u / top) * 100)}%;background:${UVC[uvStage(u)]}"></i></div>`; }).join('');
-            const nowX = ((now - a) / span) * 100;
-            chart = `<div class="ch"><div class="base"></div>${bars}${axis}${nowX >= 0 && nowX <= 100 ? `<b class="nw" style="left:${nowX}%"></b>` : ''}</div>`;
             const pr = hs.filter((x) => num(x.uv_index) >= 3), pk = hs.reduce((p, q) => (num(q.uv_index) > num(p.uv_index) ? q : p));
             note = pr.length ? `${t.uv_protect(hhmm(h, new Date(pr[0].datetime)), hhmm(h, new Date(new Date(pr[pr.length - 1].datetime).getTime() + 36e5)))} · ${t.uv_peak(Math.round(num(pk.uv_index)), hhmm(h, new Date(pk.datetime)))}` : t.uv_none;
           }
@@ -747,7 +758,7 @@ ${picCss}
 .cb.slot em{position:absolute;top:0;bottom:0;left:15%;right:15%;border-radius:3px;background:rgba(0,0,0,.18)}
 .ch .ax{position:absolute;bottom:-16px;font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap;transform:translateX(0)}
 .ch .base{position:absolute;left:0;right:0;bottom:0;border-top:1px solid rgba(255,255,255,.25)}
-.nw{position:absolute;top:-4px;bottom:0;border-left:1.5px dashed rgba(255,255,255,.85)}
+.nw{position:absolute;top:0;bottom:0;border-left:1.5px dashed rgba(255,255,255,.85)}
 .pc{position:absolute;inset:6px 0 0 0;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 16px;column-gap:8px;font-size:12px;line-height:12px;color:rgba(255,255,255,.7)}
 .pp{position:relative;min-height:0}.pp svg{position:absolute;inset:0;width:100%;height:100%;display:block}
 .pv{position:relative;min-height:0;white-space:nowrap}.pv b{display:block;height:0;overflow:hidden;font-weight:400}.pv span{position:absolute;right:0;transform:translateY(-50%)}
