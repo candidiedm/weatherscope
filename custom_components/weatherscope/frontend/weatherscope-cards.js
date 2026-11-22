@@ -713,9 +713,15 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           if (P && P.length > 1) {
             const lo = Math.min(...P.map((q) => q[1])), hi = Math.max(...P.map((q) => q[1])), pad = Math.max(1, (hi - lo) * 0.15);
             const X = (q) => Math.max(0, ((q - t0) / pp.ms) * 200), Y = (val) => 56 - ((val - (lo - pad)) / (hi - lo + 2 * pad)) * 52;
-            const line = P.map((q, k) => `${k ? 'L' : 'M'}${X(q[0]).toFixed(1)} ${Y(q[1]).toFixed(1)}`).join(' ') + (v !== null ? ` L200 ${Y(v).toFixed(1)}` : '');
+            // gaps in the data (e.g. statistics only since a few days) stay gaps instead of a straight connecting line
+            const step = P.length > 1 ? Math.min(...P.slice(1).map((q, k) => q[0] - P[k][0]).filter((x) => x > 0)) : 36e5, segs = [[]];
+            P.forEach((q, k) => { if (k && q[0] - P[k - 1][0] > 2.5 * step) segs.push([]); segs[segs.length - 1].push(q); });
+            if (v !== null) segs[segs.length - 1].push([now, v]);
+            const pts = (sg) => sg.map((q, k) => `${k ? 'L' : 'M'}${X(q[0]).toFixed(1)} ${Y(q[1]).toFixed(1)}`).join(' ');
+            const area = segs.filter((sg) => sg.length > 1).map((sg) => `${pts(sg)} L${X(sg[sg.length - 1][0]).toFixed(1)} 60 L${X(sg[0][0]).toFixed(1)} 60 Z`).join(' ');
+            const line = segs.filter((sg) => sg.length > 1).map(pts).join(' ');
             const fmtp = (x) => (pu === 'inHg' ? x.toFixed(2) : Math.round(x).toLocaleString(L));
-            chart = `<div class="pc"><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="${line} L200 60 L0 60 Z" fill="rgba(127,212,255,.18)"/><path d="${line}" fill="none" stroke="#7fd4ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><span class="hi">${fmtp(hi)}</span><span class="lo">${fmtp(lo)}</span><span class="ax">${t.last(pp.n, pp.u)}</span></div>`;
+            chart = `<div class="pc"><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="${area}" fill="rgba(127,212,255,.18)"/><path d="${line}" fill="none" stroke="#7fd4ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><span class="hi">${fmtp(hi)}</span><span class="lo">${fmtp(lo)}</span><span class="ax">${t.last(pp.n, pp.u)}</span></div>`;
           }
         }
       }
