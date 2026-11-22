@@ -28,7 +28,7 @@
       n_above: 'über dem durchschnittlichen Tageshöchstwert', n_below: 'unter dem durchschnittlichen Tageshöchstwert', n_same: 'entspricht dem durchschnittlichen Tageshöchstwert', n_note: (a, b) => `<span class="nt"><span>Heute</span><b>H: ${a}</b><span>Durchschnitt</span><b>H: ${b}</b></span>`, n_none: 'Klimawerte werden geladen …',
       p_today: 'Heute', p_24h: 'letzte 24 Std.', p_7d: 'letzte 7 Tage', p_next0: 'In den nächsten 24 Std. kein Niederschlag erwartet.', p_next_lt: (v) => `< ${v} in den nächsten 24 Std. erwartet.`, p_next: (v) => `${v} in den nächsten 24 Std. erwartet.`, p_tomorrow: (v) => `Morgen ${v} erwartet.`, p_tomorrow0: 'Morgen kein Niederschlag erwartet.',
       v0: 'Nebel.', v1: 'Dunst.', v2: 'Leicht dunstig.', v3: 'Gute Sicht.', v4: 'Klare Sicht.', h_dew: (v) => `Der Taupunkt liegt bei ${v}.`,
-      pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', pr_24: 'letzte 24 Std.', last: (n, u) => (n === 1 ? (u === 'd' ? 'letzter Tag' : 'letzte Stunde') : `letzte ${n} ${u === 'd' ? 'Tage' : 'Std.'}`), e_period_unit: 'Einheit', u_h: 'Stunden', u_d: 'Tage',
+      pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', pr_24: 'letzte 24 Std.', last: (n, u) => (n === 1 ? (u === 'd' ? 'letzter Tag' : 'letzte Stunde') : `letzte ${n} ${u === 'd' ? 'Tage' : 'Std.'}`), ago: (n, u) => `vor ${n} ${u === 'd' ? (n === 1 ? 'Tag' : 'Tagen') : 'Std.'}`, ax_now: 'jetzt', e_period_unit: 'Einheit', u_h: 'Stunden', u_d: 'Tage',
       uv_protect: (a, b) => `Sonnenschutz von ${a} bis ${b} empfohlen`, uv_none: 'Kein Sonnenschutz nötig', uv_peak: (v, at) => `Höchstwert ${v} um ${at}`,
       rn_start: (at) => `Niederschlag ab ${at}`, rn_stop: (at) => `Hört gegen ${at} auf`, rn_none: (hh) => `Kein Niederschlag in den nächsten ${hh} Std.`, rn_cont: 'Hält an', rn_next: 'nächste Stunde',
       daylen: (h, m) => ['Tageslänge', `${h} Std. ${m} Min.`], dusk: (at) => ['Dämmerung bis', at], dawn: (at) => ['Dämmerung ab', at], golden: (at) => ['Goldene Stunde ab', at],
@@ -58,7 +58,7 @@
       n_above: 'above the average daily high', n_below: 'below the average daily high', n_same: 'equal to the average daily high', n_note: (a, b) => `<span class="nt"><span>Today</span><b>H: ${a}</b><span>Average</span><b>H: ${b}</b></span>`, n_none: 'Loading climate normals …',
       p_today: 'Today', p_24h: 'last 24 h', p_7d: 'last 7 days', p_next0: 'None expected in the next 24 h.', p_next_lt: (v) => `< ${v} expected in the next 24 h.`, p_next: (v) => `${v} expected in the next 24 h.`, p_tomorrow: (v) => `${v} expected tomorrow.`, p_tomorrow0: 'None expected tomorrow.',
       v0: 'Fog.', v1: 'Haze.', v2: 'Slightly hazy.', v3: 'Good visibility.', v4: 'Clear view.', h_dew: (v) => `The dew point is ${v} right now.`,
-      pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', pr_24: 'last 24 h', last: (n, u) => (n === 1 ? (u === 'd' ? 'last day' : 'last hour') : `last ${n} ${u === 'd' ? 'days' : 'h'}`), e_period_unit: 'Unit', u_h: 'hours', u_d: 'days',
+      pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', pr_24: 'last 24 h', last: (n, u) => (n === 1 ? (u === 'd' ? 'last day' : 'last hour') : `last ${n} ${u === 'd' ? 'days' : 'h'}`), ago: (n, u) => `${n} ${u === 'd' ? (n === 1 ? 'day' : 'days') : 'h'} ago`, ax_now: 'now', e_period_unit: 'Unit', u_h: 'hours', u_d: 'days',
       uv_protect: (a, b) => `Sun protection recommended ${a}–${b}`, uv_none: 'No sun protection needed', uv_peak: (v, at) => `Maximum ${v} at ${at}`,
       rn_start: (at) => `Precipitation from ${at}`, rn_stop: (at) => `Stopping around ${at}`, rn_none: (hh) => `No precipitation in the next ${hh} h`, rn_cont: 'Continuing', rn_next: 'next hour',
       daylen: (h, m) => ['Day length', `${h} h ${m} min`], dusk: (at) => ['Dusk until', at], dawn: (at) => ['Dawn from', at], golden: (at) => ['Golden hour from', at],
@@ -666,7 +666,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
             const wdf = new Intl.DateTimeFormat(L, { weekday: 'short' });
             const daily = pp.u === 'd' && pp.n >= 4, every = Math.max(1, Math.ceil(bars.length / 5));
             const lab = (q, k) => ((bars.length - 1 - k) % every !== 0 ? '' : daily ? (pp.n <= 7 ? wdf.format(new Date(q[0])).replace('.', '') : new Date(q[0]).getDate() + '.') : pp.u === 'd' ? wdf.format(new Date(q[0])).replace('.', '') + ' ' + hhmm(h, new Date(q[0])).slice(0, 2) : hhmm(h, new Date(q[0])));
-            chart = `<div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) ? `<span class="ax" style="left:${k * W}%">${lab(q, k)}</span>` : ''}`).join('')}</div>`;
+            chart = `<div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) ? `<span class="ax" style="${k === bars.length - 1 ? 'right:0' : `left:${k * W}%`}">${lab(q, k)}</span>` : ''}`).join('')}</div>`;
           }
           if (hourly.length) {
             const nx = hourly.filter((x) => { const tt = new Date(x.datetime).getTime(); return tt > now && tt <= now + 864e5; }).reduce((x, q) => x + (num(q.precipitation) || 0), 0);
@@ -711,8 +711,10 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
             P = [...slots.entries()].sort((x, y) => x[0] - y[0]).map(([k, a]) => [k * slot + slot / 2, a[0] / a[1]]);
           }
           if (P && P.length > 1) {
-            const lo = Math.min(...P.map((q) => q[1])), hi = Math.max(...P.map((q) => q[1])), pad = Math.max(1, (hi - lo) * 0.15);
-            const X = (q) => Math.max(0, ((q - t0) / pp.ms) * 200), Y = (val) => 56 - ((val - (lo - pad)) / (hi - lo + 2 * pad)) * 52;
+            const lo0 = Math.min(...P.map((q) => q[1]), v ?? Infinity), hi0 = Math.max(...P.map((q) => q[1]), v ?? -Infinity), mr = pu === 'inHg' ? 0.06 : 2, ex = Math.max(0, (mr - (hi0 - lo0)) / 2);
+            const lo = lo0 - ex, hi = hi0 + ex;
+            // highest value on the top line, lowest on the bottom line: the numbers in their own column sit exactly at that height
+            const X = (q) => Math.max(0, ((q - t0) / pp.ms) * 200), Y = (val) => 56 - ((val - lo) / (hi - lo)) * 52;
             // gaps in the data (e.g. statistics only since a few days) stay gaps instead of a straight connecting line
             const step = P.length > 1 ? Math.min(...P.slice(1).map((q, k) => q[0] - P[k][0]).filter((x) => x > 0)) : 36e5, segs = [[]];
             P.forEach((q, k) => { if (k && q[0] - P[k - 1][0] > 2.5 * step) segs.push([]); segs[segs.length - 1].push(q); });
@@ -721,7 +723,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
             const area = segs.filter((sg) => sg.length > 1).map((sg) => `${pts(sg)} L${X(sg[sg.length - 1][0]).toFixed(1)} 60 L${X(sg[0][0]).toFixed(1)} 60 Z`).join(' ');
             const line = segs.filter((sg) => sg.length > 1).map(pts).join(' ');
             const fmtp = (x) => (pu === 'inHg' ? x.toFixed(2) : Math.round(x).toLocaleString(L));
-            chart = `<div class="pc"><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="${area}" fill="rgba(127,212,255,.18)"/><path d="${line}" fill="none" stroke="#7fd4ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><span class="hi">${fmtp(hi)}</span><span class="lo">${fmtp(lo)}</span><span class="ax">${t.last(pp.n, pp.u)}</span></div>`;
+            chart = `<div class="pc"><div class="pp"><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="${area}" fill="rgba(127,212,255,.18)"/><path d="${line}" fill="none" stroke="#7fd4ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div><div class="pv"><b>${fmtp(hi).length >= fmtp(lo).length ? fmtp(hi) : fmtp(lo)}</b><span style="top:6.67%">${fmtp(hi)}</span><span style="top:93.33%">${fmtp(lo)}</span></div><div class="pa"><span>${t.ago(pp.n, pp.u)}</span><span>${t.ax_now}</span></div></div>`;
           }
         }
       }
@@ -743,7 +745,10 @@ ${picCss}
 .ch .ax{position:absolute;bottom:-16px;font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap;transform:translateX(0)}
 .ch .base{position:absolute;left:0;right:0;bottom:0;border-top:1px solid rgba(255,255,255,.25)}
 .nw{position:absolute;top:-4px;bottom:0;border-left:1.5px dashed rgba(255,255,255,.85)}
-.pc{position:absolute;inset:6px 0 4px 0}.pc svg{width:100%;height:100%;display:block}.pc span{position:absolute;right:0;font-size:12px;color:rgba(255,255,255,.75)}.pc .hi{top:0}.pc .lo{bottom:16px}.pc .ax{left:0;bottom:-2px;right:auto}
+.pc{position:absolute;inset:6px 0 0 0;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 16px;column-gap:8px;font-size:12px;line-height:12px;color:rgba(255,255,255,.7)}
+.pp{position:relative;min-height:0}.pp svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pv{position:relative;min-height:0;white-space:nowrap}.pv b{display:block;height:0;overflow:hidden;font-weight:400}.pv span{position:absolute;right:0;transform:translateY(-50%)}
+.pa{grid-column:1;display:flex;justify-content:space-between;align-items:flex-end;white-space:nowrap}
 .svw.big{height:100%;min-height:60px;margin-top:0}
 </style>
 ${med && chart
