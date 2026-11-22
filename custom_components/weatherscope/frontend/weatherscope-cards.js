@@ -650,7 +650,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .svw{position:relative;width:100%;flex:1;min-height:36px;margin:6px 0 4px}.svw svg{width:100%;height:100%;display:block}
 .sd{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 0 6px 3px rgba(255,255,255,.5)}.sd.dn{background:rgba(0,0,0,.3);box-shadow:none}
 .gv{width:100%;flex:1;min-height:0;max-height:118px;margin-top:2px;display:block}
-.ti{display:inline-flex;align-items:center;gap:4px}.ti ha-icon{--mdc-icon-size:14px;display:flex}
+.ti{display:flex;align-items:center;gap:4px;height:16px;line-height:16px}.ti ha-icon{--mdc-icon-size:14px;display:flex}
 ${picCss}
 .uvb{position:relative;height:6px;margin-top:10px;border-radius:3px}.uvb b{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid rgba(20,40,80,.6);transform:translateX(-50%)}
 .note{line-height:1.3}.note ha-icon{--mdc-icon-size:13px;vertical-align:-2px}
