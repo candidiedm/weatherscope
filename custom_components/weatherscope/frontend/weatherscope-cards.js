@@ -636,12 +636,15 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
           // one column per hour from the hour of sunrise to the hour of sunset (recomputed daily for the location);
           // an hour outside with UV above 0 from the service is added, polar night shows no columns
           const rs = sunTimes(new Date(d0.getTime() + 432e5), h.config.latitude, h.config.longitude, -0.833), hr = (q) => Math.floor(q / 36e5) * 36e5;
-          const lit = hs.filter((x) => num(x.uv_index) > 0).map((x) => hr(new Date(x.datetime).getTime()));
+          const past0 = c.sensor ? this._stats(h, c.sensor, d0.getTime(), 'hour', 'mean') : null;
+          const lit = [...hs.filter((x) => num(x.uv_index) > 0).map((x) => hr(new Date(x.datetime).getTime())), ...(past0 || []).filter((q) => q[1] > 0).map((q) => hr(q[0]))];
           let a = rs ? hr(rs[0].getTime()) : null, b = rs ? hr(rs[1].getTime()) : null;
           if (lit.length) { a = Math.min(a ?? Infinity, ...lit); b = Math.max(b ?? -Infinity, ...lit); }
           if (!rs && !lit.length && hs.length && num(A.uv_index) > 0) { a = d0.getTime(); b = d0.getTime() + 23 * 36e5; }
           if (a !== null && b !== null && b >= a) {
             const n = Math.round((b - a) / 36e5) + 1, W = 100 / n, byH = new Map(hs.map((x) => [hr(new Date(x.datetime).getTime()), num(x.uv_index)]));
+            // hours already past: hourly mean of the own UV sensor (the service only delivers from now on)
+            if (past0) past0.forEach(([q, u]) => { if (q < hr(now) && q >= a && q <= b) byH.set(hr(q), u); });
             const wmax = Math.max(0, ...byH.values()), LIM = [3, 6, 8, 11], top = LIM.find((x) => wmax <= x) ?? Math.ceil(wmax);
             const marks = [0, ...LIM.filter((x) => x < top), top];
             let cols = '', axis = '';
