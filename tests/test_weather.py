@@ -105,6 +105,8 @@ async def test_weather_entities(hass: HomeAssistant, aioclient_mock: AiohttpClie
     assert hass.states.get("sensor.weatherscope_moon_phase").state in astro.PHASES
     now_c = hass.states.get("sensor.weatherscope_precipitation_nowcast")
     assert len(now_c.attributes["steps"]) == 12
+    p24 = hass.states.get("sensor.weatherscope_precipitation_24h")
+    assert p24 is not None and "hours" in p24.attributes
     normal = hass.states.get("sensor.weatherscope_normal_high")
     assert len(normal.attributes["months"]) == 12
     assert (tmp_path / "weatherscope" / entry.entry_id / "normals.json").exists()

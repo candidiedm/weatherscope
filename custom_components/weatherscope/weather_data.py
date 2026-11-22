@@ -141,6 +141,7 @@ class WeatherScopeData(DataUpdateCoordinator[dict[str, Any]]):
                     "daily": DAILY,
                     "forecast_days": 10,
                     "forecast_hours": 240,
+                    "past_hours": 24,
                     "minutely_15": "precipitation",
                     "forecast_minutely_15": 12,
                 },

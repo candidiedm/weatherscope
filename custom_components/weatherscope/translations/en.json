@@ -131,6 +131,9 @@
       },
       "precipitation_nowcast": {
         "name": "Precipitation next hour"
+      },
+      "precipitation_24h": {
+        "name": "Precipitation last 24 h"
       }
     }
   }

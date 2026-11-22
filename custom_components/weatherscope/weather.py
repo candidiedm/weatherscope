@@ -10,6 +10,7 @@ from homeassistant.const import UnitOfLength, UnitOfPrecipitationDepth, UnitOfPr
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import WeatherScopeConfigEntry
 from .sensor import device_info
@@ -126,7 +127,12 @@ class WeatherScopeWeather(CoordinatorEntity[WeatherScopeData], WeatherEntity):
     async def async_forecast_hourly(self) -> list[Forecast] | None:
         h = (self.coordinator.data or {}).get("hourly", {})
         out: list[Forecast] = []
+        # the data also holds the past 24 hours (for the precipitation tile): start one hour before the current reading
+        cur = ((self.coordinator.data or {}).get("current") or {}).get("time")
+        start = (cur if cur is not None else dt_util.utcnow().timestamp()) - 3600
         for i, t in enumerate(h.get("time", [])):
+            if t is None or t < start:
+                continue
             day = _at(h.get("is_day"), i)
             out.append(
                 Forecast(

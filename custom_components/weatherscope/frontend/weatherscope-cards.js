@@ -5,7 +5,8 @@
   // ---------------------------------------------------------------- shared
   const T = {
     de: {
-      n_page: 'Wetterseite', d_page: 'Ganze Wetterseite: ordnet alle Kacheln selbst nach Wichtigkeit an.', e_feels_like: 'Gefühlte Temperatur', e_humidity: 'Luftfeuchtigkeit', e_dewpoint: 'Taupunkt', e_pressure: 'Luftdruck', e_uv: 'UV-Index', e_rain_today: 'Niederschlag heute', e_map: 'Wetterkarte (WeatherScope-Sensor)', e_sensors: 'Eigene Sensoren (ersetzen die Werte des Wetterdienstes)',
+      e_total: 'Regen-Zähler (Niederschlag)', e_total_h: 'Nur Niederschlag: ein Zähler für den Gesamtregen, für die Balken der letzten 24 Std. / 7 Tage.', e_period: 'Zeitraum (Niederschlag mittel)',
+      n_page: 'Wetterseite', d_page: 'Ganze Wetterseite: ordnet alle Kacheln selbst nach Wichtigkeit an.', e_feels_like: 'Gefühlte Temperatur', e_humidity: 'Luftfeuchtigkeit', e_dewpoint: 'Taupunkt', e_pressure: 'Luftdruck', e_uv: 'UV-Index', e_rain_today: 'Niederschlag heute', e_rain_total: 'Regen-Zähler gesamt', e_map: 'Wetterkarte (WeatherScope-Sensor)', e_sensors: 'Eigene Sensoren (ersetzen die Werte des Wetterdienstes)',
       hi: 'H', lo: 'T', home: 'Zuhause', now: 'Jetzt', hourly: 'Stündlich', sunrise: 'Sonnenaufgang', sunset: 'Sonnenuntergang',
       m_temp: 'Temperatur ({u})', m_rain: 'Niederschlag ({u})', m_wind: 'Wind und Böen ({u})', max: 'max', loading: 'Vorhersage wird geladen …',
       e_entity: 'Wetter-Entität', e_temperature: 'Eigener Temperatursensor (optional)', e_name: 'Ortsname (optional)', e_background: 'Hintergrund',
@@ -25,7 +26,7 @@
       f_warmer: 'Fühlt sich wärmer an als die tatsächliche Temperatur.', f_warmer_hum: 'Fühlt sich durch die Luftfeuchtigkeit wärmer an.', f_same: 'Ähnlich wie die tatsächliche Temperatur.',
       uv0: 'Niedrig', uv1: 'Mäßig', uv2: 'Hoch', uv3: 'Sehr hoch', uv4: 'Extrem', uv_low_day: 'Ganztägig niedrig.', uv_max: (v, l) => `Höchstwert heute: ${v} (${l}).`,
       n_above: 'über dem durchschnittlichen Tageshöchstwert', n_below: 'unter dem durchschnittlichen Tageshöchstwert', n_same: 'entspricht dem durchschnittlichen Tageshöchstwert', n_note: (a, b) => `<span class="nt"><span>Heute</span><b>H: ${a}</b><span>Durchschnitt</span><b>H: ${b}</b></span>`, n_none: 'Klimawerte werden geladen …',
-      p_today: 'Heute', p_tomorrow: (v) => `Morgen ${v} erwartet.`, p_tomorrow0: 'Morgen kein Niederschlag erwartet.',
+      p_today: 'Heute', p_24h: 'letzte 24 Std.', p_7d: 'letzte 7 Tage', p_next0: 'In den nächsten 24 Std. kein Niederschlag erwartet.', p_next_lt: (v) => `< ${v} in den nächsten 24 Std. erwartet.`, p_next: (v) => `${v} in den nächsten 24 Std. erwartet.`, p_tomorrow: (v) => `Morgen ${v} erwartet.`, p_tomorrow0: 'Morgen kein Niederschlag erwartet.',
       v0: 'Nebel.', v1: 'Dunst.', v2: 'Leicht dunstig.', v3: 'Gute Sicht.', v4: 'Klare Sicht.', h_dew: (v) => `Der Taupunkt liegt bei ${v}.`,
       pr_up: 'steigend', pr_down: 'fallend', pr_same: 'gleichbleibend', pr_24: 'letzte 24 Std.',
       uv_protect: (a, b) => `Sonnenschutz von ${a} bis ${b} empfohlen`, uv_none: 'Kein Sonnenschutz nötig', uv_peak: (v, at) => `Höchstwert ${v} um ${at}`,
@@ -34,7 +35,8 @@
       e_size: 'Größe', e_small: 'Klein (4 × 3)', e_medium: 'Mittel (8 × 3)', e_size_h: 'Mittel zeigt bei UV, Niederschlag, Luftdruck und Sonne einen Verlauf.', e_kind: 'Wert', e_sensor: 'Eigener Sensor (optional)', e_sensor_h: 'Ersetzt den Hauptwert, z. B. von deiner Wetterstation.', e_sensor2: 'Zweiter eigener Sensor (optional)', e_sensor2_h: 'Gefühlt: tatsächliche Temperatur · Feuchtigkeit: Taupunkt.', today: 'Heute', days: (n) => `${n} Tage`, d_rain: 'Niederschlag', d_wind: 'Wind', e_days: 'Anzahl der Tage', e_link: 'Mit anderen Kacheln koppeln', e_link_h: 'Umschalten zwischen Temperatur, Niederschlag und Wind wirkt auf alle gekoppelten Kacheln der Seite.', d_daily: 'Tagesvorhersage: Temperatur, Niederschlag, Wind.', d_sky: 'Animierter Himmel als Hintergrund der ganzen Seite, passend zur Wetterlage.', e_test: 'Wetterlage testen (optional)', e_test_h: 'Zeigt dauerhaft diese Wetterlage – zum Ausprobieren. Für den Betrieb leer lassen.', e_fps: 'Bilder pro Sekunde', e_fps_h: 'Weniger Bilder schonen ältere Tablets.', d_hourly: 'Stündliche Vorhersage: Temperatur, Niederschlag, Wind.',
     },
     en: {
-      n_page: 'Weather page', d_page: 'Whole weather page: arranges all tiles by importance on its own.', e_feels_like: 'Feels-like temperature', e_humidity: 'Humidity', e_dewpoint: 'Dew point', e_pressure: 'Pressure', e_uv: 'UV index', e_rain_today: 'Precipitation today', e_map: 'Weather map (WeatherScope sensor)', e_sensors: 'Own sensors (replace the values of the weather service)',
+      e_total: 'Rain counter (precipitation)', e_total_h: 'Precipitation only: a total-rain counter, for the bars of the last 24 h / 7 days.', e_period: 'Period (precipitation, medium)',
+      n_page: 'Weather page', d_page: 'Whole weather page: arranges all tiles by importance on its own.', e_feels_like: 'Feels-like temperature', e_humidity: 'Humidity', e_dewpoint: 'Dew point', e_pressure: 'Pressure', e_uv: 'UV index', e_rain_today: 'Precipitation today', e_rain_total: 'Total rain counter', e_map: 'Weather map (WeatherScope sensor)', e_sensors: 'Own sensors (replace the values of the weather service)',
       hi: 'H', lo: 'L', home: 'Home', now: 'Now', hourly: 'Hourly', sunrise: 'Sunrise', sunset: 'Sunset',
       m_temp: 'Temperature ({u})', m_rain: 'Precipitation ({u})', m_wind: 'Wind and gusts ({u})', max: 'max', loading: 'Loading forecast …',
       e_entity: 'Weather entity', e_temperature: 'Own temperature sensor (optional)', e_name: 'Place name (optional)', e_background: 'Background',
@@ -54,7 +56,7 @@
       f_warmer: 'Feels warmer than the actual temperature.', f_warmer_hum: 'Humidity makes it feel warmer.', f_same: 'Similar to the actual temperature.',
       uv0: 'Low', uv1: 'Moderate', uv2: 'High', uv3: 'Very high', uv4: 'Extreme', uv_low_day: 'Low for the rest of the day.', uv_max: (v, l) => `Today's maximum: ${v} (${l}).`,
       n_above: 'above the average daily high', n_below: 'below the average daily high', n_same: 'equal to the average daily high', n_note: (a, b) => `<span class="nt"><span>Today</span><b>H: ${a}</b><span>Average</span><b>H: ${b}</b></span>`, n_none: 'Loading climate normals …',
-      p_today: 'Today', p_tomorrow: (v) => `${v} expected tomorrow.`, p_tomorrow0: 'None expected tomorrow.',
+      p_today: 'Today', p_24h: 'last 24 h', p_7d: 'last 7 days', p_next0: 'None expected in the next 24 h.', p_next_lt: (v) => `< ${v} expected in the next 24 h.`, p_next: (v) => `${v} expected in the next 24 h.`, p_tomorrow: (v) => `${v} expected tomorrow.`, p_tomorrow0: 'None expected tomorrow.',
       v0: 'Fog.', v1: 'Haze.', v2: 'Slightly hazy.', v3: 'Good visibility.', v4: 'Clear view.', h_dew: (v) => `The dew point is ${v} right now.`,
       pr_up: 'rising', pr_down: 'falling', pr_same: 'steady', pr_24: 'last 24 h',
       uv_protect: (a, b) => `Sun protection recommended ${a}–${b}`, uv_none: 'No sun protection needed', uv_peak: (v, at) => `Maximum ${v} at ${at}`,
@@ -504,6 +506,35 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
     connectedCallback() { super.connectedCallback(); this._tick = setInterval(() => { if (this._c && (this._c.kind === 'sun' || this._c.kind === 'pressure')) { this._last = null; this._render(); } }, 60000); }
     disconnectedCallback() { super.disconnectedCallback(); clearInterval(this._tick); }
     // pressure trend: change over the last 3 hours from the recorder
+    // precipitation per bucket (hour or day) that has already fallen, from the history of a rain counter
+    // (total counter, or a daily counter that resets at midnight), else WeatherScope's last-24-hours sensor
+    _rainBars(h, c, per, unit) {
+      const now = Date.now(), n = per === '7d' ? 7 : 24;
+      const starts = []; const d0 = new Date(now);
+      if (per === '7d') { d0.setHours(0, 0, 0, 0); for (let k = n - 1; k >= 0; k--) { const d = new Date(d0); d.setDate(d.getDate() - k); starts.push(d.getTime()); } }
+      else { d0.setMinutes(0, 0, 0); for (let k = n - 1; k >= 0; k--) starts.push(d0.getTime() - k * 36e5); }
+      const id = c.total || c.sensor || (per === '7d' ? 'sensor.weatherscope_precipitation_today' : null);
+      if (!id) {
+        const ws = h.states['sensor.weatherscope_precipitation_24h'], hrs = ws && Array.isArray(ws.attributes.hours) ? ws.attributes.hours : [];
+        // each value is the hour that ends at its time stamp
+        return starts.map((s0) => { const q = hrs.find((x) => { const te = new Date(x[0]).getTime(); return te > s0 && te <= s0 + 36e5; }); return [s0, q ? conv(num(q[1]) || 0, 'mm', unit) : 0]; });
+      }
+      const key = `${id}|${per}|${Math.floor(now / 6e5)}`;
+      if (this._rbK !== key && !this._rbBusy) {
+        this._rbBusy = true;
+        h.callWS({ type: 'history/history_during_period', start_time: new Date(starts[0] - 36e5).toISOString(), entity_ids: [id], minimal_response: true, no_attributes: true, significant_changes_only: false })
+          .then((r) => { const u = h.states[id] && h.states[id].attributes.unit_of_measurement; this._rbPts = ((r && r[id]) || []).map((q) => [(q.lu || q.lc || 0) * 1000 || new Date(q.last_updated || q.last_changed).getTime(), conv(num(q.s ?? q.state), u, unit)]).filter((q) => q[1] !== null); this._rbK = key; this._last = null; this._render(); })
+          .catch(() => {}).finally(() => { this._rbBusy = false; });
+      }
+      if (!this._rbPts) return null;
+      const out = starts.map((s0) => [s0, 0]), size = per === '7d' ? 864e5 : 36e5;
+      let prev = null;
+      for (const [tq, vq] of this._rbPts) {
+        if (prev !== null) { const dv = vq - prev, add = dv < 0 ? vq : dv; const i = out.findIndex((o, k) => tq >= o[0] && tq < (out[k + 1] ? out[k + 1][0] : o[0] + size)); if (i >= 0 && add > 0) out[i][1] += add; }
+        prev = vq;
+      }
+      return out;
+    }
     async _trend(h, id, attr) {
       const key = `${id}|${Math.floor(Date.now() / 6e5)}`;
       if (this._trK === key || this._trBusy) return;
@@ -594,22 +625,18 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         big = v === null ? '–' : `${dec(h, v, U.p)} ${U.p}`; sub = t.p_today;
         note = tm === null ? '' : tm >= conv(0.1, 'mm', U.p) ? t.p_tomorrow(`${dec(h, tm, U.p)} ${U.p}`) : t.p_tomorrow0;
         if (med) {
-          // 15-minute steps from WeatherScope, otherwise the next hours of the hourly forecast
-          const nc = h.states[c.nowcast || 'sensor.weatherscope_precipitation_nowcast'];
-          let steps = nc && Array.isArray(nc.attributes.steps) ? nc.attributes.steps.map((q) => [new Date(q[0]).getTime(), conv(num(q[1]) || 0, 'mm', U.p), 9e5]) : [];
-          steps = steps.filter((q) => q[0] + q[2] > now);
-          if (!steps.length) steps = hourly.filter((x) => new Date(x.datetime).getTime() + 36e5 > now).slice(0, 6).map((x) => [new Date(x.datetime).getTime(), num(x.precipitation) || 0, 36e5]);
-          if (steps.length) {
-            const wet = (q) => q[1] >= conv(0.05, 'mm', U.p), top = Math.max(conv(1, 'mm', U.p), ...steps.map((q) => q[1])), W = 100 / steps.length;
-            const every = steps[0][2] < 36e5 ? 4 : 2;
-            const bars = steps.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${k % every === 0 ? `<span class="ax" style="left:${k * W}%">${hhmm(h, new Date(q[0]))}</span>` : ''}`).join('');
-            chart = `<div class="ch">${bars}</div>`;
-            const first = steps.find(wet), hh = Math.round((steps.length * steps[0][2]) / 36e5);
-            if (!first) note = t.rn_none(hh);
-            else if (first === steps[0]) { const stop = steps.find((q) => !wet(q)); note = stop ? t.rn_stop(hhmm(h, new Date(stop[0]))) : t.rn_cont; }
-            else note = t.rn_start(hhmm(h, new Date(first[0])));
-            const nh = steps.filter((q) => q[0] < now + 36e5).reduce((a, q) => a + q[1] * Math.min(1, q[2] / 36e5), 0);
-            big = `${dec(h, nh, U.p)} ${U.p}`; sub = t.rn_next;
+          // what has already fallen: 24 hourly bars (or 7 daily bars), ending now; below an outlook for the next 24 hours
+          const per = c.period === '7d' ? '7d' : '24h', bars = this._rainBars(h, c, per, U.p);
+          if (bars && bars.length) {
+            const total = bars.reduce((x, q) => x + q[1], 0), top = Math.max(conv(1, 'mm', U.p), ...bars.map((q) => q[1])), W = 100 / bars.length;
+            big = `${dec(h, total, U.p)} ${U.p}`; sub = per === '7d' ? t.p_7d : t.p_24h;
+            const wdf = new Intl.DateTimeFormat(L, { weekday: 'short' });
+            const lab = (q, k) => (per === '7d' ? wdf.format(new Date(q[0])).replace('.', '') : k % 6 === 0 ? hhmm(h, new Date(q[0])) : '');
+            chart = `<div class="ch">${bars.map((q, k) => `<div class="cb slot" style="left:${k * W}%;width:${W}%"><em></em><i style="height:${q[1] > 0 ? Math.max(6, (q[1] / top) * 100) : 0}%;background:#5ac8fa"></i></div>${lab(q, k) ? `<span class="ax" style="left:${k * W}%">${lab(q, k)}</span>` : ''}`).join('')}</div>`;
+          }
+          if (hourly.length) {
+            const nx = hourly.filter((x) => { const tt = new Date(x.datetime).getTime(); return tt > now && tt <= now + 864e5; }).reduce((x, q) => x + (num(q.precipitation) || 0), 0);
+            note = nx < conv(0.1, 'mm', U.p) ? t.p_next0 : nx < conv(1, 'mm', U.p) ? t.p_next_lt(`1 ${U.p}`) : t.p_next(`${dec(h, nx, U.p)} ${U.p}`);
           }
         }
       } else if (K === 'visibility') {
@@ -679,8 +706,10 @@ ${med && chart
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
     { name: 'sensor', ...sensorSel() },
     { name: 'sensor2', ...sensorSel() },
+    { name: 'total', ...sensorSel() },
+    { name: 'period', selector: { select: { mode: 'dropdown', options: [{ value: '24h', label: '24 h' }, { value: '7d', label: '7 d' }] } } },
     bgSchema(t),
-  ], { size: 'e_size_h', sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', background: 'e_background_h' });
+  ], { size: 'e_size_h', sensor: 'e_sensor_h', sensor2: 'e_sensor2_h', total: 'e_total_h', background: 'e_background_h' });
   register('weatherscope-value-card', ValueCard, valueEditor, `WeatherScope – ${tr(hass0()).n_value}`, 'd_value');
   // every value also as its own entry in the card picker (same card, preset value)
   KINDS.forEach((k) => {
@@ -895,10 +924,10 @@ ${med && chart
       const hourly = this._fcs.hourly || [], daily = this._fcs.daily || [];
       const st = (id) => (id && h.states[id] ? h.states[id] : null);
       const warn = [c.warning, c.advance].some((id) => st(id) && num(st(id).state) > 0);
-      // precipitation in the next 2 hours (15-minute steps from WeatherScope, else the hourly forecast)
+      // precipitation now or in the next 3 hours (15-minute steps from WeatherScope, else the hourly forecast)
       const nc = st(c.nowcast || 'sensor.weatherscope_precipitation_nowcast');
-      let wet = !!(nc && Array.isArray(nc.attributes.steps) && nc.attributes.steps.some((q) => { const t = new Date(q[0]).getTime(); return t + 9e5 > now && t < now + 72e5 && num(q[1]) >= 0.1; }));
-      if (!wet) wet = hourly.some((x) => { const t = new Date(x.datetime).getTime(); return t + 36e5 > now && t < now + 72e5 && (num(x.precipitation) || 0) >= 0.1; });
+      let wet = !!(nc && Array.isArray(nc.attributes.steps) && nc.attributes.steps.some((q) => { const t = new Date(q[0]).getTime(); return t + 9e5 > now && t < now + 108e5 && num(q[1]) >= 0.1; }));
+      if (!wet) wet = hourly.some((x) => { const t = new Date(x.datetime).getTime(); return t + 36e5 > now && t < now + 108e5 && (num(x.precipitation) || 0) >= 0.1; });
       if (wet) I.precip = 90;
       const vr = A.visibility_unit || 'km', vis = num(A.visibility), vkm = vis === null ? null : vr === 'mi' ? vis * 1.609 : vr === 'm' ? vis / 1000 : vis;
       if (vkm !== null && vkm < 1) I.visibility = 85;
@@ -954,7 +983,7 @@ ${med && chart
         air: ['weatherscope-air-card', { ...base, size, aqi: c.aqi, pm25: c.pm25, pm10: c.pm10, no2: c.no2, o3: c.o3, so2: c.so2 }],
         wind: ['weatherscope-wind-card', { ...base, size, wind_speed: c.wind_speed, wind_gust: c.wind_gust, wind_bearing: c.wind_bearing }],
         moon: ['weatherscope-moon-card', { ...base, size }],
-        sun: V('sun'), uv: V('uv', { sensor: c.uv }), precip: V('precip', { sensor: c.rain_today }), pressure: V('pressure', { sensor: c.pressure }),
+        sun: V('sun'), uv: V('uv', { sensor: c.uv }), precip: V('precip', { sensor: c.rain_today, total: c.rain_total }), pressure: V('pressure', { sensor: c.pressure }),
         feels: V('feels', { sensor: c.feels_like, sensor2: c.temperature }), normal: V('normal'), visibility: V('visibility'),
         humidity: V('humidity', { sensor: c.humidity, sensor2: c.dewpoint }),
       }[k];
@@ -997,7 +1026,7 @@ ${med && chart
       Object.values(this._els).forEach((e) => { e.hass = h; });
     }
   }
-  const pageSensors = (t) => ['feels_like', 'humidity', 'dewpoint', 'pressure', 'uv', 'rain_today', 'wind_speed', 'wind_gust', 'wind_bearing', 'aqi', 'pm25', 'pm10', 'no2', 'o3', 'so2'].map((n) => ({ name: n, ...sensorSel() }));
+  const pageSensors = (t) => ['feels_like', 'humidity', 'dewpoint', 'pressure', 'uv', 'rain_today', 'rain_total', 'wind_speed', 'wind_gust', 'wind_bearing', 'aqi', 'pm25', 'pm10', 'no2', 'o3', 'so2'].map((n) => ({ name: n, ...sensorSel() }));
   register('weatherscope-page-card', PageCard, makeEditor((t) => [
     { name: 'entity', required: true, selector: { entity: { domain: 'weather' } } },
     { name: 'name', selector: { text: {} } },

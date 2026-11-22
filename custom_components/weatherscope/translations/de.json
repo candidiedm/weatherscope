@@ -131,6 +131,9 @@
       },
       "precipitation_nowcast": {
         "name": "Niederschlag nächste Stunde"
+      },
+      "precipitation_24h": {
+        "name": "Niederschlag letzte 24 Std."
       }
     }
   }
