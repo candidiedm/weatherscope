@@ -914,7 +914,7 @@ ${med && chart
       const rows = [{ c: 0, r: 1, cap: 2 }, { c: 0, r: 2, cap: 2 }, { c: 0, r: 3, cap: 2 }, { c: 0, r: 4, cap: 6 }];
       let cells = 12; while (cells < R.length) { rows.push({ c: 0, r: rows.length + 1, cap: 6 }); cells += 6; }
       const extra = cells - R.length;
-      const rank = (list) => (k) => (I[k] ? 1000 - I[k] : 0) * 100 + list.indexOf(k);
+      const rank = (list) => (k) => (I[k] ? 100 - I[k] : 1000 + list.indexOf(k)); // important first (highest score), then the usual order
       const med = [...R.filter((k) => I[k] && P_MED.includes(k)).sort((a, b) => I[b] - I[a]), ...P_MED.filter((k) => R.includes(k))]
         .filter((k, i, a) => a.indexOf(k) === i).slice(0, extra);
       const place = [];
