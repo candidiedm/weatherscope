@@ -87,7 +87,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
 .lab{flex:none;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;letter-spacing:.01em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lab ha-icon{--mdc-icon-size:13px}
 .big{flex:none;font-size:30px;font-weight:400;line-height:1.15}
-.sub{font-size:15px;font-weight:500;line-height:1.2}
+.sub{font-size:13px;font-weight:500;line-height:1.25}
 .note{font-size:12px;color:rgba(255,255,255,.85);margin-top:auto}
 .nt{display:grid;grid-template-columns:1fr auto;column-gap:8px}.nt span{color:rgba(255,255,255,.6)}.nt b{font-weight:600;color:#fff;text-align:right}
 .dim{color:rgba(255,255,255,.7);font-size:13px}
@@ -686,7 +686,7 @@ ${med && chart
 
   // ---------------------------------------------------------------- shared row list (Wind, Moon)
   const rowsCss = `.md{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center}
-.rows{display:flex;flex-direction:column}.rw{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.12);font-size:15px;font-weight:600;white-space:nowrap}
+.rows{display:flex;flex-direction:column}.rw{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;white-space:nowrap}
 .rw:first-child{border-top:none}.rw span:last-child{color:rgba(255,255,255,.7);font-weight:500}`;
   const rowList = (L) => `<div class="rows">${L.map(([a, b]) => `<div class="rw"><span>${a}</span><span>${b}</span></div>`).join('')}</div>`;
 
