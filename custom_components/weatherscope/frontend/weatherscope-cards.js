@@ -157,6 +157,36 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     if (h > 20 && Math.abs((parseFloat(sec.style.getPropertyValue('--ha-section-grid-row-height')) || 0) - h) > 0.5) sec.style.setProperty('--ha-section-grid-row-height', `${h}px`);
   };
 
+  // bars on whole (device) pixels: equal width, equal gaps, sharp edges. Percent layout stays as fallback.
+  const snapBars = (root) => {
+    if (!root) return;
+    const d = window.devicePixelRatio || 1, fl = (x) => Math.floor(x * d) / d, rd = (x) => Math.round(x * d) / d;
+    root.querySelectorAll('.ch').forEach((ch) => {
+      const cbs = [...ch.children].filter((e) => e.classList.contains('cb')), n = cbs.length, R = ch.getBoundingClientRect(), w = R.width;
+      if (!n || w < n) return;
+      const slot = fl(w / n), gap = Math.max(1 / d, rd(slot * 0.3)), bw = slot - gap, off = fl(gap / 2);
+      let ex = rd(R.left + (w - slot * n)) - R.left; if (ex + slot * n > w + 0.01) ex -= 1 / d; if (ex < 0) ex += 1 / d;
+      cbs.forEach((cb, k) => {
+        cb.style.left = `${ex + k * slot}px`; cb.style.width = `${slot}px`;
+        cb.querySelectorAll('em,i').forEach((x) => { x.style.left = `${off}px`; x.style.right = 'auto'; x.style.width = `${bw}px`; });
+      });
+      ch.querySelectorAll('.ax,.nw').forEach((x) => {
+        if (!x.dataset.p) x.dataset.p = x.style.left || '';
+        const p = x.dataset.p;
+        if (p.endsWith('%')) x.style.left = `${ex + (parseFloat(p) / 100) * n * slot}px`;
+        else if (p === '0px' || p === '0') x.style.left = `${ex}px`;
+      });
+    });
+    root.querySelectorAll('.bk').forEach((bk) => {
+      const is = [...bk.children], n = is.length, R = bk.getBoundingClientRect(), g = 3;
+      if (!n || R.width < n * 2) return;
+      const bw = fl((R.width - g * (n - 1)) / n), tot = bw * n + g * (n - 1), st = fl(R.left + R.width - tot) - R.left;
+      bk.style.justifyContent = 'flex-start';
+      is.forEach((x, k) => { x.style.flex = 'none'; x.style.width = `${bw}px`; x.style.marginLeft = k ? '' : `${Math.max(0, st)}px`; });
+    });
+    root.querySelectorAll('.vb').forEach((vb) => { vb.style.transform = ''; const x = vb.getBoundingClientRect().left, dx = rd(x) - x; if (Math.abs(dx) > 0.01) vb.style.transform = `translateX(${dx}px)`; });
+  };
+
   class WSBase extends HTMLElement {
     setConfig(c) {
       this._c = Object.assign({}, this.constructor.defaults, c || {});
@@ -176,7 +206,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
     disconnectedCallback() { this._unsub(); window.removeEventListener('weatherscope-mode', this._onMode); if (this._sqro) this._sqro.disconnect(); }
     _grid() { return { columns: 4, rows: 3 }; }
     getGridOptions() { return this._grid(); }
-    _sq() { if (this._c) sqFit(this, this._c, this._grid()); }
+    _sq() { if (this._c) sqFit(this, this._c, this._grid()); requestAnimationFrame(() => snapBars(this.shadowRoot)); }
     _click() {}
     _setMode(m) {
       this._mode = m; this._render();
@@ -194,7 +224,7 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
       }, { type: 'weather/subscribe_forecast', forecast_type: type, entity_id: e }).catch(() => null));
     }
     _put(html) { if (html !== this._last) { this._last = html; this._paint(html); } }
-    _paint(html) { this.shadowRoot.innerHTML = html; }
+    _paint(html) { this.shadowRoot.innerHTML = html; requestAnimationFrame(() => snapBars(this.shadowRoot)); }
     _render() {
       if (!this.shadowRoot || !this._c || !this._h) return;
       const s = this._h.states[this._c.entity];
@@ -295,6 +325,7 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
         hrs.scrollLeft = x;
         hrs.addEventListener('wheel', (ev) => { if (Math.abs(ev.deltaY) > Math.abs(ev.deltaX)) { hrs.scrollLeft += ev.deltaY; ev.preventDefault(); } }, { passive: false });
       }
+      requestAnimationFrame(() => snapBars(this.shadowRoot));
     }
     _html(h, s, t) {
       const M = this._mode || this._c.mode || 'temp', c = this._c, U = units(s);
