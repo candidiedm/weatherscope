@@ -84,10 +84,10 @@
   const baseCss = (h, s, bg) => `
 :host{display:block;height:100%}
 ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:#fff;overflow:hidden;display:flex;flex-direction:column;${bgCss(h, s, bg)}}
-.lab{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;letter-spacing:.01em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab{flex:none;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;letter-spacing:.01em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lab ha-icon{--mdc-icon-size:13px}
-.big{font-size:30px;font-weight:400;line-height:1.15}
-.sub{font-size:15px;font-weight:500}
+.big{flex:none;font-size:30px;font-weight:400;line-height:1.15}
+.sub{font-size:15px;font-weight:500;line-height:1.2}
 .note{font-size:12px;color:rgba(255,255,255,.85);margin-top:auto}
 .nt{display:grid;grid-template-columns:1fr auto;column-gap:8px}.nt span{color:rgba(255,255,255,.6)}.nt b{font-weight:600;color:#fff;text-align:right}
 .dim{color:rgba(255,255,255,.7);font-size:13px}
