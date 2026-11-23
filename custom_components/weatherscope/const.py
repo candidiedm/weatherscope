@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "weatherscope"
-VERSION = "0.14.1"
+VERSION = "0.15.0"
 
 # Config entry keys
 CONF_LOCATION = "location"
@@ -45,6 +45,6 @@ SAT_PAST = 18  # 3 hours
 URL_STATIC = "/weatherscope/static"
 URL_DATA = "/weatherscope/data"
 CARD_FILE = "weatherscope-card.js"
-CARD_FILES = (CARD_FILE, "weatherscope-cards.js")
+CARD_FILES = (CARD_FILE, "weatherscope-cards.js", "weatherscope-fx.js")
 
 SIGNAL_UPDATE = "weatherscope_update_{}"

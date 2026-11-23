@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.14.1';
+  const VERSION = '0.15.0';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -11,6 +11,7 @@
       m_temp: 'Temperatur ({u})', m_rain: 'Niederschlag ({u})', m_wind: 'Wind und Böen ({u})', max: 'max', loading: 'Vorhersage wird geladen …',
       e_entity: 'Wetter-Entität', e_temperature: 'Eigener Temperatursensor (optional)', e_name: 'Ortsname (optional)', e_background: 'Hintergrund',
       e_sky: 'Eigener Himmel', e_glass: 'Glas', e_none: 'Durchsichtig', e_temperature_h: 'Zum Beispiel die Außentemperatur deiner Wetterstation. Leer lassen, dann kommt sie von der Wetter-Entität.',
+      e_fx: 'Wetter-Animation', e_animation: 'Himmel animieren', e_animation_h: 'Wolken, Regen, Schnee, Nebel und Gewitter hinter den Kacheln – richtet sich nach dem aktuellen Wetter.', e_fx_tiles: 'Wetter auf Kacheln', e_fx_tiles_h: 'Tropfen, liegender Schnee und Nebelschleier auf den Kacheln.', e_performance: 'Leistung', e_performance_h: '„Sparsam“ für schwächere Geräte wie Wandtablets, „Standbild“ ohne Bewegung.', e_perf_full: 'Voll', e_perf_eco: 'Sparsam', e_perf_still: 'Standbild', e_meteors: 'Sternschnuppen', e_meteors_h: 'Selten, nur in klarer Nacht.',
       e_background_h: '„Glas“ und „Durchsichtig“ passen zu einer Wetterseite mit der WeatherScope-Himmel-Animation dahinter.', e_wind_speed: 'Eigener Windsensor (optional)', e_wind_gust: 'Eigener Böensensor (optional)',
       e_wind_bearing: 'Eigener Windrichtungssensor (optional)', e_rain_rate: 'Eigener Regensensor (optional)', e_rain_rate_h: 'Regenrate der Wetterstation, z. B. mm/h. Ersetzt den Wert bei „Jetzt“.', e_hours: 'Stunden', e_mode: 'Ansicht beim Start', e_own_h: 'Eigene Sensoren ersetzen nur den Wert bei „Jetzt“.',
       n_wind: 'Wind', n_moon: 'Mond', n_air: 'Luftqualität', n_warning: 'Wetterwarnung', d_wind: 'Wind, Böen und Richtung mit Kompass.', d_moon: 'Mondphase mit Bild, Beleuchtung, Mondauf- und -untergang.', d_air: 'Luftqualität nach dem Europäischen Luftqualitätsindex.', d_warning: 'Amtliche Wetterwarnungen (DWD), nur sichtbar wenn aktiv.',
@@ -41,6 +42,7 @@
       m_temp: 'Temperature ({u})', m_rain: 'Precipitation ({u})', m_wind: 'Wind and gusts ({u})', max: 'max', loading: 'Loading forecast …',
       e_entity: 'Weather entity', e_temperature: 'Own temperature sensor (optional)', e_name: 'Place name (optional)', e_background: 'Background',
       e_sky: 'Own sky', e_glass: 'Glass', e_none: 'Transparent', e_temperature_h: 'For example the outdoor temperature of your weather station. Leave empty to use the weather entity.',
+      e_fx: 'Weather animation', e_animation: 'Animate the sky', e_animation_h: 'Clouds, rain, snow, fog and thunderstorms behind the tiles – follows the current weather.', e_fx_tiles: 'Weather on the tiles', e_fx_tiles_h: 'Drops, settled snow and wisps of fog on the tiles.', e_performance: 'Performance', e_performance_h: '“Economy” for weaker devices such as wall tablets, “Still image” without motion.', e_perf_full: 'Full', e_perf_eco: 'Economy', e_perf_still: 'Still image', e_meteors: 'Shooting stars', e_meteors_h: 'Rare, only in a clear night sky.',
       e_background_h: '“Glass” and “Transparent” suit a weather page with the WeatherScope sky animation behind it.', e_wind_speed: 'Own wind sensor (optional)', e_wind_gust: 'Own gust sensor (optional)',
       e_wind_bearing: 'Own wind direction sensor (optional)', e_rain_rate: 'Own rain sensor (optional)', e_rain_rate_h: 'Rain rate of your weather station, e.g. mm/h. Replaces the “Now” value.', e_hours: 'Hours', e_mode: 'View at start', e_own_h: 'Own sensors only replace the “Now” value.',
       n_wind: 'Wind', n_moon: 'Moon', n_air: 'Air quality', n_warning: 'Weather warning', d_wind: 'Wind, gusts and direction with compass.', d_moon: 'Moon phase with picture, illumination, moonrise and moonset.', d_air: 'Air quality on the European Air Quality Index.', d_warning: 'Official weather warnings (DWD), only visible when active.',
@@ -81,7 +83,7 @@
   // design rules: see "WeatherScope Design-Regeln" – same background, type sizes, spacing for every card
   const bgCss = (h, s, bg) => {
     if (bg === 'none') return 'background:none;box-shadow:none;border:none';
-    if (bg === 'glass') return 'background:rgba(32,62,112,.38);-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.18)';
+    if (bg === 'glass') return 'background:rgba(32,62,112,var(--ws-glass,.38));-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.18)';
     const k = (isNight(h, s) && NIGHT[s.state]) || SKY[s.state] || SKY.partlycloudy;
     return `background:linear-gradient(180deg,${k[0]},${k[1]});border:none;box-shadow:none`;
   };
@@ -1012,7 +1014,7 @@ ${med && chart
   const P_SMALL = ['sun', 'uv', 'moon', 'wind', 'air', 'feels', 'normal', 'precip', 'visibility', 'humidity', 'pressure'];
   const P_TILES = ['air', 'wind', 'moon', 'sun', 'uv', 'precip', 'pressure', 'feels', 'normal', 'visibility', 'humidity'];
   class PageCard extends WSBase {
-    static defaults = { entity: 'weather.weatherscope', background: 'glass', map: 'sensor.weatherscope_map_data' };
+    static defaults = { entity: 'weather.weatherscope', background: 'glass', map: 'sensor.weatherscope_map_data', animation: true, fx_tiles: true, performance: 'full', meteors: true };
     static forecast = ['hourly', 'daily'];
     getCardSize() { return 20; }
     _grid() { return { columns: 'full', rows: 'auto' }; }
@@ -1020,7 +1022,57 @@ ${med && chart
       super.connectedCallback();
       this._pro = new ResizeObserver(() => this._unit()); this._pro.observe(this);
     }
-    disconnectedCallback() { super.disconnectedCallback(); if (this._pro) this._pro.disconnect(); }
+    disconnectedCallback() { super.disconnectedCallback(); if (this._pro) this._pro.disconnect(); this._fxStop(); }
+    // ---- weather animation: sky behind the tiles, weather on the tiles (engine: weatherscope-fx.js)
+    _fxStop() {
+      if (!this._fx) return;
+      this._fx.stop(); this._fx = null;
+      window.removeEventListener('resize', this._fxRs);
+      [this._fxB, this._fxF].forEach((c) => c && c.remove()); this._fxB = this._fxF = null;
+      this.style.removeProperty('--ws-glass');
+    }
+    _fxRects() {
+      const out = [];
+      Object.entries(this._els || {}).forEach(([k, e]) => { const r = e.getBoundingClientRect(); if (r.width > 40 && r.height > 40) out.push({ key: k, rect: r }); });
+      return out;
+    }
+    // what the sky should show, from the weather entity and the sensors of this page
+    _fxScene(h, s) {
+      const c = this._c, A = s.attributes, U = units(s), st = (id) => (id && h.states[id] ? h.states[id] : null), now = Date.now();
+      const cond = c.fx_test || s.state;
+      // precipitation right now in mm/h: 15-minute steps of WeatherScope, else the current hour of the forecast
+      let rate = null;
+      const nc = st(c.nowcast || 'sensor.weatherscope_precipitation_nowcast');
+      if (nc && Array.isArray(nc.attributes.steps)) { const q = nc.attributes.steps.find((x) => { const t0 = new Date(x[0]).getTime(); return t0 <= now && t0 + 9e5 > now; }); if (q && num(q[1]) !== null) rate = num(q[1]) * 4; }
+      if (rate === null) { const f = (this._fcs.hourly || [])[0]; if (f && num(f.precipitation) !== null) rate = num(f.precipitation); }
+      const wet = rate === null ? 1 : rate;
+      const mode = {
+        sunny: 'sunny', 'clear-night': 'sunny', partlycloudy: 'partly', cloudy: 'dry', windy: 'dry', 'windy-variant': 'dry', fog: 'dry', exceptional: 'dry',
+        rainy: wet < 0.5 ? 'drizzle' : wet <= 4 ? 'rain' : 'heavy', pouring: 'heavy', hail: 'heavy', lightning: 'storm', 'lightning-rainy': 'storm',
+        snowy: wet > 1.5 ? 'snowh' : 'snow', 'snowy-rainy': 'sleet',
+      }[cond] || 'dry';
+      const vr = A.visibility_unit || 'km', vis = num(A.visibility), vkm = vis === null ? null : vr === 'mi' ? vis * 1.609 : vr === 'm' ? vis / 1000 : vis;
+      // fog by visibility: below 200 m dense, below 1 km fog, below 5 km haze (not under a clear sky); the condition "fog" always shows fog
+      const fog = Math.max(vkm === null ? 0 : vkm < 0.2 ? 3 : vkm < 1 ? 2 : vkm < 5 && !['sunny', 'clear-night', 'partlycloudy'].includes(cond) ? 1 : 0, cond === 'fog' ? 2 : 0);
+      const sun = st('sun.sun'), el = sun ? num(sun.attributes.elevation) : null;
+      const tod = sun && sun.state === 'below_horizon' ? 'night' : el !== null && el < 8 ? (sun.attributes.rising ? 'morning' : 'evening') : cond === 'clear-night' ? 'night' : 'day';
+      const ws = sensor(h, c.wind_speed, U.w) ?? num(A.wind_speed), wb = num(st(c.wind_bearing) && st(c.wind_bearing).state) ?? num(A.wind_bearing);
+      const tp = sensor(h, c.temperature, U.t) ?? num(A.temperature);
+      const P = { full: { q: 1, fps: 30, maxDpr: 2, still: false }, eco: { q: 0.55, fps: 20, maxDpr: 1, still: false }, still: { q: 0.55, fps: 30, maxDpr: 1, still: true } }[c.performance] || {};
+      return { mode, fog, tod, wind: ws === null ? 10 : Math.round(conv(ws, U.w, 'km/h')), dir: wb === null ? 270 : wb, temp: tp === null ? 5 : conv(tp, U.t, '°C'), on: c.fx_tiles !== false, meteors: c.meteors !== false, ...P };
+    }
+    _fxSync(h, s) {
+      const on = this._c.animation !== false && this.isConnected && !this.preview && !lovelaceEdit() && typeof window.WeatherScopeFx === 'function';
+      if (!on) { this._fxStop(); return; }
+      if (!this._fx) {
+        const mk = (z) => { const cv = document.createElement('canvas'); cv.style.cssText = `position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:${z}`; this.shadowRoot.appendChild(cv); return cv; };
+        this._fxB = mk(-1); this._fxF = mk(1);
+        this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), glass: (a) => this.style.setProperty('--ws-glass', a) });
+        this._fx.set(this._fxScene(h, s));
+        this._fxRs = () => this._fx && this._fx.resize(); window.addEventListener('resize', this._fxRs);
+        this._fx.start();
+      } else this._fx.set(this._fxScene(h, s));
+    }
     _unit() {
       const g = this.shadowRoot && this.shadowRoot.getElementById('gr'); if (!g) return;
       const W = g.getBoundingClientRect().width; if (W) g.style.setProperty('--u', `${Math.floor((W - 5 * 8) / 6)}px`);
@@ -1101,8 +1153,9 @@ ${med && chart
     _render() {
       if (!this.shadowRoot || !this._c || !this._h) return;
       const h = this._h, s = h.states[this._c.entity];
-      if (!s) { this.shadowRoot.innerHTML = `<ha-card style="padding:16px">${this._c.entity || ''} ?</ha-card>`; this._built = false; return; }
+      if (!s) { this._fxStop(); this.shadowRoot.innerHTML = `<ha-card style="padding:16px">${this._c.entity || ''} ?</ha-card>`; this._built = false; return; }
       if (!this._built) {
+        this._fxStop();
         this.shadowRoot.innerHTML = `<style>:host{display:block}.pg{display:flex;flex-direction:column;gap:8px}
 .gr{--u:160px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:var(--u);gap:8px}.gr>*{min-width:0;min-height:0;height:100%}</style>
 <div class="pg"><div id="hd"></div><div class="gr" id="gr"></div></div>`;
@@ -1131,6 +1184,7 @@ ${med && chart
         Object.keys(this._els).forEach((id) => { if (!keep.has(id)) { this._els[id].remove(); delete this._els[id]; } });
       }
       Object.values(this._els).forEach((e) => { e.hass = h; });
+      this._fxSync(h, s);
     }
   }
   const pageSensors = (t) => ['feels_like', 'humidity', 'dewpoint', 'pressure', 'uv', 'rain_today', 'rain_total', 'wind_speed', 'wind_gust', 'wind_bearing', 'aqi', 'pm25', 'pm10', 'no2', 'o3', 'so2'].map((n) => ({ name: n, ...sensorSel() }));
@@ -1142,8 +1196,14 @@ ${med && chart
     { name: 'advance', selector: { entity: { domain: 'sensor' } } },
     { name: 'map', selector: { entity: { domain: 'sensor', integration: 'weatherscope' } } },
     bgSchema(t),
+    { type: 'expandable', name: '', title: t.e_fx, schema: [
+      { name: 'animation', selector: { boolean: {} } },
+      { name: 'fx_tiles', selector: { boolean: {} } },
+      { name: 'performance', selector: { select: { mode: 'dropdown', options: [{ value: 'full', label: t.e_perf_full }, { value: 'eco', label: t.e_perf_eco }, { value: 'still', label: t.e_perf_still }] } } },
+      { name: 'meteors', selector: { boolean: {} } },
+    ] },
     { type: 'expandable', name: '', title: t.e_sensors, schema: pageSensors(t) },
-  ], { temperature: 'e_temperature_h', background: 'e_background_h' }), `WeatherScope – ${tr(hass0()).n_page}`, 'd_page');
+  ], { temperature: 'e_temperature_h', background: 'e_background_h', animation: 'e_animation_h', fx_tiles: 'e_fx_tiles_h', performance: 'e_performance_h', meteors: 'e_meteors_h' }), `WeatherScope – ${tr(hass0()).n_page}`, 'd_page');
 
   // ---------------------------------------------------------------- Sky (animated page background)
   class SkyCard extends HTMLElement {
