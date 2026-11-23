@@ -1026,7 +1026,7 @@ ${med && chart
     // ---- weather animation: sky behind the tiles, weather on the tiles (engine: weatherscope-fx.js)
     _fxStop() {
       if (!this._fx) return;
-      this._fx.stop(); this._fx = null;
+      this._fx.stop(); this._fx = null; window.weatherscopeFxPages = Math.max(0, (window.weatherscopeFxPages || 1) - 1);
       window.removeEventListener('resize', this._fxRs);
       [this._fxB, this._fxF].forEach((c) => c && c.remove()); this._fxB = this._fxF = null;
       this.style.removeProperty('--ws-glass');
@@ -1070,7 +1070,7 @@ ${med && chart
         this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), glass: (a) => this.style.setProperty('--ws-glass', a) });
         this._fx.set(this._fxScene(h, s));
         this._fxRs = () => this._fx && this._fx.resize(); window.addEventListener('resize', this._fxRs);
-        this._fx.start();
+        this._fx.start(); window.weatherscopeFxPages = (window.weatherscopeFxPages || 0) + 1; // the older sky card steps aside
       } else this._fx.set(this._fxScene(h, s));
     }
     _unit() {
@@ -1260,6 +1260,8 @@ ${med && chart
         if (!this._run) return;
         this._raf = requestAnimationFrame(loop);
         if (document.hidden) return;
+        // a weather page with its own animation is on screen: this simpler sky stays out of the way
+        const off = window.weatherscopeFxPages > 0 && !this._sm; if (off !== this._off) { this._off = off; this._cv.style.visibility = off ? 'hidden' : ''; } if (off) return;
         const step = 1000 / (still ? 1 : Number(this._c.fps) || 30);
         if (this._last && t - this._last < step - 2) return;
         const dt = still ? 0 : this._last ? Math.min((t - this._last) / 1000, 0.1) : 0.033;
