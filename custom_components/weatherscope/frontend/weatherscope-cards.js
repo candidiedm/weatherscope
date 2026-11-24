@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.0';
+  const VERSION = '0.15.1';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -368,8 +368,8 @@ ha-card{align-items:center;justify-content:center;text-align:center;padding:16px
 .seg{display:flex;gap:2px;background:rgba(0,0,0,.18);border-radius:999px;padding:3px}
 .seg button{all:unset;cursor:pointer;width:34px;height:24px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:rgba(235,240,255,.7)}
 .seg button.on{background:rgba(255,255,255,.28);color:#fff}.seg ha-icon{--mdc-icon-size:16px}
-.hours{flex:1;display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;align-items:center}.hours::-webkit-scrollbar{display:none}
-.h{flex:0 0 52px;display:grid;grid-template-rows:16px 34px 18px 14px;row-gap:6px;justify-items:center;align-items:center}
+.hours{flex:1;min-height:0;display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;align-items:stretch}.hours::-webkit-scrollbar{display:none}
+.h{flex:0 0 52px;display:grid;grid-template-rows:16px minmax(20px,34px) 18px 14px;row-gap:5px;align-content:center;justify-items:center;align-items:center}
 .h .tm{font-size:12px;font-weight:600}
 .h ha-icon{--mdc-icon-size:24px}
 .h .v{font-size:15px;font-weight:600;white-space:nowrap}
@@ -1075,7 +1075,10 @@ ${med && chart
     }
     _unit() {
       const g = this.shadowRoot && this.shadowRoot.getElementById('gr'); if (!g) return;
-      const W = g.getBoundingClientRect().width; if (W) g.style.setProperty('--u', `${Math.floor((W - 5 * 8) / 6)}px`);
+      const W = g.getBoundingClientRect().width; if (!W) return;
+      const u = Math.floor((W - 5 * 8) / 6); g.style.setProperty('--u', `${u}px`);
+      // tiles are drawn for 172 px; on a narrower page their content shrinks with them instead of being cut off
+      g.style.setProperty('--k', Math.max(0.72, Math.min(1, u / 172)).toFixed(3));
     }
     // what is important right now: key -> score (higher = more important)
     _importance(h, s) {
@@ -1157,7 +1160,7 @@ ${med && chart
       if (!this._built) {
         this._fxStop();
         this.shadowRoot.innerHTML = `<style>:host{display:block}.pg{display:flex;flex-direction:column;gap:8px}
-.gr{--u:160px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:var(--u);gap:8px}.gr>*{min-width:0;min-height:0;height:100%}</style>
+.gr{--u:160px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:var(--u);gap:8px}.gr>*{min-width:0;min-height:0;height:100%;zoom:var(--k,1)}.gr>weatherscope-card,.gr>weatherscope-daily-card{zoom:1}</style>
 <div class="pg"><div id="hd"></div><div class="gr" id="gr"></div></div>`;
         this._built = true; this._els = {}; this._sig = null; this._now = null;
         requestAnimationFrame(() => this._unit());
