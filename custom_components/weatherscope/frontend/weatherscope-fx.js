@@ -11,7 +11,7 @@ const MODES = {
   drizzle: { name: 'Nieselregen', rain: 0.28, len: 0.55, wet: 0.5, sky: ['#5d6874', '#77818c'], cloud: [92, 101, 111] },
   rain: { name: 'Regen', rain: 0.7, len: 1, wet: 1, sky: ['#47515d', '#626d79'], cloud: [70, 79, 90] },
   heavy: { name: 'Starkregen', rain: 1.5, len: 1.35, wet: 1.8, sky: ['#3a424c', '#535d69'], cloud: [55, 62, 72] },
-  snow: { name: 'Leichter Schneefall', snow: 0.45, capf: 0.45, capH: 0.65, sky: ['#7d8894', '#a6b0ba'], cloud: [132, 140, 150] },
+  snow: { name: 'Leichter Schneefall', snow: 0.45, capf: 0.45, capH: 1, sky: ['#7d8894', '#a6b0ba'], cloud: [132, 140, 150] },
   snowh: { name: 'Starker Schneefall', snow: 1.7, capf: 1.6, capH: 1, sky: ['#6a7480', '#929ca7'], cloud: [112, 120, 130] },
   storm: { name: 'Gewitter', rain: 1.6, len: 1.4, wet: 1.8, sky: ['#262d36', '#3e4752'], cloud: [34, 40, 48], light: true },
   sleet: { name: 'Schneeregen', rain: 0.45, len: 0.8, wet: 0.7, snow: 0.35, slush: true, sky: ['#5f6a76', '#848e99'], cloud: [100, 108, 118] },
@@ -284,7 +284,7 @@ function step(dt) {
     R.forEach((q, j) => { if (j === i) return;
       if (Math.min(q.right, r.right) - Math.max(q.left, r.left) > 10 && q.bottom <= r.top + 1) { up = Math.min(up, r.top - q.bottom); above++; }
       if (Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top) > 10) { if (q.right <= r.left + 1) lf = Math.min(lf, r.left - q.right); if (q.left >= r.right - 1) rt = Math.min(rt, q.left - r.right); } });
-    const o = T[i]; o.maxh = (up < 30 ? Math.max(3, up - 2) : 16) * (MODES[S.mode].capH || 1); o.free = [lf, rt]; o.above = Math.min(4, above);
+    const o = T[i]; o.maxh = (up < 30 ? Math.max(3, up + 2) : 16) * (MODES[S.mode].capH || 1); /* between two rows the snow may reach 4 px over the empty rim of the tile above – otherwise it is only a flat line */ o.free = [lf, rt]; o.above = Math.min(4, above);
     stepCap(i, r, dt, sp, vx, gf);
   });
   R.forEach((r, i) => stepWater(i, r, dt, vx));

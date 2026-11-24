@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.2';
+  const VERSION = '0.15.3';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -1043,12 +1043,14 @@ ${med && chart
     // what the sky should show, from the weather entity and the sensors of this page
     _fxScene(h, s) {
       const c = this._c, A = s.attributes, U = units(s), st = (id) => (id && h.states[id] ? h.states[id] : null), now = Date.now();
-      const cond = c.fx_test || s.state;
+      // fx_test (YAML only, for trying it out): a condition, optionally with a rate in mm/h – "snowy:3", "rainy:0.2"
+      const [tc, tr] = String(c.fx_test || '').split(':'), cond = tc || s.state;
       // precipitation right now in mm/h: 15-minute steps of WeatherScope, else the current hour of the forecast
       let rate = null;
       const nc = st(c.nowcast || 'sensor.weatherscope_precipitation_nowcast');
       if (nc && Array.isArray(nc.attributes.steps)) { const q = nc.attributes.steps.find((x) => { const t0 = new Date(x[0]).getTime(); return t0 <= now && t0 + 9e5 > now; }); if (q && num(q[1]) !== null) rate = num(q[1]) * 4; }
       if (rate === null) { const f = (this._fcs.hourly || [])[0]; if (f && num(f.precipitation) !== null) rate = num(f.precipitation); }
+      if (tc && num(tr) !== null) rate = num(tr);
       const wet = rate === null ? 1 : rate;
       const mode = {
         sunny: 'sunny', 'clear-night': 'sunny', partlycloudy: 'partly', cloudy: 'dry', windy: 'dry', 'windy-variant': 'dry', fog: 'dry', exceptional: 'dry',
