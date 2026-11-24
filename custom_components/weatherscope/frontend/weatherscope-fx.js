@@ -242,7 +242,7 @@ function fill() {
   while (snow.length < ns) snow.push(newFlake(true)); snow.length = ns;
   // brighter sky = a little more tint in the glass, so white values stay readable
   const lum = (c) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255, L = Math.max(...skyCols().map(lum)) + (m.clear && S.tod !== 'night' ? 0.25 : 0);
-  if (host.glass) host.glass(Math.min(0.47, Math.max(0.27, 0.27 + (L - 0.45) * 0.42)).toFixed(2));
+  if (host.glass) host.glass(Math.min(0.38, Math.max(0.2, 0.2 + (L - 0.45) * 0.36)).toFixed(2));
 }
 const toward = () => Math.sin(((S.dir + 180) % 360) * Math.PI / 180);
 function gust() { const n = (Math.sin(t * 0.53) + Math.sin(t * 1.37 + 1.3) + Math.sin(t * 0.21 + 4)) / 1.6 - 0.25; return 1 + 0.6 * Math.pow(Math.max(0, Math.min(1, n)), 1.5); }
