@@ -77,5 +77,5 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 16p
   <label>Nebel <select id="fog"><option value="0">aus</option><option value="1">Dunst</option><option value="2">Nebel</option><option value="3">dicht</option></select></label>
   <label>Zeitraffer <select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="30">30×</option></select></label>
   <button class="btn" id="reset">Zurücksetzen</button><button class="btn" id="clear">Schnee entfernen</button>
-  <div class="hint">Stand 54 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
+  <div class="hint">Stand 55 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
 </div>

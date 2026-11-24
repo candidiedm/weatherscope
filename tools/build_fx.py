@@ -45,8 +45,8 @@ cut("  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = inne
     "  B.setTransform(DPR, 0, 0, DPR, 0, 0); F.setTransform(DPR, 0, 0, DPR, 0, 0);\n")
 rep("area = W * H / 2100;", "area = W * H / 2100 * S.q;")
 cut("  document.getElementById('cond').textContent = m.name;", "  // brighter sky = a little more tint", "")
-rep("  document.documentElement.style.setProperty('--glass', Math.min(0.55, Math.max(0.3, 0.3 + (L - 0.45) * 0.5)).toFixed(2));",
-    "  if (host.glass) host.glass(Math.min(0.55, Math.max(0.3, 0.3 + (L - 0.45) * 0.5)).toFixed(2));")
+rep("  document.documentElement.style.setProperty('--glass', Math.min(0.47, Math.max(0.27, 0.27 + (L - 0.45) * 0.42)).toFixed(2));",
+    "  if (host.glass) host.glass(Math.min(0.47, Math.max(0.27, 0.27 + (L - 0.45) * 0.42)).toFixed(2));")
 rep("function rects() { return tiles.map((el) => el.getBoundingClientRect()); }",
     "let RC = null; // tile positions, read once per frame\n"
     "function rects() {\n"

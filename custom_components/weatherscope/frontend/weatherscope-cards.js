@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.5';
+  const VERSION = '0.15.6';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -83,7 +83,7 @@
   // design rules: see "WeatherScope Design-Regeln" – same background, type sizes, spacing for every card
   const bgCss = (h, s, bg) => {
     if (bg === 'none') return 'background:none;box-shadow:none;border:none';
-    if (bg === 'glass') return 'background:rgba(32,62,112,var(--ws-glass,.38));-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.18)';
+    if (bg === 'glass') return 'background:rgba(32,62,112,var(--ws-glass,.34));-webkit-backdrop-filter:blur(11px) saturate(170%);backdrop-filter:blur(11px) saturate(170%);text-shadow:0 1px 2px rgba(0,0,0,.2);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.18)';
     const k = (isNight(h, s) && NIGHT[s.state]) || SKY[s.state] || SKY.partlycloudy;
     return `background:linear-gradient(180deg,${k[0]},${k[1]});border:none;box-shadow:none`;
   };

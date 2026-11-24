@@ -188,12 +188,12 @@ function drawSunFx(sx, sy, low, k) {
   const u = Math.min(W, H) / 800, warm = [255, 150, 80], pale = [255, 242, 215];
   B.save(); B.globalCompositeOperation = 'lighter';
   if (low > 0.05) { const vr = Math.max(W, H) * 0.95, vg = B.createRadialGradient(sx, sy, 0, sx, sy, vr); vg.addColorStop(0, `rgba(255,170,95,${0.16 * low * k})`); vg.addColorStop(0.45, `rgba(255,150,90,${0.06 * low * k})`); vg.addColorStop(1, 'rgba(255,150,90,0)'); B.fillStyle = vg; B.fillRect(0, 0, W, H); } // low sun: warm haze over the picture
-  const RL = Math.min(W, H) * (0.1 + 0.15 * low), rc = mixRGB(pale, [255, 205, 140], low), rg = B.createRadialGradient(sx, sy, 0, sx, sy, RL);
+  const RL = Math.min(W, H) * (0.135 + 0.2 * low), rc = mixRGB(pale, [255, 205, 140], low), rg = B.createRadialGradient(sx, sy, 0, sx, sy, RL);
   rg.addColorStop(0, `rgba(${rc},${0.85 * k})`); rg.addColorStop(0.25, `rgba(${rc},${0.4 * k})`); rg.addColorStop(1, `rgba(${rc},0)`); B.fillStyle = rg;
   const rot = 0.02 * Math.sin(t * 0.05);
-  for (const r of RAYS) { const len = RL * r.l * (0.9 + 0.1 * Math.sin(t * 0.6 + r.p)), a = r.a + rot, wd = (1.5 + 1.5 * low) * u * r.w, ca = Math.cos(a), sa = Math.sin(a);
+  for (const r of RAYS) { const len = RL * r.l * (0.9 + 0.1 * Math.sin(t * 0.6 + r.p)), a = r.a + rot, wd = (1.9 + 1.9 * low) * u * r.w, ca = Math.cos(a), sa = Math.sin(a);
     B.beginPath(); B.moveTo(sx - sa * wd, sy + ca * wd); B.lineTo(sx + ca * len, sy + sa * len); B.lineTo(sx + sa * wd, sy - ca * wd); B.closePath(); B.fill(); }
-  const cr = (5.5 + 2.5 * low) * u, cg = B.createRadialGradient(sx, sy, 0, sx, sy, cr * 2.6); cg.addColorStop(0, `rgba(255,255,250,${k})`); cg.addColorStop(0.32, `rgba(255,250,235,${0.85 * k})`); cg.addColorStop(1, 'rgba(255,240,210,0)'); B.fillStyle = cg; B.beginPath(); B.arc(sx, sy, cr * 2.6, 0, 7); B.fill();
+  const cr = (7.3 + 3.3 * low) * u, cg = B.createRadialGradient(sx, sy, 0, sx, sy, cr * 2.6); cg.addColorStop(0, `rgba(255,255,250,${k})`); cg.addColorStop(0.32, `rgba(255,250,235,${0.85 * k})`); cg.addColorStop(1, 'rgba(255,240,210,0)'); B.fillStyle = cg; B.beginPath(); B.arc(sx, sy, cr * 2.6, 0, 7); B.fill();
   // discs on the line from the sun through the middle of the picture
   const vx = W * 0.5 - sx, vy = H * 0.52 - sy, cols = [mixRGB([255, 212, 150], [255, 125, 60], low), mixRGB([255, 172, 112], [255, 82, 48], low), mixRGB([255, 156, 140], [255, 104, 92], low), '255,255,245', mixRGB([170, 222, 255], [150, 235, 205], low)];
   for (const [q, size, ci, al, kind] of GHOSTS) {
@@ -242,7 +242,7 @@ function fill() {
   while (snow.length < ns) snow.push(newFlake(true)); snow.length = ns;
   // brighter sky = a little more tint in the glass, so white values stay readable
   const lum = (c) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255, L = Math.max(...skyCols().map(lum)) + (m.clear && S.tod !== 'night' ? 0.25 : 0);
-  if (host.glass) host.glass(Math.min(0.55, Math.max(0.3, 0.3 + (L - 0.45) * 0.5)).toFixed(2));
+  if (host.glass) host.glass(Math.min(0.47, Math.max(0.27, 0.27 + (L - 0.45) * 0.42)).toFixed(2));
 }
 const toward = () => Math.sin(((S.dir + 180) % 360) * Math.PI / 180);
 function gust() { const n = (Math.sin(t * 0.53) + Math.sin(t * 1.37 + 1.3) + Math.sin(t * 0.21 + 4)) / 1.6 - 0.25; return 1 + 0.6 * Math.pow(Math.max(0, Math.min(1, n)), 1.5); }
