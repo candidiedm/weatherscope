@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.4';
+  const VERSION = '0.15.5';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -290,10 +290,10 @@ ha-card{height:100%;box-sizing:border-box;padding:12px;border-radius:18px;color:
 :host{container-type:inline-size}
 ha-card{align-items:center;justify-content:center;text-align:center;padding:16px 12px}
 /* page header: the one exception to the four type sizes (design rules) */
-.o{font-size:22px;font-weight:400;text-shadow:0 1px 3px rgba(0,0,0,.25)}
-.t{font-size:88px;font-weight:var(--ws-temp-weight,300);line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.2)}
-.c{font-size:17px;font-weight:500;margin-top:4px}
-.h{font-size:15px;opacity:.9;margin-top:2px}
+.o{font-size:22px;font-weight:400;text-shadow:0 1px 3px rgba(0,0,0,.3),0 0 12px rgba(20,45,90,.45)}
+.t{font-size:88px;font-weight:var(--ws-temp-weight,300);line-height:1;margin:2px 0 0 .12em;text-shadow:0 1px 4px rgba(0,0,0,.25),0 0 18px rgba(20,45,90,.4)}
+.c{font-size:17px;font-weight:500;margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,.35),0 0 10px rgba(20,45,90,.5)}
+.h{font-size:15px;opacity:.9;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.35),0 0 10px rgba(20,45,90,.5)}
 @container (max-width:260px){.t{font-size:64px}}
 </style>
 <ha-card><div class="o">${name}</div><div class="t">${deg(temp)}</div><div class="c">${cond}</div>
@@ -1039,6 +1039,8 @@ ${med && chart
       // on the right only as far as there is room, so that the view never scrolls sideways
       const ml = 8, mr = Math.max(0, Math.min(8, Math.floor(document.documentElement.clientWidth - hr.right)));
       this._fxBd = { left: hr.left - ml, right: hr.right + mr };
+      // where the tiles begin on the unscrolled page (the highest position seen): the sun stays above that line
+      const gr0 = this.shadowRoot.getElementById('gr'); if (gr0) this._fxSky = Math.max(this._fxSky || 0, gr0.getBoundingClientRect().top);
       if (fc && (Math.abs(hr.left - this._fxL) > 0.25 || Math.abs(hr.top - this._fxT) > 0.25 || mr !== this._fxMr || this._fxL === undefined)) {
         this._fxL = hr.left; this._fxT = hr.top; this._fxMr = mr; this._fxW.style.left = `${-ml}px`; this._fxW.style.right = `${-mr}px`; fc.style.left = `${-hr.left + ml}px`; fc.style.top = `${-hr.top}px`;
       }
@@ -1071,7 +1073,9 @@ ${med && chart
       const ws = sensor(h, c.wind_speed, U.w) ?? num(A.wind_speed), wb = num(st(c.wind_bearing) && st(c.wind_bearing).state) ?? num(A.wind_bearing);
       const tp = sensor(h, c.temperature, U.t) ?? num(A.temperature);
       const P = { full: { q: 1, fps: 30, maxDpr: 2, still: false }, eco: { q: 0.55, fps: 20, maxDpr: 1, still: false }, still: { q: 0.55, fps: 30, maxDpr: 1, still: true } }[c.performance] || {};
-      return { mode, fog, tod, wind: ws === null ? 10 : Math.round(conv(ws, U.w, 'km/h')), dir: wb === null ? 270 : wb, temp: tp === null ? 5 : conv(tp, U.t, '°C'), on: c.fx_tiles !== false, meteors: c.meteors !== false, ...P };
+      // where the sun stands: azimuth and elevation from Home Assistant (east on the left, west on the right; high in summer, flat in winter)
+      const sunAz = sun ? num(sun.attributes.azimuth) : null;
+      return { mode, fog, tod, sunAz, sunEl: sunAz === null ? null : el, wind: ws === null ? 10 : Math.round(conv(ws, U.w, 'km/h')), dir: wb === null ? 270 : wb, temp: tp === null ? 5 : conv(tp, U.t, '°C'), on: c.fx_tiles !== false, meteors: c.meteors !== false, ...P };
     }
     _fxSync(h, s) {
       const on = this._c.animation !== false && this.isConnected && !this.preview && !lovelaceEdit() && typeof window.WeatherScopeFx === 'function';
@@ -1082,9 +1086,9 @@ ${med && chart
         this._fxW = document.createElement('div'); this._fxW.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1';
         this._fxF = document.createElement('canvas'); this._fxF.style.cssText = 'position:absolute;left:0;top:0;width:100vw;height:100vh;pointer-events:none';
         this._fxW.appendChild(this._fxF); this.shadowRoot.appendChild(this._fxW); this._fxL = undefined;
-        this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), bounds: () => this._fxBd || { left: -1e4, right: 1e5 }, glass: (a) => this.style.setProperty('--ws-glass', a) });
+        this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), bounds: () => this._fxBd || { left: -1e4, right: 1e5 }, sky: () => this._fxSky || 0, glass: (a) => this.style.setProperty('--ws-glass', a) });
         this._fx.set(this._fxScene(h, s));
-        this._fxRs = () => this._fx && this._fx.resize(); window.addEventListener('resize', this._fxRs);
+        this._fxRs = () => { this._fxSky = 0; if (this._fx) this._fx.resize(); }; window.addEventListener('resize', this._fxRs);
         this._fx.start(); window.weatherscopeFxPages = (window.weatherscopeFxPages || 0) + 1; // the older sky card steps aside
       } else this._fx.set(this._fxScene(h, s));
     }

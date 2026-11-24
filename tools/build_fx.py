@@ -34,7 +34,7 @@ s = s[len("<script>\n{"):s.rindex("}")]
 cut("\nconst bg = document.getElementById('bg')", "const MODES = {",
     "\nconst B = bg.getContext('2d'), F = fx.getContext('2d');\n"
     "const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);\n")
-rep("const S = { aurora: 0,", "const S = { meteors: true, q: 1, fps: 30, maxDpr: 2, still: false, aurora: 0,")
+rep("\nconst S = { ", "\nconst S = { meteors: true, q: 1, fps: 30, maxDpr: 2, still: false, ")
 m = re.search(r"const T = tiles\.map\(\(\) => \((\{.*?\})\)\);", s)
 assert m
 s = s.replace(m.group(0), f"const newT = () => ({m.group(1)});\nlet T = []; const TS = new Map(); // state per tile, kept by the tile's name")

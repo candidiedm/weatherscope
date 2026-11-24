@@ -29,7 +29,7 @@ const WATER = {
   snowh:   { arr: 0, lg: 0, md: 0, dens: 900, hold: [60, 180], slip: 0, gmin: 9, hard: 0, trk: 1, maxr: 1, mist: 0 },
 };
 const WP = () => WATER[S.mode] || WATER.rain;
-const S = { aurora: 0, tod: 'day', fog: 0, mode: 'rain', wind: 20, dir: 270, temp: -2, on: true, speed: 1 };
+const S = { sunAz: null, sunEl: null, aurora: 0, tod: 'day', fog: 0, mode: 'rain', wind: 20, dir: 270, temp: -2, on: true, speed: 1 };
 let wetStart = 0, W = 0, H = 0, DPR = 1, t = 0, last = 0, flash = 0, nextFlash = 3, bolt = null;
 let layers = [], rain = [], snow = [], splash = [], clumps = [], lines = [], powder = [], falls = [], slabs = [];
 const MAXH = 8, COL = 2;
@@ -160,6 +160,53 @@ function drawAurora(lv) {
   const A2 = a2.getContext('2d'); A2.clearRect(0, 0, aw, ah); A2.globalCompositeOperation = 'lighter'; A2.globalAlpha = 0.25;
   for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) A2.drawImage(ac, ox, oy); // whole steps: needs no smoothing by the browser
   B.save(); B.globalCompositeOperation = 'lighter'; B.imageSmoothingEnabled = true; B.imageSmoothingQuality = 'high'; B.drawImage(a2, 0, 0, aw * q, ah * q); B.restore();
+}
+// ---- the sun: where it stands (as seen looking south: east on the left, west on the right) and the light it throws into the "lens"
+// azimuth 60°…300° spans the screen, the height follows the elevation – high in summer, flat in winter
+function sunPos() {
+  let az = S.sunAz, el = S.sunEl;
+  if (az === null || az === undefined || el === null || el === undefined) { const f = { morning: [112, 7], day: [180, 40], evening: [248, 7] }[S.tod] || [180, 40]; az = f[0]; el = f[1]; }
+  const e = Math.max(0, Math.min(66, el));
+  // the sun stays in the band of sky above the tiles: at the horizon it sits just above the first row (the page says where that is)
+  const sky = typeof host !== 'undefined' && host.sky ? host.sky() : 0, y0 = sky ? Math.max(0.15 * H, Math.min(0.6 * H, sky - 14)) : 0.32 * H;
+  return { x: Math.max(-0.06, Math.min(1.06, (az - 60) / 240)) * W, y: y0 - (y0 - 0.06 * H) * e / 66, low: Math.max(0, Math.min(1, 1 - el / 24)), el };
+}
+// how much cloud is in front of the sun right now (0…1), looked up a few times a second
+let sunCov = 0, sunCovTo = 0, sunCovT = -9;
+function sunCover(sx, sy) {
+  if (t - sunCovT > 0.35) {
+    sunCovT = t; let clear = 1;
+    if (S.fog < 2) for (const l of layers) { try { const cw = l.cv.width, chh = l.cv.height, px = ((((sx - l.ox) % l.LW) + l.LW) % l.LW) / l.LW * cw, py = Math.max(0, Math.min(chh - 1, sy / H * chh)); const a = l.cv.getContext('2d').getImageData(Math.floor(px), Math.floor(py), 1, 1).data[3] / 255; clear *= 1 - Math.min(1, a * 1.15); } catch (e) { /* not readable: treat as clear */ } }
+    sunCovTo = 1 - clear;
+  }
+  sunCov += (sunCovTo - sunCov) * 0.07; return sunCov;
+}
+const mixRGB = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(',');
+// star-shaped rays around the sun and soft discs of light across the picture, as when a camera looks into the sun. Own drawing.
+const RAYS = Array.from({ length: 14 }, (_, i) => ({ a: i * Math.PI * 2 / 14 + rnd(-0.07, 0.07), l: rnd(0.45, 1), w: rnd(0.7, 1.3), p: rnd(0, 6) }));
+const GHOSTS = [[0.42, 15, 0, 0.17, 0], [0.7, 33, 1, 0.13, 1], [0.93, 8, 3, 0.26, 0], [1.28, 50, 2, 0.1, 1], [1.6, 21, 4, 0.11, 2], [1.94, 68, 0, 0.065, 1]]; // [place along the line, size, colour, strength, kind]
+function drawSunFx(sx, sy, low, k) {
+  if (k <= 0.01) return;
+  const u = Math.min(W, H) / 800, warm = [255, 150, 80], pale = [255, 242, 215];
+  B.save(); B.globalCompositeOperation = 'lighter';
+  if (low > 0.05) { const vr = Math.max(W, H) * 0.95, vg = B.createRadialGradient(sx, sy, 0, sx, sy, vr); vg.addColorStop(0, `rgba(255,170,95,${0.16 * low * k})`); vg.addColorStop(0.45, `rgba(255,150,90,${0.06 * low * k})`); vg.addColorStop(1, 'rgba(255,150,90,0)'); B.fillStyle = vg; B.fillRect(0, 0, W, H); } // low sun: warm haze over the picture
+  const RL = Math.min(W, H) * (0.1 + 0.15 * low), rc = mixRGB(pale, [255, 205, 140], low), rg = B.createRadialGradient(sx, sy, 0, sx, sy, RL);
+  rg.addColorStop(0, `rgba(${rc},${0.85 * k})`); rg.addColorStop(0.25, `rgba(${rc},${0.4 * k})`); rg.addColorStop(1, `rgba(${rc},0)`); B.fillStyle = rg;
+  const rot = 0.02 * Math.sin(t * 0.05);
+  for (const r of RAYS) { const len = RL * r.l * (0.9 + 0.1 * Math.sin(t * 0.6 + r.p)), a = r.a + rot, wd = (1.5 + 1.5 * low) * u * r.w, ca = Math.cos(a), sa = Math.sin(a);
+    B.beginPath(); B.moveTo(sx - sa * wd, sy + ca * wd); B.lineTo(sx + ca * len, sy + sa * len); B.lineTo(sx + sa * wd, sy - ca * wd); B.closePath(); B.fill(); }
+  const cr = (5.5 + 2.5 * low) * u, cg = B.createRadialGradient(sx, sy, 0, sx, sy, cr * 2.6); cg.addColorStop(0, `rgba(255,255,250,${k})`); cg.addColorStop(0.32, `rgba(255,250,235,${0.85 * k})`); cg.addColorStop(1, 'rgba(255,240,210,0)'); B.fillStyle = cg; B.beginPath(); B.arc(sx, sy, cr * 2.6, 0, 7); B.fill();
+  // discs on the line from the sun through the middle of the picture
+  const vx = W * 0.5 - sx, vy = H * 0.52 - sy, cols = [mixRGB([255, 212, 150], [255, 125, 60], low), mixRGB([255, 172, 112], [255, 82, 48], low), mixRGB([255, 156, 140], [255, 104, 92], low), '255,255,245', mixRGB([170, 222, 255], [150, 235, 205], low)];
+  for (const [q, size, ci, al, kind] of GHOSTS) {
+    const gx = sx + vx * q, gy = sy + vy * q, r = size * u * (1 + 0.25 * low), a = al * 1.45 * k * (0.85 + 0.15 * Math.sin(t * 0.4 + q * 5)) * (0.75 + 0.5 * low), c = cols[ci];
+    const g = B.createRadialGradient(gx, gy, 0, gx, gy, r);
+    if (kind === 0) { g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(0.6, `rgba(${c},${a * 0.55})`); g.addColorStop(1, `rgba(${c},0)`); }
+    else if (kind === 1) { g.addColorStop(0, `rgba(${c},${a * 0.62})`); g.addColorStop(0.78, `rgba(${c},${a * 0.8})`); g.addColorStop(0.9, `rgba(${c},${a * 1.25})`); g.addColorStop(1, `rgba(${c},0)`); }
+    else { g.addColorStop(0, `rgba(${c},0)`); g.addColorStop(0.7, `rgba(${c},${a * 0.15})`); g.addColorStop(0.88, `rgba(${c},${a * 1.3})`); g.addColorStop(1, `rgba(${c},0)`); }
+    B.fillStyle = g; B.beginPath(); B.arc(gx, gy, r, 0, 7); B.fill();
+  }
+  B.restore();
 }
 // shooting star: rare, only in a clear night sky (first one soon, so it can be seen in the preview; then every 2–4 minutes)
 let meteor = null, nextMeteor = rnd(15, 40);
@@ -632,20 +679,21 @@ function draw() {
   }
   if (m.clear && S.tod !== 'night' && fv > 0) { // a warm, soft glow of the sun – in fog only a pale bright spot, in dense fog none
     B.globalAlpha = S.fog === 2 ? 0.55 : fv;
-    const pos = { morning: [0.12, 0.72], day: [0.78, 0.08], evening: [0.88, 0.75] }[S.tod], sx = pos[0] * W, sy = pos[1] * H, sr = Math.max(W, H) * 0.55;
-    const sg = B.createRadialGradient(sx, sy, 0, sx, sy, sr); const warm = S.tod === 'day' ? '255,248,225' : '255,200,140';
+    const sp0 = sunPos(), sx = sp0.x, sy = sp0.y, sr = Math.max(W, H) * 0.55;
+    const sg = B.createRadialGradient(sx, sy, 0, sx, sy, sr); const warm = mixRGB([255, 248, 225], [255, 200, 140], sp0.low);
     sg.addColorStop(0, `rgba(${warm},.75)`); sg.addColorStop(0.08, `rgba(${warm},.45)`); sg.addColorStop(0.35, `rgba(${warm},.12)`); sg.addColorStop(1, `rgba(${warm},0)`);
     B.fillStyle = sg; B.fillRect(0, 0, W, H); B.globalAlpha = 1;
   }
   B.globalAlpha = [1, 0.55, 0, 0][S.fog]; // clouds: paler in haze, gone in fog
   if (B.globalAlpha > 0) for (const l of layers) for (let x = snapX(l.ox) - l.LW; x < W; x += l.LW) B.drawImage(l.cv, x, 0, l.LW, H);
   B.globalAlpha = 1;
+  if (m.clear && S.tod !== 'night' && S.fog < 2) { const sp1 = sunPos(); if (sp1.el > -1) drawSunFx(sp1.x, sp1.y, sp1.low, fv * (1 - sunCover(sp1.x, sp1.y)) * (S.fog === 1 ? 0.45 : 1) * Math.min(1, (sp1.el + 1) / 3)); }
   if (S.mode === 'partly' && S.tod !== 'night' && S.fog < 2) { const sh = Math.max(0, Math.sin(t * 0.11) * Math.sin(t * 0.047 + 1)) * 0.12; if (sh > 0.005) { B.fillStyle = `rgba(30,45,70,${sh})`; B.fillRect(0, 0, W, H); } } // a cloud shadow passes now and then
   const FOG = [0, 0.2, 0.42, 0.66][S.fog]; // milky light: clouds fade into grey
   if (FOG) { const fg = fogGrey(); B.fillStyle = `rgba(${fg},${FOG})`; B.fillRect(0, 0, W, H); }
   if (S.fog === 2 && m.clear && S.tod !== 'night') { // in fog the sun only shines through as a pale bright spot
-    const pos = { morning: [0.12, 0.72], day: [0.78, 0.08], evening: [0.88, 0.75] }[S.tod], sx = pos[0] * W, sy = pos[1] * H, sr = Math.min(W, H) * 0.22;
-    const sg = B.createRadialGradient(sx, sy, 0, sx, sy, sr); const c = S.tod === 'day' ? '250,250,245' : '255,225,195';
+    const sp2 = sunPos(), sx = sp2.x, sy = sp2.y, sr = Math.min(W, H) * 0.22;
+    const sg = B.createRadialGradient(sx, sy, 0, sx, sy, sr); const c = mixRGB([250, 250, 245], [255, 225, 195], sp2.low);
     sg.addColorStop(0, `rgba(${c},.55)`); sg.addColorStop(0.25, `rgba(${c},.28)`); sg.addColorStop(1, `rgba(${c},0)`); B.fillStyle = sg; B.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
   }
   if (flash > 0) { B.fillStyle = `rgba(200,210,240,${flash * 0.35})`; B.fillRect(0, 0, W, H); }
@@ -798,7 +846,14 @@ document.getElementById('wind').addEventListener('input', (e) => { S.wind = +e.t
 document.getElementById('dir').addEventListener('change', (e) => { S.dir = +e.target.value; ui(); });
 document.getElementById('temp').addEventListener('input', (e) => { S.temp = +e.target.value; ui(); });
 document.getElementById('ontiles').addEventListener('change', (e) => { S.on = e.target.checked; });
-document.getElementById('tod').addEventListener('change', (e) => { S.tod = e.target.value; makeClouds(); fill(); });
+function sunFromPanel() { // position of the sun from the two preview controls: part of the day and season
+  const p = +document.getElementById('sunp').value / 100, se = document.getElementById('season').value, mx = { winter: 17, mid: 41, summer: 64 }[se], half = { winter: 55, mid: 90, summer: 128 }[se];
+  S.sunAz = 180 + (p * 2 - 1) * half; S.sunEl = mx * Math.pow(Math.sin(Math.PI * p), 0.85);
+  document.getElementById('sunpv').textContent = `${Math.round(S.sunEl)}°`;
+  if (S.tod !== 'night') { const td = S.sunEl < 8 ? (p < 0.5 ? 'morning' : 'evening') : 'day'; if (td !== S.tod) { S.tod = td; document.getElementById('tod').value = td; makeClouds(); fill(); } }
+}
+document.getElementById('sunp').addEventListener('input', sunFromPanel); document.getElementById('season').addEventListener('change', sunFromPanel);
+document.getElementById('tod').addEventListener('change', (e) => { S.tod = e.target.value; const v = { morning: 7, day: 50, evening: 93 }[S.tod]; if (v !== undefined) { document.getElementById('sunp').value = v; sunFromPanel(); } makeClouds(); fill(); });
 document.getElementById('aur').addEventListener('change', (e) => { S.aurora = +e.target.value; });
 document.getElementById('fog').addEventListener('change', (e) => { S.fog = +e.target.value; fill(); });
 document.getElementById('speed').addEventListener('change', (e) => { S.speed = +e.target.value; });
@@ -806,6 +861,7 @@ document.getElementById('reset').addEventListener('click', () => { T.forEach((o)
 document.getElementById('clear').addEventListener('click', () => { T.forEach((o) => { o.cap = null; o.ov = [0, 0]; }); slabs = []; save(); });
 addEventListener('resize', size);
 load(); size(); ui();
+sunFromPanel();
 setInterval(save, 5000);
 if (reduce) draw(); else requestAnimationFrame(frame);
 }

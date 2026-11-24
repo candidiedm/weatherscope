@@ -71,9 +71,11 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 16p
   <label>Temperatur <input type="range" id="temp" min="-10" max="10" step="1" value="-2"><output id="tempo">−2 °C</output></label>
   <label><input type="checkbox" id="ontiles" checked> Wetter auf Kacheln</label>
   <label>Tageszeit <select id="tod"><option value="morning">Morgen</option><option value="day" selected>Tag</option><option value="evening">Abend</option><option value="night">Nacht</option></select></label>
+  <label>Sonnenstand <input type="range" id="sunp" min="0" max="100" value="50"> <span id="sunpv"></span></label>
+  <label>Jahreszeit <select id="season"><option value="winter">Winter</option><option value="mid" selected>Frühling/Herbst</option><option value="summer">Sommer</option></select></label>
   <label>Nordlicht <select id="aur"><option value="0">aus</option><option value="1">schwach</option><option value="2">mittel</option><option value="3">stark</option></select></label>
   <label>Nebel <select id="fog"><option value="0">aus</option><option value="1">Dunst</option><option value="2">Nebel</option><option value="3">dicht</option></select></label>
   <label>Zeitraffer <select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="30">30×</option></select></label>
   <button class="btn" id="reset">Zurücksetzen</button><button class="btn" id="clear">Schnee entfernen</button>
-  <div class="hint">Stand 52 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
+  <div class="hint">Stand 54 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
 </div>
