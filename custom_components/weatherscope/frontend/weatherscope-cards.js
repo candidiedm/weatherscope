@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.7';
+  const VERSION = '0.15.8';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -1061,13 +1061,13 @@ ${med && chart
       if (tc && num(tr) !== null) rate = num(tr);
       const wet = rate === null ? 1 : rate;
       const mode = {
-        sunny: 'sunny', 'clear-night': 'sunny', partlycloudy: 'partly', cloudy: 'dry', windy: 'dry', 'windy-variant': 'dry', fog: 'dry', exceptional: 'dry',
+        sunny: 'sunny', 'clear-night': 'sunny', partlycloudy: 'partly', cloudy: 'dry', windy: 'dry', 'windy-variant': 'dry', fog: 'partly', exceptional: 'dry', // fog: no cloud deck of its own – in medium fog the sun still shows as a pale disc
         rainy: wet < 0.5 ? 'drizzle' : wet <= 4 ? 'rain' : 'heavy', pouring: 'heavy', hail: 'heavy', lightning: 'storm', 'lightning-rainy': 'storm',
         snowy: wet > 1.5 ? 'snowh' : 'snow', 'snowy-rainy': 'sleet',
       }[cond] || 'dry';
       const vr = A.visibility_unit || 'km', vis = num(A.visibility), vkm = vis === null ? null : vr === 'mi' ? vis * 1.609 : vr === 'm' ? vis / 1000 : vis;
       // fog by visibility: below 200 m dense, below 1 km fog, below 5 km haze (not under a clear sky); the condition "fog" always shows fog
-      const fog = Math.max(vkm === null ? 0 : vkm < 0.2 ? 3 : vkm < 1 ? 2 : vkm < 5 && !['sunny', 'clear-night', 'partlycloudy'].includes(cond) ? 1 : 0, cond === 'fog' ? 2 : 0);
+      const fog = Math.max(vkm === null ? 0 : vkm < 0.2 ? 3 : vkm < 1 ? 2 : vkm < 5 && !['sunny', 'clear-night', 'partlycloudy'].includes(cond) ? 1 : 0, cond === 'fog' ? (tc === 'fog' && num(tr) !== null ? Math.max(1, Math.min(3, Math.round(num(tr)))) : 2) : 0);
       const sun = st('sun.sun'), el = sun ? num(sun.attributes.elevation) : null;
       const tod = sun && sun.state === 'below_horizon' ? 'night' : el !== null && el < 8 ? (sun.attributes.rising ? 'morning' : 'evening') : cond === 'clear-night' ? 'night' : 'day';
       const ws = sensor(h, c.wind_speed, U.w) ?? num(A.wind_speed), wb = num(st(c.wind_bearing) && st(c.wind_bearing).state) ?? num(A.wind_bearing);

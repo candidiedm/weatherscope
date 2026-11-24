@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "weatherscope"
-VERSION = "0.15.7"
+VERSION = "0.15.8"
 
 # Config entry keys
 CONF_LOCATION = "location"

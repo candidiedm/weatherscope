@@ -1,7 +1,7 @@
 // WeatherScope card – animated weather maps (rain radar, satellite, lightning, wind, rain, temperature).
 // All data is downloaded by the WeatherScope integration on Home Assistant; the browser only talks to Home Assistant.
 (() => {
-  const VERSION = '0.15.7';
+  const VERSION = '0.15.8';
   const BASE = '/weatherscope/static/geo/';
   // Apple-style grid: a small tile (4 columns × 3 rows) is a square, bigger tiles are multiples of it.
   // Inside a sections grid the row height of that section is set so that 3 rows match 4 columns (gaps included).
