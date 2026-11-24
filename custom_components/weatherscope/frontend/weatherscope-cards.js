@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.3';
+  const VERSION = '0.15.4';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -1035,7 +1035,13 @@ ${med && chart
       // the layer with the weather on the tiles scrolls with the page (so drops never lag behind the tiles);
       // once per frame it is moved back so that it covers the screen again
       const hr = this.getBoundingClientRect(), fc = this._fxF;
-      if (fc && (Math.abs(hr.left - this._fxL) > 0.25 || Math.abs(hr.top - this._fxT) > 0.25 || this._fxL === undefined)) { this._fxL = hr.left; this._fxT = hr.top; fc.style.left = `${-hr.left}px`; fc.style.top = `${-hr.top}px`; }
+      // the layer reaches a little beyond the page at both sides (snow hangs over the outer tiles' edges) –
+      // on the right only as far as there is room, so that the view never scrolls sideways
+      const ml = 8, mr = Math.max(0, Math.min(8, Math.floor(document.documentElement.clientWidth - hr.right)));
+      this._fxBd = { left: hr.left - ml, right: hr.right + mr };
+      if (fc && (Math.abs(hr.left - this._fxL) > 0.25 || Math.abs(hr.top - this._fxT) > 0.25 || mr !== this._fxMr || this._fxL === undefined)) {
+        this._fxL = hr.left; this._fxT = hr.top; this._fxMr = mr; this._fxW.style.left = `${-ml}px`; this._fxW.style.right = `${-mr}px`; fc.style.left = `${-hr.left + ml}px`; fc.style.top = `${-hr.top}px`;
+      }
       const out = [];
       Object.entries(this._els || {}).forEach(([k, e]) => { const r = e.getBoundingClientRect(); if (r.width > 40 && r.height > 40) out.push({ key: k, rect: r }); });
       return out;
@@ -1076,7 +1082,7 @@ ${med && chart
         this._fxW = document.createElement('div'); this._fxW.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1';
         this._fxF = document.createElement('canvas'); this._fxF.style.cssText = 'position:absolute;left:0;top:0;width:100vw;height:100vh;pointer-events:none';
         this._fxW.appendChild(this._fxF); this.shadowRoot.appendChild(this._fxW); this._fxL = undefined;
-        this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), glass: (a) => this.style.setProperty('--ws-glass', a) });
+        this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), bounds: () => this._fxBd || { left: -1e4, right: 1e5 }, glass: (a) => this.style.setProperty('--ws-glass', a) });
         this._fx.set(this._fxScene(h, s));
         this._fxRs = () => this._fx && this._fx.resize(); window.addEventListener('resize', this._fxRs);
         this._fx.start(); window.weatherscopeFxPages = (window.weatherscopeFxPages || 0) + 1; // the older sky card steps aside

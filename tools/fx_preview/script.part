@@ -224,17 +224,22 @@ function rects() { return tiles.map((el) => el.getBoundingClientRect()); }
 // snow cap per tile: one height per 2 px, and an uneven upper limit (hills and hollows, rounded at the ends)
 function capOf(i, R) {
   const o = T[i], n = Math.ceil(R.width / COL);
-  if (!o.cap || o.cap.length !== n || !o.lim || o.limFor !== o.maxh) {
-    o.limFor = o.maxh;
-    const old = o.cap; o.cap = new Float32Array(n);
-    if (old) for (let k = 0; k < n; k++) o.cap[k] = old[Math.floor(k * old.length / n)] || 0;
-    const ph = [rnd(0, 6), rnd(0, 6), rnd(0, 6)], fr = [rnd(0.04, 0.08), rnd(0.12, 0.2), rnd(0.3, 0.5)];
-    o.lim = Float32Array.from({ length: n }, (_, k) => {
-      const nz = 0.56 + 0.28 * Math.sin(k * fr[0] + ph[0]) + 0.12 * Math.sin(k * fr[1] + ph[1]) + 0.05 * Math.sin(k * fr[2] + ph[2]);
+  // how uneven the snow lies depends on the wind: calm = an even blanket with gentle waves, strong wind = drifts
+  const wb = Math.round(Math.min(1, Math.max(0, (S.wind - 8) / 32)) * 4) / 4, key = (o.maxh || MAXH) + '|' + wb;
+  if (!o.cap || o.cap.length !== n || !o.lim || o.lim.length !== n || o.limFor !== key) {
+    o.limFor = key;
+    if (!o.cap || o.cap.length !== n) { const old = o.cap; o.cap = new Float32Array(n); if (old) for (let k = 0; k < n; k++) o.cap[k] = old[Math.floor(k * old.length / n)] || 0; }
+    if (!o.ph) { o.ph = [rnd(0, 6), rnd(0, 6), rnd(0, 6)]; o.fr = [rnd(0.04, 0.08), rnd(0.12, 0.2), rnd(0.3, 0.5)]; } // the same hills stay, they only grow or flatten
+    const ph = o.ph, fr = o.fr;
+    const tgt = Float32Array.from({ length: n }, (_, k) => {
+      const nn = (0.28 * Math.sin(k * fr[0] + ph[0]) + 0.12 * Math.sin(k * fr[1] + ph[1]) + 0.05 * Math.sin(k * fr[2] + ph[2])) / 0.45; // -1 … 1, never a straight stretch
+      const nc = 0.5 * Math.sin(k * fr[0] + ph[0]) + 0.34 * Math.sin(k * fr[1] + ph[1]) + 0.16 * Math.sin(k * fr[2] + ph[2]); // calm: shorter, flatter waves
+      const nz = (0.78 + 0.19 * nc) * (1 - wb) + (0.56 + 0.45 * nn) * wb;
       const e = Math.min(k, n - 1 - k) * COL, taper = 0.55 + 0.45 * Math.sqrt(Math.min(1, e / 26)), mh = o.maxh || MAXH;
       const base = mh * nz * taper, eb = Math.max(0, 1 - e / 30); // snow banks up at the edges: ends at least 3/4 of the allowed height
       return base * (1 - eb) + Math.max(base, mh * 0.75) * eb;
     });
+    if (!o.lim || o.lim.length !== n) o.lim = tgt; else o.limT = tgt; // an existing blanket reshapes slowly
   }
   return o.cap;
 }
@@ -328,6 +333,7 @@ function stepCap(i, r, dt, sp, vx, gf) {
     o.heaps = o.heaps.filter((hp) => hp.h > 0.25);
   }
   if (!o.cap) return; const c = capOf(i, r), L = o.lim, n = c.length, MH = o.maxh || MAXH; let sum = 0;
+  if (o.limT) { const rr = dt * Math.min(sp, 10) * 0.2; let open = false; for (let k = 0; k < n; k++) { const d = o.limT[k] - L[k]; if (Math.abs(d) > 0.02) { L[k] += Math.max(-rr, Math.min(rr, d)); open = true; } } if (!open) o.limT = null; }
   // snow settles: steep steps slump to the neighbours
   for (let k = 0; k < n - 1; k++) { const d = c[k] - c[k + 1], rep = 1.1 + 0.5 * Math.sin(k * 0.7 + i); if (Math.abs(d) > rep) { const mv = (Math.abs(d) - rep) / 2 * Math.sign(d); c[k] -= mv; c[k + 1] += mv; } }
   const dirS = toward() >= 0 ? 1 : -1;

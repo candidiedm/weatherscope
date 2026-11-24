@@ -55,6 +55,9 @@ rep("function rects() { return tiles.map((el) => el.getBoundingClientRect()); }"
     "  T = L.map((q) => { let o = TS.get(q.key); if (!o) { o = newT(); TS.set(q.key, o); } return o; });\n"
     "  RC = L.map((q) => q.rect); return RC;\n"
     "}")
+# snow may only hang over an outer edge as far as the layer reaches (host.bounds), so it is never cut off straight
+rep("    const o = T[i]; o.maxh = (up < 30",
+    "    if (host.bounds) { const b = host.bounds(); lf = Math.min(lf, 2 * Math.max(0, r.left - b.left) + 2); rt = Math.min(rt, 2 * Math.max(0, b.right - r.right) + 2); }\n    const o = T[i]; o.maxh = (up < 30")
 rep("if (S.tod === 'night' && m.clear && !S.fog) {\n    nextMeteor", "if (S.meteors && S.tod === 'night' && m.clear && !S.fog) {\n    nextMeteor")
 rep("let meteor = null, nextMeteor = rnd(15, 40);", "let meteor = null, nextMeteor = rnd(120, 240);")
 rep("// shooting star: rare, only in a clear night sky (first one soon, so it can be seen in the preview; then every 2–4 minutes)",
