@@ -1,6 +1,6 @@
 /* WeatherScope weather cards: Now, Hourly, Daily, Value, Wind, Moon, Air, Warning, Sky. Every value can come from any weather entity or the user's own sensors. */
 (() => {
-  const VERSION = '0.15.1';
+  const VERSION = '0.15.2';
 
   // ---------------------------------------------------------------- shared
   const T = {
@@ -1028,10 +1028,14 @@ ${med && chart
       if (!this._fx) return;
       this._fx.stop(); this._fx = null; window.weatherscopeFxPages = Math.max(0, (window.weatherscopeFxPages || 1) - 1);
       window.removeEventListener('resize', this._fxRs);
-      [this._fxB, this._fxF].forEach((c) => c && c.remove()); this._fxB = this._fxF = null;
+      [this._fxB, this._fxW].forEach((c) => c && c.remove()); this._fxB = this._fxF = this._fxW = null;
       this.style.removeProperty('--ws-glass');
     }
     _fxRects() {
+      // the layer with the weather on the tiles scrolls with the page (so drops never lag behind the tiles);
+      // once per frame it is moved back so that it covers the screen again
+      const hr = this.getBoundingClientRect(), fc = this._fxF;
+      if (fc && (Math.abs(hr.left - this._fxL) > 0.25 || Math.abs(hr.top - this._fxT) > 0.25 || this._fxL === undefined)) { this._fxL = hr.left; this._fxT = hr.top; fc.style.left = `${-hr.left}px`; fc.style.top = `${-hr.top}px`; }
       const out = [];
       Object.entries(this._els || {}).forEach(([k, e]) => { const r = e.getBoundingClientRect(); if (r.width > 40 && r.height > 40) out.push({ key: k, rect: r }); });
       return out;
@@ -1065,8 +1069,11 @@ ${med && chart
       const on = this._c.animation !== false && this.isConnected && !this.preview && !lovelaceEdit() && typeof window.WeatherScopeFx === 'function';
       if (!on) { this._fxStop(); return; }
       if (!this._fx) {
-        const mk = (z) => { const cv = document.createElement('canvas'); cv.style.cssText = `position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:${z}`; this.shadowRoot.appendChild(cv); return cv; };
-        this._fxB = mk(-1); this._fxF = mk(1);
+        // sky: fixed behind everything. Weather on the tiles: inside the page, clipped to it, above the tiles
+        this._fxB = document.createElement('canvas'); this._fxB.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:-1'; this.shadowRoot.appendChild(this._fxB);
+        this._fxW = document.createElement('div'); this._fxW.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1';
+        this._fxF = document.createElement('canvas'); this._fxF.style.cssText = 'position:absolute;left:0;top:0;width:100vw;height:100vh;pointer-events:none';
+        this._fxW.appendChild(this._fxF); this.shadowRoot.appendChild(this._fxW); this._fxL = undefined;
         this._fx = window.WeatherScopeFx(this._fxB, this._fxF, { rects: () => this._fxRects(), glass: (a) => this.style.setProperty('--ws-glass', a) });
         this._fx.set(this._fxScene(h, s));
         this._fxRs = () => this._fx && this._fx.resize(); window.addEventListener('resize', this._fxRs);
@@ -1159,7 +1166,7 @@ ${med && chart
       if (!s) { this._fxStop(); this.shadowRoot.innerHTML = `<ha-card style="padding:16px">${this._c.entity || ''} ?</ha-card>`; this._built = false; return; }
       if (!this._built) {
         this._fxStop();
-        this.shadowRoot.innerHTML = `<style>:host{display:block}.pg{display:flex;flex-direction:column;gap:8px}
+        this.shadowRoot.innerHTML = `<style>:host{display:block;position:relative}.pg{display:flex;flex-direction:column;gap:8px}
 .gr{--u:160px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:var(--u);gap:8px}.gr>*{min-width:0;min-height:0;height:100%;zoom:var(--k,1)}.gr>weatherscope-card,.gr>weatherscope-daily-card{zoom:1}</style>
 <div class="pg"><div id="hd"></div><div class="gr" id="gr"></div></div>`;
         this._built = true; this._els = {}; this._sig = null; this._now = null;
