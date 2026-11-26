@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 125 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 126 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -42,13 +42,13 @@ float dens(vec2 p, float k) {
   vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
   vec2 f = ps * 1.6 + o + wp * 0.4 - vec2(-d * tm * 0.02, tm * 0.04);  // the bulges rise slowly, fed from the upwind side
   float n = bil(vec3(f, tm * 0.1));
-  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.02, tm * 0.07), tm * 0.17));
+  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.014, tm * 0.045), tm * 0.1));
   float dn = env * 1.3 + (n - 0.34) * 1.05 + (fine - 0.34) * mix(0.13, 0.3, k);
   dn -= (1.0 - smoothstep(0.02, 0.2, G)) * 0.6;                       // a cloud begins as a small puff out of nothing and ends as one
   dn -= E * (0.3 + 1.6 * fbm3(vec3(p * 1.5 + o + 21.0, tm * 0.05)));  // passing away: it thins unevenly, tears into shreds, and these go one by one
   // the underside keeps its height but is no ruled line: bays and hanging shreds that form and go, about half as fast as the bulges above
-  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.075)) - 0.5) * 0.4;
-  if (k > 0.5) { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.1), tm * 0.25)); dn += (frill - 0.5) * 0.14; if (R.x > 600.0) dn += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.3)) - 0.5) * 0.085; bn += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.1)) - 0.5) * 0.2; }
+  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.05)) - 0.5) * 0.4;
+  if (k > 0.5) { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.05), tm * 0.11)); dn += (frill - 0.5) * 0.14; if (R.x > 600.0) dn += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.13)) - 0.5) * 0.085; bn += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.06)) - 0.5) * 0.2; }
   float base = smoothstep(0.0, 0.2, ps.y + bn);
   return dn * base - (1.0 - base) * 0.3;
 }
@@ -64,14 +64,14 @@ vec2 dens2(vec2 p) {
   vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
   vec2 f = ps * 1.6 + o + wp * 0.4 - vec2(-d * tm * 0.02, tm * 0.04);  // the bulges rise slowly, fed from the upwind side
   float n = bil(vec3(f, tm * 0.1));
-  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.02, tm * 0.07), tm * 0.17));
+  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.014, tm * 0.045), tm * 0.1));
   float dn = env * 1.3 + (n - 0.34) * 1.05, dk = (fine - 0.34) * 0.3, d0 = (fine - 0.34) * 0.13;
   dn -= (1.0 - smoothstep(0.02, 0.2, G)) * 0.6;                       // a cloud begins as a small puff out of nothing and ends as one
   dn -= E * (0.3 + 1.6 * fbm3(vec3(p * 1.5 + o + 21.0, tm * 0.05)));  // passing away: it thins unevenly, tears into shreds, and these go one by one
   // the underside keeps its height but is no ruled line: bays and hanging shreds that form and go, about half as fast as the bulges above
-  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.075)) - 0.5) * 0.4;
+  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.05)) - 0.5) * 0.4;
   float bk = bn;
-  { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.1), tm * 0.25)); dk += (frill - 0.5) * 0.14; if (R.x > 600.0) dk += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.3)) - 0.5) * 0.085; bk += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.1)) - 0.5) * 0.2; }
+  { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.05), tm * 0.11)); dk += (frill - 0.5) * 0.14; if (R.x > 600.0) dk += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.13)) - 0.5) * 0.085; bk += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.06)) - 0.5) * 0.2; }
   float base = smoothstep(0.0, 0.2, ps.y + bk), bas0 = smoothstep(0.0, 0.2, ps.y + bn);
   return vec2((dn + dk) * base - (1.0 - base) * 0.3, (dn + d0) * bas0 - (1.0 - bas0) * 0.3);
 }
@@ -102,7 +102,7 @@ void main() {
 }`;
 const cv = document.getElementById('c'), B = cv.getContext('2d'), GC = document.getElementById('g'), diag = document.getElementById('diag');
 const rnd = (a, b) => a + Math.random() * (b - a), sst = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
-const QS = new URLSearchParams(location.search), BMAX = +(QS.get('max') || 60000), BMIN = +(QS.get('min') || 4000), FMIN = +(QS.get('fade') || 1.2), FMAX = 14, Q = +(QS.get('q') || 0.7);
+const QS = new URLSearchParams(location.search), BMAX = +(QS.get('max') || 60000), BMIN = +(QS.get('min') || 4000), FMIN = +(QS.get('fade') || 1.2), FMAX = 14, Q = +(QS.get('q') || 0.85);
 let FADE = 3; // how long a cloud takes from one picture to the next: as long as it takes until its turn comes again, so it is always on its way and never rests
 let W = 0, H = 0, level = 0, t = 0, last = 0, budget = +(QS.get('b') || 8000), started = 0;
 let x = null, U = null, U2 = null, P1 = null, P2 = null, FB = null, err = '', info = '', lost = 0, dgF = 0, dgT = 0, dgSum = 0, dgPx = 0, dgJobs = 0, dgLate = 0, nVis = 0, nPic = 0;
