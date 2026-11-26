@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 124 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 125 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -135,8 +135,9 @@ function glInit() {
     P1 = prog('attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }', FRAG);
     mark('Zeichen-Programm übersetzen');
     // setting the finished pictures into the sky: the picture it comes from and the one it goes to, mixed – the cheap part, done for every cloud in every frame
-    P2 = prog('attribute vec2 a; uniform vec4 rc; varying vec2 tc; void main(){ tc = a * 0.5 + 0.5; gl_Position = vec4(rc.xy + a * rc.zw, 0.0, 1.0); }',
-      'precision mediump float; uniform sampler2D S; uniform vec4 u0, u1; uniform vec3 kk; varying vec2 tc; void main(){ vec4 o = texture2D(S, u0.xy + tc * u0.zw) * kk.z, c = texture2D(S, u1.xy + tc * u1.zw); gl_FragColor = mix(o, c, kk.x) * kk.y; }');
+    // the place on the sheet is worked out with full precision: with the coarse one a phone chip hits only every fifth point of so large a sheet – blocks, and stripes from the neighbouring picture
+    P2 = prog('attribute vec2 a; uniform vec4 rc, u0, u1; varying vec2 t0, t1; void main(){ vec2 tc = a * 0.5 + 0.5; t0 = u0.xy + tc * u0.zw; t1 = u1.xy + tc * u1.zw; gl_Position = vec4(rc.xy + a * rc.zw, 0.0, 1.0); }',
+      '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nuniform sampler2D S; uniform vec3 kk; varying vec2 t0, t1; void main(){ vec4 o = texture2D(S, t0) * kk.z, c = texture2D(S, t1); gl_FragColor = mix(o, c, kk.x) * kk.y; }');
     const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW); x.enableVertexAttribArray(0); x.vertexAttribPointer(0, 2, x.FLOAT, false, 0, 0);
     U = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) U[n] = x.getUniformLocation(P1, n);
     U2 = {}; for (const n of ['rc', 'u0', 'u1', 'kk', 'S']) U2[n] = x.getUniformLocation(P2, n);
