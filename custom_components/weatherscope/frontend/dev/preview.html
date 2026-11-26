@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WeatherScope Wetter-Animation</title>
+<style>
+/* VOICE: ruhig, atmosphärisch, wie ein Blick aus dem Fenster bei Regen
+   IDEA: die WeatherScope-Wetterseite als Fensterscheibe, hinter und auf der das Wetter passiert
+   PICTURE: der ganze Bildschirm – Wolken, Regen/Schnee hinter Glaskacheln, Tropfen und Schnee auf den Kacheln
+   COLOUR and TYPE: Grautöne des Himmels je Wetterlage, Glaskacheln, weiße Schrift; Schrift von Home Assistant (Roboto)
+   LAYOUT: Kopf mittig, quadratisches Kachelraster wie die Wetterseite, schmale Bedienleiste unten */
+:root{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;min-height:100%}
+body{background:#3d4652;color:#fff;font:16px/1.4 Roboto,"Noto Sans",system-ui,sans-serif;overflow-x:clip}
+#bg,#fx{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+#bg{z-index:0}#fx{z-index:2;pointer-events:none}
+main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 16px 170px}
+.head{text-align:center;margin-bottom:22px;text-shadow:0 1px 3px rgba(0,0,0,.34),0 0 16px rgba(30,60,110,.4)}
+.head .o{font-size:22px}.head .t{font-size:88px;font-weight:300;line-height:1;margin-left:.12em}.head .c{font-size:17px;font-weight:500;margin-top:4px}.head .h{font-size:15px;opacity:.9;margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;grid-auto-rows:150px}
+.tile{border-radius:18px;padding:12px;background:rgba(28,40,62,var(--glass,.30));transition:background .8s;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.13);overflow:hidden;display:flex;flex-direction:column}
+.w2{grid-column:span 2}.w4{grid-column:span 4}.h3{grid-row:span 3}
+.lab{font-size:11px;letter-spacing:.03em;text-transform:uppercase;opacity:.7}
+.big{font-size:30px;margin-top:6px}.sub{font-size:13px;margin-top:2px}.note{font-size:12px;opacity:.7;margin-top:auto}
+.hours{display:flex;justify-content:space-between;margin-top:auto;font-size:13px;text-align:center}.hours b{display:block;font-weight:400;opacity:.7;font-size:12px;margin-bottom:6px}.hours span{display:block;margin-top:6px}
+.days{display:flex;flex-direction:column;justify-content:space-around;flex:1;font-size:13px}.days div{display:grid;grid-template-columns:3em 1fr 4.5em;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:6px}.days div:first-child{border:0}
+.days i{height:6px;border-radius:3px;background:rgba(0,0,0,.22);position:relative}.days i:after{content:"";position:absolute;inset:0 var(--r) 0 var(--l);border-radius:3px;background:linear-gradient(90deg,#7fd4ff,#ffd36b)}
+.map{flex:1;margin-top:8px;border-radius:12px;background:repeating-linear-gradient(45deg,rgba(90,200,250,.10) 0 12px,rgba(90,200,250,.04) 12px 24px);display:grid;place-items:center;font-size:12px;opacity:.8}
+.panel{position:fixed;z-index:3;left:50%;bottom:12px;transform:translateX(-50%);width:min(1040px,calc(100vw - 16px));background:rgba(14,19,27,.78);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button,.panel .btn{font:inherit;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:0 14px;height:36px;cursor:pointer}
+.chips button[aria-pressed=true]{background:#fff;color:#1b2430;border-color:#fff}
+.panel label{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.panel input[type=range]{width:120px;accent-color:#7fd4ff}
+.panel select{font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:10px;height:36px;padding:0 8px}
+.panel select option{color:#000}
+.panel output{min-width:4.8em;display:inline-block;font-variant-numeric:tabular-nums}
+.panel input[type=checkbox]{width:18px;height:18px;accent-color:#7fd4ff}
+.hint{font-size:12px;opacity:.6;width:100%}
+:focus-visible{outline:2px solid #7fd4ff;outline-offset:2px}
+@media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.w4{grid-column:span 2}.head .t{font-size:64px}.panel input[type=range]{width:90px}}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<main>
+  <div class="head"><div class="o">Heilbronn</div><div class="t">5°</div><div class="c" id="cond">Regen</div><div class="h">H: 6° T: 0°</div></div>
+  <div class="grid" id="grid">
+    <div class="tile w4"><div class="lab">Stündlich · Niederschlag</div>
+      <div class="hours"><div><b>Jetzt</b>☂<span>0,8</span></div><div><b>16</b>☂<span>1,2</span></div><div><b>17</b>☂<span>0,9</span></div><div><b>18</b>☂<span>0,4</span></div><div><b>19</b>☂<span>0,2</span></div><div><b>20</b>☂<span>0</span></div><div><b>21</b>☂<span>0</span></div></div></div>
+    <div class="tile"><div class="lab">Gefühlt</div><div class="big">2°</div><div class="sub">Tatsächlich: 5°</div><div class="note">Durch den Wind ist es gefühlt kälter.</div></div>
+    <div class="tile"><div class="lab">Wind</div><div class="big" id="windv">20 km/h</div><div class="sub" id="windd">aus Westen</div><div class="note">Böen bis 35 km/h</div></div>
+    <div class="tile w2 h3"><div class="lab">10 Tage</div><div class="days" id="days"></div></div>
+    <div class="tile w2 h3"><div class="lab">Wetterkarte</div><div class="map">Karte (Platzhalter)</div></div>
+    <div class="tile w2"><div class="lab">Niederschlag</div><div class="big">4,2 mm</div><div class="sub">Heute</div><div class="note">Morgen 1,1 mm erwartet.</div></div>
+    <div class="tile"><div class="lab">Luftdruck</div><div class="big">1.009</div><div class="sub">hPa · fallend</div></div>
+    <div class="tile"><div class="lab">Feuchtigkeit</div><div class="big">94 %</div><div class="note">Taupunkt 4°</div></div>
+    <div class="tile"><div class="lab">Sichtweite</div><div class="big">6 km</div><div class="note">Leicht eingeschränkt.</div></div>
+    <div class="tile"><div class="lab">UV-Index</div><div class="big">0</div><div class="sub">Niedrig</div></div>
+  </div>
+</main>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="panel" role="group" aria-label="Wetter einstellen">
+  <div class="chips" id="modes">
+    <button data-m="sunny">Sonnig</button><button data-m="partly">Heiter</button><button data-m="dry">Trocken</button><button data-m="drizzle">Niesel</button><button data-m="rain" aria-pressed="true">Regen</button><button data-m="heavy">Starkregen</button><button data-m="sleet">Schneeregen</button><button data-m="snow">Leichter Schnee</button><button data-m="snowh">Starker Schnee</button><button data-m="storm">Gewitter</button>
+  </div>
+  <label>Wind <input type="range" id="wind" min="0" max="90" step="1" value="20"><output id="windo">20 km/h</output></label>
+  <label>aus <select id="dir"><option value="270" selected>Westen</option><option value="225">Südwesten</option><option value="180">Süden</option><option value="135">Südosten</option><option value="90">Osten</option><option value="45">Nordosten</option><option value="0">Norden</option><option value="315">Nordwesten</option></select></label>
+  <label>Temperatur <input type="range" id="temp" min="-10" max="10" step="1" value="-2"><output id="tempo">−2 °C</output></label>
+  <label><input type="checkbox" id="ontiles" checked> Wetter auf Kacheln</label>
+  <label>Tageszeit <select id="tod"><option value="morning">Morgen</option><option value="day" selected>Tag</option><option value="evening">Abend</option><option value="night">Nacht</option></select></label>
+  <label><input type="checkbox" id="cman"> Wolken von Hand</label>
+  <label>hoch <input type="range" id="chi" min="0" max="100" value="30" disabled></label>
+  <label>mittel <input type="range" id="cmi" min="0" max="100" value="30" disabled></label>
+  <label>tief <input type="range" id="clo" min="0" max="100" value="30" disabled></label>
+  <label>Wolkenart ansehen <select id="ctype"><option value="">nach Wetter</option><option value="cirrus">Federwolken (Cirrus)</option><option value="veil">Schleierwolken (Cirrostratus)</option><option value="fleece">feine Schäfchen (Cirrocumulus)</option><option value="alto">grobe Schäfchen (Altocumulus)</option><option value="sheet">graue Schicht (Altostratus)</option><option value="stratocu">Schicht-Haufen (Stratocumulus)</option><option value="cumulus">Haufenwolken (Cumulus)</option><option value="flow">Haufenwolken, neue Technik (Test)</option><option value="stratus">Hochnebel (Stratus)</option><option value="lenti">Föhnwolken (Lenticularis)</option></select></label>
+  <label>Höhenwind <select id="veer"><option value="1">dreht wie üblich nach rechts</option><option value="3">dreht stark</option><option value="-3">dreht nach links</option><option value="0">wie am Boden</option></select></label>
+  <label>Gewitterwolke <select id="cb"><option value="">aus</option><option value="far">in der Ferne</option><option value="grow">zieht auf (Ablauf)</option></select></label>
+  <label>Sonnenstand <input type="range" id="sunp" min="0" max="100" value="50"> <span id="sunpv"></span></label>
+  <label>Jahreszeit <select id="season"><option value="winter">Winter</option><option value="mid" selected>Frühling/Herbst</option><option value="summer">Sommer</option></select></label>
+  <label>Nordlicht <select id="aur"><option value="0">aus</option><option value="1">schwach</option><option value="2">mittel</option><option value="3">stark</option></select></label>
+  <label>Nebel <select id="fog"><option value="0">aus</option><option value="1">Dunst</option><option value="2">Nebel</option><option value="3">dicht</option></select></label>
+  <label>Zeitraffer <select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="30">30×</option></select></label>
+  <button class="btn" id="reset">Zurücksetzen</button><button class="btn" id="clear">Schnee entfernen</button><button class="btn" id="hidet" aria-pressed="false">Kacheln ausblenden</button>
+  <div class="hint">Stand 119 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
+</div>
+<script>
+{
+const bg = document.getElementById('bg'), fx = document.getElementById('fx'), B = bg.getContext('2d'), F = fx.getContext('2d');
+const grid = document.getElementById('grid'), tiles = [...grid.querySelectorAll('.tile')];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MODES = {
+  sunny: { name: 'Sonnig', clear: true, cN: 0, cloud: [250, 252, 255], sky: ['#3d7fd0', '#a9cdf0'] },
+  partly: { name: 'Heiter', clear: true, cN: 0.35, cloud: [248, 250, 253], sky: ['#4a87d2', '#b3d2f0'] },
+  dry: { name: 'Bewölkt', sky: ['#5a6573', '#7c8692'], cloud: [96, 104, 114] },
+  drizzle: { name: 'Nieselregen', rain: 0.28, len: 0.55, wet: 0.5, sky: ['#5d6874', '#77818c'], cloud: [92, 101, 111] },
+  rain: { name: 'Regen', rain: 0.7, len: 1, wet: 1, sky: ['#47515d', '#626d79'], cloud: [70, 79, 90] },
+  heavy: { name: 'Starkregen', rain: 1.5, len: 1.35, wet: 1.8, sky: ['#3a424c', '#535d69'], cloud: [55, 62, 72] },
+  snow: { name: 'Leichter Schneefall', snow: 0.45, capf: 0.45, capH: 1, sky: ['#7d8894', '#a6b0ba'], cloud: [132, 140, 150] },
+  snowh: { name: 'Starker Schneefall', snow: 1.7, capf: 1.6, capH: 1, sky: ['#6a7480', '#929ca7'], cloud: [112, 120, 130] },
+  storm: { name: 'Gewitter', rain: 1.6, len: 1.4, wet: 1.8, sky: ['#262d36', '#3e4752'], cloud: [34, 40, 48], light: true },
+  sleet: { name: 'Schneeregen', rain: 0.45, len: 0.8, wet: 0.7, snow: 0.35, slush: true, sky: ['#5f6a76', '#848e99'], cloud: [100, 108, 118] },
+};
+// how water behaves on the glass for each kind of rain (in WeatherScope taken from mm/h and the weather condition, blended smoothly)
+const WATER = {
+  sunny:   { mist: 0, arr: 0, lg: 0, md: 0, dens: 900, hold: [60, 180], slip: 0, gmin: 9, hard: 0, trk: 1, maxr: 1, dryOff: true, dryF: 3 },
+  partly:  { mist: 0, arr: 0, lg: 0, md: 0, dens: 900, hold: [60, 180], slip: 0, gmin: 9, hard: 0, trk: 1, maxr: 1, dryOff: true, dryF: 2 },
+  dry:     { mist: 0, arr: 0, lg: 0, md: 0, dens: 900, hold: [60, 180], slip: 0, gmin: 9, hard: 0, trk: 1, maxr: 1, dryOff: true },
+  drizzle: { mist: 1.6, arr: 1.2, lg: 0.0, md: 0.15, dens: 900, hold: [60, 180], slip: 0.5, smin: 2.0, gmin: 4.6, hard: 0, trk: 0.75, maxr: 2 },
+  rain:    { mist: 1, arr: 1, lg: 0.1, md: 0.37, dens: 650, hold: [15, 70], slip: 1, gmin: 3.7, hard: 0.002, trk: 1, maxr: 3 },
+  heavy:   { mist: 1.2, arr: 1.6, lg: 0.2, md: 0.42, dens: 420, hold: [8, 35], slip: 2.5, gmin: 3.7, hard: 0.006, trk: 1.3, maxr: 4 },
+  storm:   { mist: 1.2, arr: 1.7, lg: 0.22, md: 0.42, dens: 420, hold: [8, 35], slip: 2.5, gmin: 3.7, hard: 0.007, trk: 1.3, maxr: 4 },
+  sleet:   { mist: 0.8, arr: 0.7, lg: 0.03, md: 0.3, dens: 900, hold: [40, 120], slip: 0.5, smin: 2.2, gmin: 4.3, hard: 0, trk: 0.75, maxr: 2, slow: 0.6 },
+  snow:    { arr: 0, lg: 0, md: 0, dens: 900, hold: [60, 180], slip: 0, gmin: 9, hard: 0, trk: 1, maxr: 1, mist: 0 },
+  snowh:   { arr: 0, lg: 0, md: 0, dens: 900, hold: [60, 180], slip: 0, gmin: 9, hard: 0, trk: 1, maxr: 1, mist: 0 },
+};
+const WP = () => WATER[S.mode] || WATER.rain;
+const S = { veer: 1, cType: null, cb: null, cHigh: null, cMid: null, cLow: null, sunAz: null, sunEl: null, aurora: 0, tod: 'day', fog: 0, mode: 'rain', wind: 20, dir: 270, temp: -2, on: true, speed: 1 };
+let wetStart = 0, W = 0, H = 0, DPR = 1, t = 0, last = 0, flash = 0, nextFlash = 3, bolt = null, cbGlow = 0, cbNext = 4, cbAt = 0;
+let layers = [], rain = [], snow = [], splash = [], clumps = [], lines = [], powder = [], falls = [], slabs = [];
+const MAXH = 8, COL = 2;
+const T = tiles.map(() => ({ cap: null, lim: null, ov: [0, 0], sag: [null, null], heaps: [], drops: [], rivs: [], merging: [], splats: [], pool: [] }));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = () => { const u = Math.random(); return u < 0.65 ? rnd(3, 10) : u < 0.92 ? rnd(10, 24) : rnd(24, 60); }; // mostly small pieces, now and then a big slab
+
+const days = ['Heute', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So', 'Mo', 'Di'];
+document.getElementById('days').innerHTML = days.map((d, i) => { const l = 10 + (i * 7) % 30, r = 15 + (i * 11) % 35; return `<div><span>${d}</span><i style="--l:${l}%;--r:${r}%"></i><span style="text-align:right">${2 + (i % 4)}° / ${6 + (i % 3)}°</span></div>`; }).join('');
+
+function size() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  for (const c of [bg, fx]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
+  B.setTransform(DPR, 0, 0, DPR, 0, 0); F.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+  grid.style.gridAutoRows = `${(grid.clientWidth - (cols - 1) * 8) / cols}px`;
+  makeClouds(); makeFog(); fill();
+}
+
+// clouds: clusters of soft puffs with a light upper side and a darker base, three layers at different speeds
+// soften a band that repeats endlessly: blur it together with its neighbours, so its ends join without a seam
+// own blur that works in every browser (Safari ignores the canvas filter, which left hard edges):
+// shrink, average the pixels three times (close to a real soft blur), enlarge again
+function blurDraw(gt, src, px) {
+  const sc = Math.max(1, px / 3), w = Math.max(2, Math.ceil(src.width / sc)), h = Math.max(2, Math.ceil(src.height / sc)), r = Math.max(1, Math.round(px / sc));
+  const sm = document.createElement('canvas'); sm.width = w; sm.height = h; const gs = sm.getContext('2d', { willReadFrequently: true }); gs.imageSmoothingQuality = 'high';
+  let cur = src, cw = src.width, chh = src.height; /* shrink in halves, so nothing gets jagged */
+  while (cw / 2 > w * 1.2) { const hc = document.createElement('canvas'); hc.width = Math.ceil(cw / 2); hc.height = Math.max(1, Math.ceil(chh / 2)); hc.getContext('2d').drawImage(cur, 0, 0, hc.width, hc.height); if (cur !== src) cur.width = cur.height = 0; cur = hc; cw = hc.width; chh = hc.height; }
+  gs.drawImage(cur, 0, 0, w, h); if (cur !== src) cur.width = cur.height = 0;
+  const im = gs.getImageData(0, 0, w, h), d = im.data, n = w * h; let a = new Float32Array(n * 4), b = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) { const al = d[i * 4 + 3] / 255; a[i * 4] = d[i * 4] * al; a[i * 4 + 1] = d[i * 4 + 1] * al; a[i * 4 + 2] = d[i * 4 + 2] * al; a[i * 4 + 3] = d[i * 4 + 3]; }
+  const win = r * 2 + 1;
+  for (let pass = 0; pass < 3; pass++) {
+    for (let y = 0; y < h; y++) for (let c = 0; c < 4; c++) { let sum = 0; const o = y * w * 4 + c; for (let k = -r; k <= r; k++) sum += a[o + Math.min(w - 1, Math.max(0, k)) * 4]; for (let x = 0; x < w; x++) { b[o + x * 4] = sum / win; sum += a[o + Math.min(w - 1, x + r + 1) * 4] - a[o + Math.max(0, x - r) * 4]; } }
+    for (let x = 0; x < w; x++) for (let c = 0; c < 4; c++) { let sum = 0; const o = x * 4 + c; for (let k = -r; k <= r; k++) sum += b[o + Math.min(h - 1, Math.max(0, k)) * w * 4]; for (let y = 0; y < h; y++) { a[o + y * w * 4] = sum / win; sum += b[o + Math.min(h - 1, y + r + 1) * w * 4] - b[o + Math.max(0, y - r) * w * 4]; } }
+  }
+  for (let i = 0; i < n; i++) { const al = a[i * 4 + 3]; if (al > 0.01) { const f = 255 / al; d[i * 4] = a[i * 4] * f; d[i * 4 + 1] = a[i * 4 + 1] * f; d[i * 4 + 2] = a[i * 4 + 2] * f; } d[i * 4 + 3] = al; }
+  gs.putImageData(im, 0, 0); a = b = null;
+  gt.imageSmoothingEnabled = true; gt.imageSmoothingQuality = 'high'; gt.drawImage(sm, 0, 0, w, h, 0, 0, src.width, src.height); sm.width = sm.height = 0;
+}
+// repeating bands are placed on whole screen pixels, otherwise a hairline shows where two copies meet
+const snapX = (x) => Math.round(x * DPR) / DPR;
+function blurWrap(raw, LW, px) {
+  const pad = px * 3, wide = document.createElement('canvas'); wide.width = LW + pad * 2; wide.height = raw.height; const gw = wide.getContext('2d');
+  gw.drawImage(raw, pad, 0); gw.drawImage(raw, pad - LW, 0); gw.drawImage(raw, pad + LW, 0);
+  const tmp = document.createElement('canvas'); tmp.width = wide.width; tmp.height = wide.height; const gt = tmp.getContext('2d'); blurDraw(gt, wide, px);
+  const cv = document.createElement('canvas'); cv.width = LW; cv.height = raw.height; cv.getContext('2d').drawImage(tmp, -pad, 0);
+  wide.width = wide.height = tmp.width = tmp.height = raw.width = raw.height = 0; // free the scratch canvases right away (browsers limit canvas memory)
+  return cv;
+}
+// ---- clouds in three storeys. High: feather clouds (cirrus), a milky veil (cirrostratus) or fine fleece (cirrocumulus).
+// Middle: coarse fleece (altocumulus) or a grey sheet (altostratus). Low: heaps (cumulus), lumpy layer (stratocumulus),
+// closed grey layer (stratus) or the dark rain / thunder cloud. How much of each: from the weather service, else from the weather type.
+const CTYPE = { lenti: [0, 0.4, 0], cirrus: [0.55, 0, 0], veil: [0.9, 0, 0], fleece: [0.62, 0, 0], alto: [0, 0.6, 0], sheet: [0, 0.95, 0], stratocu: [0, 0, 0.75], cumulus: [0, 0, 0.4], stratus: [0, 0, 0.95], flow: [0, 0, 0] };
+let haloK = 0;
+function cloudPlan() {
+  const base = { sunny: [0.12, 0, 0, 'cumulus'], partly: [0.25, 0.2, 0.35, 'cumulus'], dry: [0, 0.5, 0.9, 'stratus'], storm: [0, 0.6, 1, 'cb'] }[S.mode] || [0, 0.6, 1, 'nimbo'];
+  let [high, mid, low, kind] = base, hk = null, mk = null; const dryish = MODES[S.mode].clear || S.mode === 'dry';
+  if (dryish) { // dry weather: the measured cover of each storey decides
+    if (S.cHigh !== null && S.cHigh !== undefined) high = S.cHigh;
+    if (S.cMid !== null && S.cMid !== undefined) mid = S.cMid;
+    if (S.cLow !== null && S.cLow !== undefined) { low = S.cLow; kind = low > 0.85 ? 'stratus' : low > 0.5 ? 'stratocu' : 'cumulus'; }
+    const q = S.cType && CTYPE[S.cType]; // preview: look at one kind of cloud on its own
+    if (q) { high = q[0]; mid = q[1]; low = q[2]; kind = 'cumulus'; if (high) hk = S.cType; else if (mid) mk = S.cType; else kind = S.cType; }
+  }
+  if (!hk) hk = high > 0.72 ? 'veil' : high > 0.4 && Math.random() < 0.5 ? 'fleece' : 'cirrus';
+  if (!mk) mk = kind === 'nimbo' || kind === 'cb' || kind === 'stratus' ? 'mass' : mid > 0.8 ? 'sheet' : 'alto';
+  return { high, mid, low, kind, hk, mk, cb: S.cb === 'far' && dryish && (kind === 'cumulus' || kind === 'stratocu'), cbGrow: S.cb === 'grow' && dryish };
+}
+// irregular patterns that repeat exactly after the width of a layer (so the moving band shows no seam). Own maths, no picture.
+const hsh = (x, y, s) => { let n = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(s, 1274126177); n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+const sst = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+function vnoise(x, y, per, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), x0 = ((xi % per) + per) % per, x1 = (x0 + 1) % per;
+  const a = hsh(x0, yi, s), b = hsh(x1, yi, s), c = hsh(x0, yi + 1, s), d = hsh(x1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, per, s, oct) { let sum = 0, amp = 0.5, tot = 0; for (let o = 0; o < oct; o++) { sum += amp * vnoise(x, y, per, s + o * 17); tot += amp; x *= 2; y *= 2; per *= 2; amp *= 0.5; } return sum / tot; }
+let cellGap = 0;
+function cells(u, v, per, s) { // how far to the nearest of loosely scattered points: 0 on a point, about 0.5 half-way to its neighbour
+  const ui = Math.floor(u), vi = Math.floor(v); let best = 9, sec = 9;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const cx = ui + i, cy = vi + j, wx = ((cx % per) + per) % per, px = cx + 0.5 + (hsh(wx, cy, s) - 0.5) * 0.82, py = cy + 0.5 + (hsh(wx, cy, s + 7) - 0.5) * 0.82, d = Math.sqrt((u - px) * (u - px) + (v - py) * (v - py)) / (0.72 + 0.56 * hsh(wx, cy, s + 13)); if (d < best) { sec = best; best = d; } else if (d < sec) sec = d; }
+  cellGap = sec - best; return best; // cellGap: 0 on the border between two neighbours
+}
+// paints a cloud field from a "how thick is it here" rule: the edge follows the thickness, tops are lit, undersides shaded
+function fieldCanvas(w, h, sc, c, dens, L, wrap) {
+  const D = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) D[y * w + x] = dens(x * sc, y * sc);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const gc = cv.getContext('2d'), im = gc.createImageData(w, h), d = im.data, k = Math.max(1, Math.round(L.depth / sc));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, v = D[i], a = L.flat ? v : sst(L.t0, L.t1, v) * L.alpha; if (a <= 0.004) continue;
+    const xs = L.side ? (wrap ? (x + w - k) % w : Math.max(0, x - k)) : x, up = D[(wrap === 2 ? (y - k + h) % h : Math.max(0, y - k)) * w + xs], dn = D[(wrap === 2 ? (y + k) % h : Math.min(h - 1, y + k)) * w + x];
+    const b = L.base + L.lit * Math.max(0, Math.min(0.5, v - up)) - L.shade * Math.max(0, Math.min(0.5, v - dn)) + (L.core ? L.core * Math.max(0, v - L.t1) : 0), o = i * 4;
+    d[o] = Math.max(0, Math.min(255, c[0] + b)); d[o + 1] = Math.max(0, Math.min(255, c[1] + b)); d[o + 2] = Math.max(0, Math.min(255, c[2] + b * 0.9)); d[o + 3] = Math.min(255, a * 255);
+  }
+  gc.putImageData(im, 0, 0); return cv;
+}
+// ---- cloud sheets seen from above. Every storey is one square picture that repeats in both directions; when it is drawn it is tilted
+// into the view: steeply overhead at the top of the screen, far away near the horizon at the bottom. So the clouds reach across the whole sky,
+// get smaller, flatter and closer together towards the horizon, and can drift in any direction – also towards us or away from us
+const TSU = 1024, TPX = 512; // size of one sheet in sky units / in picture points
+const mod = (a, n) => ((a % n) + n) % n;
+function vnoise2(x, y, px, py, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), x0 = mod(xi, px), x1 = (x0 + 1) % px, y0 = mod(yi, py), y1 = (y0 + 1) % py;
+  const a = hsh(x0, y0, s), b = hsh(x1, y0, s), c = hsh(x0, y1, s), d = hsh(x1, y1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm2(x, y, px, py, s, oct) { let sum = 0, amp = 0.5, tot = 0; for (let o = 0; o < oct; o++) { sum += amp * vnoise2(x, y, px, py, s + o * 17); tot += amp; x *= 2; y *= 2; px *= 2; py *= 2; amp *= 0.5; } return sum / tot; }
+function cells2(u, v, pu, pv, s) {
+  const ui = Math.floor(u), vi = Math.floor(v); let best = 9, sec = 9;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const cx = ui + i, cy = vi + j, wx = mod(cx, pu), wy = mod(cy, pv), px = cx + 0.5 + (hsh(wx, wy, s) - 0.5) * 0.82, py = cy + 0.5 + (hsh(wx, wy, s + 7) - 0.5) * 0.82, d = Math.sqrt((u - px) * (u - px) + (v - py) * (v - py)) / (0.72 + 0.56 * hsh(wx, wy, s + 13)); if (d < best) { sec = best; best = d; } else if (d < sec) sec = d; }
+  cellGap = sec - best; return best;
+}
+// paints a "how thick is it here" rule into a sheet (g draws in sky units)
+function sheetField(g, c, dens, L) { const sc = TSU / TPX, cv = fieldCanvas(TPX, TPX, sc, c, dens, L, 2); g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(cv, 0, 0); g.restore(); cv.width = cv.height = 0; }
+// sets a small picture into the sheet, repeated across its edges
+function stamp(g, cv, x0, y0, w, h) { for (const dx of [0, -TSU, TSU]) for (const dy of [0, -TSU, TSU]) if (x0 + dx + w > 0 && x0 + dx < TSU && y0 + dy + h > 0 && y0 + dy < TSU) g.drawImage(cv, x0 + dx, y0 + dy, w, h); }
+const NOW = 1 << 20; // "never repeats": for single clouds
+// feather clouds (cirrus): a small head with a trail of falling ice behind it. The wind is faster up where the head is, so the trail lags behind,
+// fans out and thins; many fine fibres side by side give the combed look. "ang" is the direction the cloud travels in
+function genCirrus(g, cover, col, ang) {
+  const n = Math.round(cover * 10); if (!n) return;
+  const sp = document.createElement('canvas'); sp.width = sp.height = 48; { const q = sp.getContext('2d'), gr = q.createRadialGradient(24, 24, 0, 24, 24, 24); gr.addColorStop(0, `rgba(${col(36)},1)`); gr.addColorStop(0.5, `rgba(${col(36)},0.5)`); gr.addColorStop(1, `rgba(${col(36)},0)`); q.fillStyle = gr; q.fillRect(0, 0, 48, 48); }
+  const dot = (x, y, r, a) => { g.globalAlpha = a; x = mod(x, TSU); y = mod(y, TSU); for (const dx of [0, -TSU, TSU]) for (const dy of [0, -TSU, TSU]) { const X = x + dx, Y = y + dy; if (X + r > 0 && X - r < TSU && Y + r > 0 && Y - r < TSU) g.drawImage(sp, X - r, Y - r, r * 2, r * 2); } };
+  for (let q = 0; q < n; q++) {
+    const x0 = Math.random() * TSU, y0 = Math.random() * TSU, len = rnd(300, 720), a0 = ang + Math.PI + rnd(-0.22, 0.22), fan = rnd(0.05, 0.2), curl = rnd(-0.0005, 0.0005), fibres = 50 + Math.floor(Math.random() * 60), root = rnd(10, 34), hook = Math.random() < 0.5 ? rnd(0.0003, 0.001) * (Math.random() < 0.5 ? 1 : -1) : 0;
+    for (let k = 0; k < 5; k++) dot(x0 + rnd(-root, root), y0 + rnd(-root, root), rnd(10, 22), 0.07); // the head: only a slightly denser start
+    for (let k = 0; k < 9; k++) { const f = k / 8; dot(x0 + f * len * 0.7 * Math.cos(a0), y0 + f * len * 0.7 * Math.sin(a0), rnd(22, 46) * (0.6 + f), 0.06); } // faint body under the fibres
+    for (let fI = 0; fI < fibres; fI++) {
+      const a = a0 + rnd(-1, 1) * fan * Math.pow(Math.random(), 0.6), l = len * rnd(0.3, 1), off = rnd(-1, 1) * root, al = rnd(0.05, 0.12), r = rnd(1.5, 3.6), cf = curl + rnd(-0.0004, 0.0004), ca = Math.cos(a), sa = Math.sin(a);
+      for (let d = 0; d < l; d += r * 1.1) {
+        const f = d / l, env = Math.pow(1 - f, 0.7) * Math.min(1, f * 6 + 0.15), bend = cf * d * d + hook * Math.max(0, d - len * 0.55) ** 2; // thick at the head, thinning out along the trail
+        dot(x0 + d * ca - (off + bend) * sa, y0 + d * sa + (off + bend) * ca, r * (1 + 1.5 * f), al * env);
+      }
+    }
+  }
+  g.globalAlpha = 1; sp.width = sp.height = 0;
+}
+// milky veil high up (cirrostratus): thin and streaky, the sun shines through with a ring around it
+function genVeil(g, cover, c) {
+  const seed = (Math.random() * 1e6) | 0, k = Math.random() < 0.5 ? 1 : -1, cw = c.map((v) => Math.min(255, v + 30));
+  sheetField(g, cw, (x, y) => { const xs = x + k * y, big = fbm2(xs / TSU * 2, y / TSU * 2, 2, 2, seed, 3), fine = fbm2(xs / TSU * 3, y / TSU * 22, 3, 22, seed + 9, 3); return cover * (0.16 + 0.34 * sst(0.25, 0.75, big)) * (0.62 + 0.76 * fine); }, { flat: true, base: 0, lit: 0, shade: 0, depth: 4 });
+}
+// fleecy clouds: small tufts close together in gently waving rows, as fields that fray out at their rim; here and there the tufts are larger.
+// fine and high (cirrocumulus) or coarser with a shaded side (altocumulus)
+function genFleece(g, cover, c, coarse) {
+  if (cover < 0.03) return;
+  const seed = (Math.random() * 1e6) | 0, size = coarse ? rnd(56, 72) : rnd(23, 30), per = Math.max(4, Math.round(TSU / size)), sz = TSU / per, per2 = Math.max(3, Math.round(per / 1.75)), sz2 = TSU / per2, k = Math.random() < 0.5 ? 1 : -1, thr = 0.7 - cover * 0.32, rl = rnd(2.4, 3.6);
+  sheetField(g, c, (x, y) => {
+    const m = fbm2(x / TSU * 2, y / TSU * 2, 2, 2, seed, 3) - thr; if (m < -0.07) return 0;
+    const wx = fbm2(x / TSU * 5, y / TSU * 5, 5, 5, seed + 31, 2) - 0.5, wy = fbm2(x / TSU * 5, y / TSU * 5, 5, 5, seed + 47, 2) - 0.5, xs = x + k * y * 0.0; // gentle waving of the rows
+    const det = fbm2(x / sz * 2, y / sz * 2, per * 2, per * 2, seed + 71, 3) - 0.5, big = sst(0.42, 0.6, fbm2(x / TSU * 4, y / TSU * 4, 4, 4, seed + 13, 2));
+    const d1 = cells2(xs / sz + wx * 1.7 + det * 0.5, y / sz + wy * 1.7 - det * 0.5, per, per, seed + 5), g1 = cellGap;
+    let body = Math.max(0, 1 - 1.22 * d1) * (0.66 + 0.34 * sst(0, 0.3, g1));
+    if (big > 0.01) { const d2 = cells2(xs / sz2 + wx + det * 0.4, y / sz2 + wy, per2, per2, seed + 205), b2 = Math.max(0, 1 - 1.18 * d2) * (0.6 + 0.4 * sst(0, 0.3, cellGap)); body += (b2 - body) * big; }
+    const rip = 0.84 + 0.16 * Math.sin(y / sz * 6.283 / rl + wx * 6), thick = 0.74 + 0.6 * fbm2(x / TSU * 8, y / TSU * 8, 8, 8, seed + 91, 2), rim = sst(-0.07, 0.09, m);
+    return (body + det * 0.34) * rip * thick * (0.45 + 0.55 * rim) * sst(-0.07, 0, m);
+  }, coarse ? { t0: 0.2, t1: 0.6, alpha: 0.95, base: 10, lit: 80, shade: 160, depth: 11, core: 24 } : { t0: 0.2, t1: 0.66, alpha: 0.82, base: 26, lit: 44, shade: 60, depth: 5, core: 14 });
+}
+// grey sheets: the middle one (altostratus) lets the sun through as a dull spot, the low one (stratus, high fog) is the closed grey lid
+function genSheet(g, cover, c, low) {
+  const seed = (Math.random() * 1e6) | 0, k = Math.random() < 0.5 ? 1 : -1, cg = c.map((v, i) => Math.max(0, v * (low ? 0.9 : 0.84) - (low ? 8 : 6) + i * 3));
+  sheetField(g, cg, (x, y) => { const xs = x + k * y, big = fbm2(xs / TSU * 2, y / TSU * 2, 2, 2, seed, 3), mid = fbm2(xs / TSU * 4, y / TSU * 12, 4, 12, seed + 5, 3); return Math.min(1, cover * (low ? 0.98 : 1.02) * (0.86 + 0.26 * big) * (0.92 + 0.16 * mid)); }, { flat: true, base: 0, lit: 0, shade: 0, depth: 4 });
+}
+// lumpy low layer (stratocumulus): broad flat pads close together, grey underneath, with gaps of sky between them
+function genShreds(g, c) { // ragged dark scraps of cloud below a grey sheet
+  const seed = (Math.random() * 1e6) | 0, cd = c.map((v, i) => Math.max(0, v * 0.58 + i * 4));
+  sheetField(g, cd, (x, y) => { const big = fbm2(x / TSU * 3, y / TSU * 3, 3, 3, seed, 2), mid = fbm2(x / TSU * 7, y / TSU * 7, 7, 7, seed + 5, 4); return mid * 0.75 + big * 0.5; }, { t0: 0.66, t1: 0.86, alpha: 0.62, base: 0, lit: 30, shade: 40, depth: 8 });
+}
+function genStratocu(g, cover, c) {
+  const seed = (Math.random() * 1e6) | 0, per = Math.max(3, Math.round(TSU / rnd(150, 200))), sz = TSU / per, thr = 0.74 - cover * 0.34;
+  sheetField(g, c, (x, y) => {
+    const wx = fbm2(x / TSU * 4, y / TSU * 4, 4, 4, seed + 31, 2) - 0.5, wy = fbm2(x / TSU * 4, y / TSU * 4, 4, 4, seed + 47, 2) - 0.5;
+    const cl = 1 - cells2(x / sz + wx * 1.2, y / (sz * 0.8) + wy * 1.2, per, Math.round(per / 0.8), seed + 5), big = fbm2(x / TSU * 2, y / TSU * 2, 2, 2, seed, 2), det = fbm2(x / sz * 3, y / sz * 3, per * 3, per * 3, seed + 71, 4) - 0.5;
+    return cl * 0.8 + det * 0.55 + (big - thr) * 0.9 + 0.12;
+  }, { t0: 0.4, t1: 0.6, alpha: 0.95, base: 6, lit: 120, shade: 210, depth: 14, core: -30 });
+}
+// lens clouds (föhn clouds, lenticularis): smooth almond shapes, often stacked like plates. They stand still while the wind blows through them
+let lentis = [];
+function freeLentis() { for (const L of lentis) for (const p of L.pics) p.width = p.height = 0; lentis = []; }
+function lensPic(c, a, b, seed) {
+  const w = Math.ceil(a * 2 + 60), h = Math.ceil(b * 2 + 40);
+  return fieldCanvas(Math.ceil(w / 2), Math.ceil(h / 2), 2, c.map((v) => Math.min(255, v + 12)), (X, Y) => {
+    const x = (X - w / 2) / a, yy = (Y - h / 2) / b, bend = fbm(X / 300, 3, NOW, seed, 2) - 0.5, soft = fbm(X / 90, Y / 30, NOW, seed + 40, 3) - 0.5;
+    return 1 - Math.pow(Math.abs(x), 2.2) * (1 + 0.5 * bend) - Math.pow(Math.abs(yy + bend * 0.7 + x * x * 0.2), yy < 0 ? 2 : 1.7) + soft * 0.16;
+  }, { t0: -0.05, t1: 0.5, alpha: 0.97, base: 10, lit: 110, shade: 170, depth: 12, core: 10 }, false);
+}
+function makeLentis(cover, c) {
+  const n = Math.round(cover * 6) + 1;
+  for (let q = 0; q < n; q++) {
+    const a = rnd(150, 330), x = rnd(0.05, 0.95) * W, y = rnd(0.07, 0.5) * H, far = 1 - 0.5 * y / (0.5 * H), stack = 1 + Math.floor(Math.random() * 3);
+    for (let k = 0; k < stack; k++) { const ak = a * far * (1 - 0.18 * k) * rnd(0.85, 1.1), b = ak * rnd(0.1, 0.17), seed = (Math.random() * 1e6) | 0; lentis.push({ x: x + rnd(-0.15, 0.15) * a, y: y - k * b * rnd(1.0, 1.5), a: ak, b, pics: [lensPic(c, ak, b, seed), lensPic(c, ak * rnd(0.8, 1.15), b * rnd(0.8, 1.2), seed + 1)], ph: rnd(0, 6), per: rnd(26, 50), small: k > 0 && Math.random() < 0.4 }); }
+  }
+}
+function drawLentis(fa) { // they do not travel: the wind blows through them. Only their shape works – stretching, pinching, a small one coming and going
+  for (const L of lentis) {
+    const m = 0.5 + 0.5 * Math.sin(t * 6.283 / L.per + L.ph), sx = 1 + 0.1 * Math.sin(t * 6.283 / (L.per * 1.7) + L.ph * 2), vis = L.small ? sst(0.25, 0.6, 0.5 + 0.5 * Math.sin(t * 6.283 / (L.per * 2.3) + L.ph)) : 1;
+    for (const [k, a] of [[0, 1 - m], [1, m]]) { const pc = L.pics[k], w = pc.width * 2 * sx, h = pc.height * 2; B.globalAlpha = fa * vis * (0.25 + 0.75 * a); B.drawImage(pc, L.x - w / 2 + (k ? 8 : -8) * Math.sin(t / 9 + L.ph), L.y - h / 2, w, h); }
+  }
+  B.globalAlpha = fa;
+}
+function genMass(g, li, amount, col) { // dark rain and thunder clouds overhead: many big soft puffs
+  const puff = (x, y, r, rgb, a) => { x = mod(x, TSU); y = mod(y, TSU); for (const dx of [0, -TSU, TSU]) for (const dy of [0, -TSU, TSU]) { const X = x + dx, Y = y + dy; if (X + r < 0 || X - r > TSU || Y + r < 0 || Y - r > TSU) continue; const gr = g.createRadialGradient(X, Y, r * 0.1, X, Y, r); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(0.6, `rgba(${rgb},${a * 0.55})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.beginPath(); g.arc(X, Y, r, 0, 7); g.fill(); } };
+  const clusters = Math.round((9 + li * 4) * amount), sc = 1.15 - li * 0.2;
+  for (let q = 0; q < clusters; q++) {
+    const cx = Math.random() * TSU, cy = Math.random() * TSU, cw = rnd(180, 420) * sc, ch = rnd(120, 260) * sc, puffs = 14 + Math.floor(Math.random() * 14);
+    for (const pass of [0, 1, 2]) for (let k = 0; k < puffs; k++) puff(cx + rnd(-cw, cw) * 0.5, cy + rnd(-ch, ch) * 0.5 + (pass === 0 ? ch * 0.15 : pass === 2 ? -ch * 0.15 : 0), rnd(40, 110) * sc * (pass === 1 ? 1 : 0.8), col(pass === 0 ? -22 : pass === 2 ? 26 : 0), pass === 1 ? rnd(0.35, 0.55) : rnd(0.18, 0.32));
+  }
+}
+// a heap of cloud: several billowing domes grown together on a level, slightly uneven base. With "anvil" it becomes the thunder cloud:
+// a short thick tower that spreads out on top into a wide, domed cap – rounded above, smooth and shaded underneath.
+// "grow" (0…1) paints the same cloud at an earlier age, "anv" (0…1) how far the cap has spread: a few such pictures blended one into the next make it grow
+function heapPic(c, o) {
+  const gr = o.grow === undefined ? 1 : o.grow, av = o.anvil ? (o.anv === undefined ? 1 : o.anv) : 0, seed = o.seed === undefined ? (Math.random() * 1e6) | 0 : o.seed;
+  const pad = o.tw * (o.anvil ? 2.9 : 1.5) + 20, w = Math.ceil(pad * 2), top = Math.floor(o.base - o.hh * (o.anvil ? 1.12 : 1.2) - 16), h = Math.ceil(o.base - top + 6), sc = o.sc || 2, cw = Math.ceil(w / sc), ch = Math.ceil(h / sc);
+  const sz = o.sz || Math.max(5, Math.min(46, o.tw / 6)), sz2 = sz * 2.4, d = o.dirS, yA = o.base - o.hh * 0.8, tu = o.hh * 0.27 * (0.45 + 0.55 * av), td = o.hh * 0.14 * (0.5 + 0.5 * av), wk = 0.62 + 0.38 * gr, rise = (1 - gr) * o.hh * 0.3;
+  const cv = fieldCanvas(cw, ch, sc, c, (X, Y) => {
+    const dx = X - pad, y = Y + top; if (y > o.base + 2) return 0;
+    const Ys = Y + rise, F = (o.base - y) / o.hh, n1 = fbm(X / 330, Ys / 330, NOW, seed, 3) - 0.5, det = fbm(X / sz * 0.9, Ys / sz * 0.9, NOW, seed + 9, 3) - 0.5, xw = dx + n1 * o.tw * 0.28;
+    let sv = -1;
+    for (const C of o.cols) { const f = F / (C.h * (C.flare ? gr : 0.3 + 0.7 * gr)); if (f > 1.1) continue;
+      const dome = Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, (f - 0.5) / 0.55), 2)));
+      let hw = wk * (C.flare ? C.w * (f < 0.5 ? 1.25 - 0.5 * f / 0.5 : 0.75 + 1.3 * av * Math.pow((f - 0.5) / 0.5, 2)) * (dome + (1 - dome) * av) : C.w * (1 - 0.2 * f) * dome);
+      if (o.round) hw *= 0.5 + 0.5 * Math.sqrt(Math.min(1, Math.max(0, f) / 0.5));
+      if (hw < 2.5) continue; // the very tip of a dome: otherwise a hair-thin spike is left standing
+      const v = 1 - Math.abs(xw - C.x * wk - d * F * o.tw * 0.06) / (hw + 1); if (v > sv) sv = v; }
+    let v = 0;
+    if (sv > -0.3) { const l1 = 1 - cells(X / sz + n1 * 2, Ys / sz + det, NOW, seed + 5), l2 = 1 - cells(X / sz2 - n1 * 2, Ys / sz2, NOW, seed + 55), lump = l1 * 0.55 + l2 * 0.6; v = (Math.min(1, Math.max(0, sv + 0.1) * 1.25) * 0.5 + (lump - 0.42) * 0.85 + det * 0.3) * sst(-0.3, 0.05, sv) * sst(o.base + 2, o.base - 5 - o.rag * (det + 0.5) - o.rag * (n1 + 0.5), y); }
+    if (av > 0.02) { const ax = (dx - d * o.tw * 0.25 * av) / (o.tw * (dx * d > 0 ? 2.5 : 1.7) * (0.3 + 0.7 * av)), ay = (y - yA) / (y < yA ? tu : td), r2 = Math.pow(Math.abs(ax), 2.3) + ay * ay;
+      if (r2 < 1.3) { const fib = fbm((X - d * Y * 2) / 240, Y / 26, NOW, seed + 3, 3) - 0.5, l3 = 1 - cells(X / sz2 + n1, Y / sz2, NOW, seed + 77), l4 = 1 - cells(X / sz + n1 * 2, Y / sz, NOW, seed + 99), bil = (l3 - 0.5) * 0.5 + (l4 - 0.5) * 0.3, upw = y < yA ? 1 : Math.max(0, 1 - (y - yA) / td) * 0.35, an = (1 - r2) * 1.25 + bil * upw + fib * 0.5 * Math.pow(Math.abs(ax), 1.5) + det * 0.1 + 0.18; if (an > v) v = Math.min(0.72 + bil * upw * 1.3, an); } }
+    return v;
+  }, o.look, false);
+  const gt = cv.getContext('2d'); gt.setTransform(1 / sc, 0, 0, 1 / sc, 0, 0); gt.globalCompositeOperation = 'source-atop';
+  const dk = [c[0] * 0.38, c[1] * 0.42, c[2] * 0.54].map(Math.round).join(','), sd = [c[0] * 0.62, c[1] * 0.68, c[2] * 0.8].map(Math.round).join(','), dkA = o.dark[1] * (o.darkK === undefined ? 1 : o.darkK);
+  const sg = gt.createLinearGradient(pad - o.tw * 0.6, 0, pad + o.tw * 1.3, 0); sg.addColorStop(0, `rgba(${sd},0)`); sg.addColorStop(1, `rgba(${sd},${o.side})`); gt.fillStyle = sg; gt.fillRect(0, 0, w, h); // the side away from the light
+  if (av > 0.02) { const ug = gt.createLinearGradient(0, yA - top - tu * 0.1, 0, yA - top + td * 2.6); ug.addColorStop(0, `rgba(${sd},0)`); ug.addColorStop(0.4, `rgba(${sd},${0.62 * av})`); ug.addColorStop(1, `rgba(${sd},0)`); gt.fillStyle = ug; gt.fillRect(0, yA - top - tu * 0.1, w, td * 2.6 + tu * 0.1); } // shade under the cap
+  const b0 = o.base - top - o.hh * o.dark[0], bg2 = gt.createLinearGradient(0, b0, 0, o.base - top); bg2.addColorStop(0, `rgba(${dk},0)`); bg2.addColorStop(0.6, `rgba(${dk},${dkA * 0.5})`); bg2.addColorStop(1, `rgba(${dk},${dkA})`); gt.fillStyle = bg2; gt.fillRect(0, b0, w, h); // grey underside
+  return { cv, w: cw * sc, h: ch * sc, pad, top };
+}
+// how the flat cloud sheet is seen: the horizon lies a little below the lower edge of the screen. z says how far away a row of the screen is
+// (1 = steeply above us at the top, about 6 = far away at the bottom)
+const yHor = () => 1.06 * H, zOf = (y) => yHor() / (yHor() - y), yOf = (z) => yHor() * (1 - 1 / z);
+// which way and how fast a storey travels (sky units a second). Clouds move with the wind at their own height: it is usually turned to the right
+// of the wind on the ground and stronger. veer: preview setting for how much it turns
+function layerWind(li) {
+  const turn = [45, 30, 15][li] * (S.veer === undefined || S.veer === null ? 1 : S.veer), d = (S.dir + turn) * Math.PI / 180, sp = (S.wind * 1.8 + 5) * [0.45, 0.7, 1][li];
+  return [Math.sin(d + Math.PI) * sp, Math.cos(d) * sp]; // [sideways – the same way the rain slants –, away from us]
+}
+// fair-weather heaps live: each one appears small, billows up and out, stays a while and dissolves again – then a new one forms elsewhere.
+// Three ages of every cloud are painted once and blended, so nothing has to be recalculated while it runs. They stand at their place in the sky:
+// near ones high on the screen and large, far ones low, small and close together
+let heaps = [], cbSeq = null, cbStat = null, cbDark = 0;
+function heapLead(hp, s) { return 0.7 * 0.7 * hp.tw * s * (sst(0, 0.22, hp.p) - 1 + 0.86 * sst(0.5, 1, hp.p)); }
+function placeHeap(hp, again) { hp.fresh = false; hp.z = Math.random() < 0.42 ? zOf(H * (-0.03 + 0.83 * Math.pow(Math.random(), 0.62))) : Math.sqrt(2.4 * 2.4 + Math.random() * (7.6 * 7.6 - 2.4 * 2.4)); if (hp.pic && hp.zMade) hp.z = Math.max(hp.z, hp.zMade * 0.8); if (hp.twSky) { hp.tw = hp.twSky / hp.z; hp.hh = hp.hhSky / hp.z; hp.z0 = hp.z; } hp.X = rnd(-1, 1) * (W / 2 + 260) * hp.z; hp.flip = Math.random() < 0.5; hp.life = rnd(70, 130); 
+  hp.life = rnd(80, 140) * Math.max(1, Math.min(3.4, 0.6 + (hp.tw || 60) / 95));
+  const vTop = layerWind(2), pTop = vTop[1] > 0.5 ? vTop[1] * W / (vTop[1] * W + Math.abs(vTop[0]) * H * 0.6 + 1e-6) : 0;
+  if (again && hp.twSky && Math.random() < 0.3 * pTop) { // it comes in over the upper edge, already grown: the sky goes on above the picture
+    hp.z = 0.95; hp.tw = hp.twSky / hp.z; hp.hh = hp.hhSky / hp.z; hp.z0 = hp.z; hp.X = rnd(-1, 1) * (W / 2 + 120) * hp.z; hp.p = rnd(0.22, 0.3); hp.life = Math.min(700, Math.max(hp.life, rnd(260, 420)));
+  } else if (again && Math.random() < 0.5) { // about every second one does not form inside the picture: it drifts in from the side the wind comes from, already grown
+    const vx = layerWind(2)[0] * HEAPDRIFT / hp.z; if (Math.abs(vx) > 2) { const reach = hp.tw * 1.7 * (hp.pic ? hp.zMade / hp.z : 1); hp.X = ((vx > 0 ? -reach : W + reach) - W / 2) * hp.z; hp.p = rnd(0.22, 0.3); hp.life = Math.min(700, Math.max(hp.life, (W + 2 * reach) / Math.abs(vx) * rnd(1.0, 1.9))); } } }
+// ---- fair-weather heaps (cumulus). Nothing is cross-faded: a heap is built from a dozen solid lumps. Each lump wells up from inside the cloud,
+// swells, and sinks back while others take its place – so the whole outline keeps working, the way a time-lapse shows it. The cloud itself hardly travels.
+let baseRag = null, lumps = [], scraps = [], ragStrip = null, heapScratch = null, eatPic = null, lumpScratch = null;
+function freeLumps() { for (const p of lumps) p.cv.width = p.cv.height = 0; for (const p of scraps) p.width = p.height = 0; lumps = []; scraps = []; }
+let lumpKey = '';
+function makeLumps(cc) {
+  const key = cc.map(Math.round).join(','); if (key === lumpKey && lumps.length) return; lumpKey = key;
+  freeLumps();
+  for (let k = 0; k < 14; k++) { // single billows, painted once and shared by all heaps
+    const tw = 150, hh = rnd(120, 180), base = Math.ceil(hh * 1.2 + 16), cols = [{ x: 0, w: tw * rnd(0.48, 0.6), h: 1 }, { x: (k % 2 ? 1 : -1) * tw * rnd(0.22, 0.42), w: tw * rnd(0.3, 0.42), h: rnd(0.55, 0.85) }];
+    if (k % 3 !== 1) cols.push({ x: (k % 2 ? -1 : 1) * tw * rnd(0.28, 0.5), w: tw * rnd(0.22, 0.34), h: rnd(0.4, 0.7) });
+    if (k % 4 === 0) cols.push({ x: rnd(-0.2, 0.2) * tw, w: tw * rnd(0.2, 0.3), h: rnd(0.85, 1.05) });
+    const pc = heapPic(cc, { base, tw, hh, cols, sc: 1.5, sz: 23, round: true, seed: (Math.random() * 1e6) | 0, dirS: 1, rag: 2, side: 0.14, dark: [0.5, 0.1], look: { t0: 0.22, t1: 0.4, alpha: 1, base: 9, lit: 185, shade: 105, depth: 7, side: true } });
+    const g = pc.cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'destination-in'; const gr = g.createLinearGradient(0, pc.cv.height * 0.62, 0, pc.cv.height); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.8, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, pc.cv.width, pc.cv.height); // no foot of its own
+    pc.base = base; pc.hh = hh; pc.half = tw * 0.62; lumps.push(pc);
+  }
+  for (let k = 0; k < 6; k++) { // thin frayed scraps: fibres drawn out sideways, as they hang at the rim where a cloud dissolves
+    const seed = (Math.random() * 1e6) | 0, w = 130, h = 56;
+    scraps.push(fieldCanvas(w, h, 2, cc, (X, Y) => { const x = (X - w) / w, y = (Y - h) / h, fib = fbm(X / 90, Y / 11, NOW, seed, 4), big = fbm(X / 70, Y / 40, NOW, seed + 3, 2); return (1 - Math.pow(Math.abs(x), 1.6) - y * y) * (0.1 + 0.9 * fib + 0.6 * big); }, { t0: 0.42, t1: 0.78, alpha: 0.78, base: 8, lit: 40, shade: 30, depth: 3 }, false));
+  }
+  if (!ragStrip) { ragStrip = document.createElement('canvas'); ragStrip.width = 512; ragStrip.height = 16; const g = ragStrip.getContext('2d'), im = g.createImageData(512, 16); // what is bitten out of the base so it is level but not ruled
+    for (let x = 0; x < 512; x++) { const d = 2 + 11 * fbm2(x / 512 * 14, 0.5, 14, 3, 5, 3); for (let y = 0; y < 16; y++) im.data[(y * 512 + x) * 4 + 3] = 255 * sst(d + 2.5, d - 1, 16 - y); } g.putImageData(im, 0, 0); }
+  if (!baseRag) { baseRag = document.createElement('canvas'); baseRag.width = 640; baseRag.height = 64; const g = baseRag.getContext('2d'), im = g.createImageData(640, 64); // what is torn out of the underside: nothing at the top, everything at the bottom, ragged and tattered in between – a cloud has no edge below
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 640; x++) { const n = fbm(x / 34, y / 24, NOW, 211, 4), big = fbm(x / 150, y / 90, NOW, 97, 2); im.data[(y * 640 + x) * 4 + 3] = 255 * Math.max(0, Math.min(1, (y / 64 - 0.6 + (n - 0.5) * 1.5 + (big - 0.5) * 1.0) * 3.2)); } g.putImageData(im, 0, 0); }
+  if (!heapScratch) { heapScratch = document.createElement('canvas'); heapScratch.width = 1100; heapScratch.height = 640; }
+  if (!eatPic) { eatPic = document.createElement('canvas'); eatPic.width = 256; eatPic.height = 128; const g = eatPic.getContext('2d'), im = g.createImageData(256, 128); // the front along which an old billow is taken away: clear on one side, solid on the other, ragged in between
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 256; x++) im.data[(y * 256 + x) * 4 + 3] = 255 * Math.max(0, Math.min(1, (x / 256 - 0.5) * 7 + (fbm(x / 26, y / 22, NOW, 77, 4) - 0.5) * 2.6 + 0.5)); g.putImageData(im, 0, 0); }
+  if (!lumpScratch) { lumpScratch = document.createElement('canvas'); lumpScratch.width = Math.max(...lumps.map((q) => q.cv.width)) + 4; lumpScratch.height = Math.max(...lumps.map((q) => q.cv.height)) + 4; }
+}
+// a heap travels by growing at its front and dissolving at its back: new lumps well up on the side it is heading for, and as the cloud moves on
+// each lump falls behind, until it thins away at the rear – each in its own time, so the back frays unevenly
+function newLump(low, any) { const q = { u0: low ? rnd(0.6, 1.0) : rnd(0.7, 1.14), fall: low ? rnd(1.1, 1.5) : rnd(1.2, 1.75), v: low ? rnd(0, 0.18) : rnd(0.25, 1), s: low ? rnd(0.34, 0.5) : rnd(0.2, 0.36), k: Math.floor(Math.random() * 14), p: any ? Math.random() : 0, life: low ? rnd(85, 130) : rnd(50, 85), fade: rnd(0.42, 0.62), flip: Math.random() < 0.5, low, ord: 0 }; q.ord = (low ? 1e7 : 0) - (t - q.p * q.life); return q; } // ord: upper lumps stay behind the lower ones, and among them the youngest is the rearmost – a new billow swells out from behind the body; the order never changes while a lump lives
+// where one billow stands and how big it is: it starts tiny and low inside the body, a little behind its place, and pushes up and forward;
+// at the end it shrinks back (still solid) and only the small rest turns thin
+function lumpGeo(b, hp, s, env) {
+  const q0 = Math.min(1, b.p / 0.37), r = 1 - (1 - q0) * (1 - q0), gone = sst(b.fade, 1, b.p), u = b.u0 - b.fall * b.p - 0.62 * (1 - r);
+  const R = b.s * hp.tw * s * env * (0.06 + 0.94 * r) * (1 - 0.12 * gone);
+  return { u, r, R, gone, a: sst(0, 0.04, b.p) * (1 - sst(0.65, 1, gone)), dx: (u - 0.24 * b.v * r) * 0.72 * hp.tw * s * (0.55 + 0.45 * env), dy: R * 0.5 - b.v * (1 - 0.6 * Math.min(1, u * u)) * hp.hh * 0.85 * s * env * (0.3 + 0.7 * r) };
+}
+function newScrap(any) { return { u: -rnd(0.55, 1.15), front: Math.random() < 0.2, v: rnd(0.05, 0.6), s: rnd(0.24, 0.44), k: Math.floor(Math.random() * 6), p: any ? Math.random() : 0, life: rnd(6, 13), flip: Math.random() < 0.5 }; }
+let banks = [];
+function freeBanks() { for (const b of banks) b.cv.width = b.cv.height = 0; banks = []; }
+function makeBanks(cover, c) {
+  freeBanks(); if (cover <= 0.03 || !lumps.length || !heapScratch) return;
+  const dk = [c[0] * 0.55, c[1] * 0.6, c[2] * 0.7].map(Math.round).join(','), S2 = heapScratch, g2 = S2.getContext('2d'), base0 = 290 * (0.75 + cover * 0.5);
+  for (const [z1, z2] of [[7.6, 10.5], [10.5, 17]]) { // two belts, the nearer one drifting a little faster than the farther one
+    const BW = 1024, M = Math.ceil(base0 / z1 * 1.5 + 8), BH = Math.ceil(yOf(z2) - yOf(z1) + M + 2), cv = document.createElement('canvas'); cv.width = BW + 2; cv.height = BH; const g = cv.getContext('2d');
+    const fill = Math.min(1.2, 0.25 + cover * 2.0), zm = (z1 + z2) / 2, count = Math.round(fill * BW / (base0 / zm * 1.5) * (yOf(z2) - yOf(z1)) / (base0 / zm * 0.55));
+    const list = Array.from({ length: count }, () => ({ z: Math.sqrt(z1 * z1 + Math.random() * (z2 * z2 - z1 * z1)), x: Math.random() * BW, k: rnd(0.45, 1.6) })).sort((a, b) => b.z - a.z); // scattered through the depth of the belt, not standing in rows; far ones first
+    for (const q of list) { // each a little heap of a few lumps on its own level base
+      const tw = base0 / q.z * q.k, m = 2 + Math.floor(Math.random() * 5), sw = Math.ceil(tw * 3 + 8), sh = Math.ceil(tw * 1.5 + 6), yb = M + yOf(q.z) - yOf(z1), hz = Math.min(1, (q.z - 1) / 14);
+      g2.setTransform(1, 0, 0, 1, 0, 0); g2.globalCompositeOperation = 'source-over'; g2.globalAlpha = 1; g2.clearRect(0, 0, sw + 3, sh + 3);
+      for (let k = 0; k < m; k++) { const u = rnd(-1, 1), R = tw * rnd(0.3, 0.55) * (1 - 0.35 * Math.abs(u)), pc = lumps[Math.floor(Math.random() * lumps.length)], sc = R / pc.half; g2.save(); g2.translate(sw / 2 + u * tw * 0.7, sh + R * 0.45 - rnd(0, 0.3) * tw * (1 - u * u)); g2.scale(Math.random() < 0.5 ? -sc : sc, sc); g2.drawImage(pc.cv, -pc.pad, -pc.base, pc.w, pc.h); g2.restore(); }
+      g2.clearRect(0, sh - 1, S2.width, 4); if (baseRag) { const band = Math.max(4, tw * 0.22), sx = Math.random() * 200; g2.globalCompositeOperation = 'destination-out'; g2.drawImage(baseRag, sx, 0, Math.min(640 - sx, sw * 64 / band), 64, 0, sh - band, sw, band); } g2.globalCompositeOperation = 'source-atop'; const sg = g2.createLinearGradient(0, sh - tw * 0.45, 0, sh); sg.addColorStop(0, `rgba(${dk},0)`); sg.addColorStop(1, `rgba(${dk},0.5)`); g2.fillStyle = sg; g2.fillRect(0, 0, sw, sh);
+      g.globalAlpha = 1 - 0.5 * hz; for (const dx of [0, -BW, BW]) if (q.x + dx + sw / 2 > 0 && q.x + dx - sw / 2 < BW + 2) g.drawImage(S2, 0, 0, sw, sh, q.x + dx - sw / 2, yb - sh, sw, sh);
+    }
+    banks.push({ cv, z: zm, top: yOf(z1) - M, off: Math.random() * BW, BW, BH });
+  }
+}
+function drawBanks(fa) { // farthest first
+  B.globalAlpha = fa; for (let i = banks.length - 1; i >= 0; i--) { const b = banks[i]; for (let x = -mod(b.off / b.z, b.BW); x < W; x += b.BW) B.drawImage(b.cv, x, b.top); }
+}
+function freeHeaps() { for (const hp of heaps) { if (hp.pic) hp.pic.cv.width = hp.pic.cv.height = 0; if (hp.cv) hp.cv.width = hp.cv.height = 0; } heaps = []; }
+function makeHeaps(cover, c) {
+  const n = cover > 0.03 ? Math.round(cover * 380) + 6 : 0, cc = c.map((v) => Math.min(255, v + 12)); if (n) makeLumps(cc);
+  for (let q = 0; q < n; q++) {
+    const hp = { p: Math.random() }; placeHeap(hp); hp.z0 = hp.z;
+    const tw = Math.max(9, rnd(180, 400) * (0.75 + cover * 0.5) / hp.z), hh = tw * rnd(0.6, 0.95) * (0.55 + 0.45 / Math.sqrt(hp.z)); hp.tw = tw; hp.hh = hh; hp.ro = Math.random() * 400; hp.life = rnd(80, 140) * Math.max(1, Math.min(3.4, 0.6 + tw / 95)); hp.zMade = hp.z; if (tw >= 36) { hp.twSky = tw * hp.z; hp.hhSky = hh * hp.z; }
+    if (tw < 36) { // far away and tiny: one small picture is enough
+      const base = Math.ceil(hh * 1.2 + 16), cols = [{ x: rnd(-0.2, 0.2) * tw, w: tw * rnd(0.42, 0.55), h: 1 }]; for (let k = 0; k < 3; k++) cols.push({ x: (k % 2 ? 1 : -1) * tw * rnd(0.3, 0.8), w: tw * rnd(0.26, 0.42), h: rnd(0.4, 0.8) });
+      hp.base = base; hp.pic = heapPic(cc, { base, tw, hh, cols, seed: (Math.random() * 1e6) | 0, dirS: 1, rag: 1.5, side: 0.22, dark: [0.5, 0.5], look: { t0: 0.22, t1: 0.42, alpha: 1, base: 6, lit: 190, shade: 150, depth: 2, side: true } });
+      if (baseRag) { const pc = hp.pic, tg = pc.cv.getContext('2d'), k = pc.cv.width / pc.w, by = (base - pc.top) * k, band = Math.max(3, hh * 0.38 * k), sx = Math.random() * 300; tg.setTransform(1, 0, 0, 1, 0, 0); tg.globalCompositeOperation = 'destination-out'; tg.drawImage(baseRag, sx, 0, Math.min(640 - sx, pc.cv.width * 64 / band), 64, 0, by - band, pc.cv.width, band); tg.fillRect(0, by - 0.5, pc.cv.width, pc.cv.height); tg.globalCompositeOperation = 'source-over'; }
+    } else { const m = tw > 120 ? 17 : tw > 60 ? 13 : 9; hp.parts = Array.from({ length: m }, (_, i) => newLump(i < Math.ceil(m * 0.4), true)); hp.wsp = Array.from({ length: tw > 80 ? 4 : 2 }, () => newScrap(true)); }
+    heaps.push(hp);
+  }
+  makeBanks(cover, cc);
+}
+const HEAPDRIFT = 0.3; // seen from the ground a heap takes minutes to cross the sky – it changes shape long before it has moved far
+function stepHeaps(dt) {
+  if (!heaps.length) return; const v = layerWind(2); for (const b of banks) b.off -= v[0] * HEAPDRIFT * dt;
+  for (const hp of heaps) {
+    hp.X += v[0] * HEAPDRIFT * dt; hp.z += v[1] * HEAPDRIFT * dt / yHor(); hp.p += dt / hp.life; if (hp.p >= 1) { hp.p = 0; placeHeap(hp, true); }
+    if (hp.parts) { for (let i = 0; i < hp.parts.length; i++) { const b = hp.parts[i]; b.p += dt / b.life; if (b.p >= 1) hp.parts[i] = newLump(b.low, false); } for (let i = 0; i < hp.wsp.length; i++) { const w = hp.wsp[i]; w.p += dt / w.life; if (w.p >= 1) hp.wsp[i] = newScrap(false); } }
+  }
+}
+function drawHeaps(fa) {
+  drawBanks(fa); heaps.sort((a, b) => b.z - a.z); // far ones first
+  const cd = cloudCol(), dk = [cd[0] * 0.5, cd[1] * 0.54, cd[2] * 0.64].map(Math.round).join(','), fillC = cd.map((v) => Math.round(Math.min(255, v + 12) * 0.93)).join(','), dir = layerWind(2)[0] < 0 ? 1 : -1, fno = drawHeaps.n = (drawHeaps.n || 0) + 1;
+  for (const hp of heaps) {
+    if (hp.z < 0.95 || hp.z > 15.5) continue;
+    const s = hp.z0 / hp.z, X = W / 2 + hp.X / hp.z + (hp.pic ? 0 : heapLead(hp, s) * dir), yb = yOf(hp.z), reach = hp.tw * 1.6 * s; if (X + reach < 0 || X - reach > W) continue;
+    const hz = Math.min(1, (hp.z - 1) / 10), A = fa * sst(0, 0.1, hp.p) * (1 - sst(0.93, 1, hp.p)) * (1 - 0.5 * hz) * sst(0.95, 0.99, hp.z) * (1 - sst(13.5, 15.5, hp.z)), env = sst(0, 0.22, hp.p) * (1 - 0.86 * sst(0.5, 1, hp.p)); if (A < 0.01) continue; // it starts small, fills out, and at the end shrinks to scraps
+    if (hp.pic) { const pc = hp.pic, e = 0.5 + 0.5 * env; B.globalAlpha = A; B.drawImage(pc.cv, X - pc.pad * s * e, yb - hp.base * s * e, pc.w * s * e, pc.h * s * e); continue; }
+    const sw = Math.min(1096, Math.ceil(reach * 2)), sh = Math.min(636, Math.ceil(hp.hh * 1.9 * s + 20));
+    for (const w of hp.wsp) { const pc = scraps[w.k], a = A * Math.sin(Math.PI * w.p) * 0.95, k = w.s * hp.tw * s * env / 130; if (a < 0.02) continue; B.globalAlpha = a; B.save(); B.translate(X + (w.front ? -w.u : w.u - 0.25 * w.p) * dir * hp.tw * 0.66 * s * env, yb - w.v * hp.hh * s * env - 6 * s); B.scale(w.flip ? -k : k, k); B.drawImage(pc, -130, -56, 260, 112); B.restore(); } // frayed scraps hang at the rim, mostly at the rear, and are left behind
+    // every cloud keeps its own finished picture and paints it afresh only every few frames, each in its own turn: a cloud changes slowly,
+    // but putting it together is by far the most costly part. Where it stands is set anew every frame, so the drift stays smooth
+    if (!hp.cv) { hp.cv = document.createElement('canvas'); hp.cv.width = hp.cv.height = 8; hp.cg = hp.cv.getContext('2d'); hp.ix = Math.floor(Math.random() * 12); hp.fresh = false; }
+    if (!hp.fresh || hp.cv.width < sw + 4 || hp.cv.height < sh + 4 || (fno + hp.ix) % (sw > 300 ? 3 : 6) === 0) {
+    const S2 = hp.cv, g = hp.cg; if (S2.width < sw + 4 || S2.height < sh + 4) { S2.width = Math.ceil((sw + 4) * 1.15); S2.height = Math.ceil((sh + 4) * 1.15); }
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, S2.width, S2.height);
+    const list = hp.parts.map((b) => { const G = lumpGeo(b, hp, s, env); return { b, e: G.r, a: G.a, gone: G.gone, R: G.R, cx: sw / 2 + G.dx * dir, yb: sh + G.dy }; }).filter((q) => q.a > 0.02).sort((a, b) => a.b.ord - b.b.ord); // upper lumps behind, lower ones in front
+    g.fillStyle = `rgb(${fillC})`; let xl = 1e9, xr = -1e9;
+    for (const q of list) { if (!q.b.low) continue; const al = q.a * (1 - Math.min(1, q.gone * 2.5)); if (q.a > 0.3 && q.gone < 0.5) { xl = Math.min(xl, q.cx - q.R * 0.95); xr = Math.max(xr, q.cx + q.R * 0.95); } if (al < 0.03) continue; g.globalAlpha = al; g.beginPath(); g.ellipse(q.cx, sh - q.R * 0.12, q.R * 0.78, q.R * 0.5, 0, 0, 6.2832); g.fill(); }
+    for (const q of list) {
+      const pc = lumps[q.b.k], k = q.R / pc.half; let src = pc.cv, a = q.a; const cw = pc.cv.width, ch = pc.cv.height;
+      if (q.gone > 0.001) {
+        if (q.R < 12) a = 1 - q.gone; // too small to see how it goes
+        else { // an old billow is eaten away from its rear side, in blotches, and stays solid where it still stands
+          const L = lumpScratch.getContext('2d'), rear = (q.b.flip ? -1 : 1) * -dir;
+          L.setTransform(1, 0, 0, 1, 0, 0); L.globalCompositeOperation = 'source-over'; L.globalAlpha = 1; L.clearRect(0, 0, cw + 4, ch + 4); L.drawImage(pc.cv, 0, 0);
+          L.globalCompositeOperation = 'destination-out';
+          const xc = cw * (1.5 - 1.8 * q.gone); L.globalAlpha = 1; if (rear < 0) { L.translate(cw, 0); L.scale(-1, 1); }
+          L.drawImage(eatPic, xc - cw, 0, 2 * cw, ch); L.fillStyle = '#000'; L.fillRect(xc + cw - 1, 0, 4 * cw, ch); L.setTransform(1, 0, 0, 1, 0, 0);
+          src = lumpScratch;
+        }
+      }
+      g.save(); g.globalAlpha = a; g.translate(q.cx, q.yb); g.scale(q.b.flip ? -k : k, k); g.drawImage(src, 0, 0, cw, ch, -pc.pad, -pc.base, pc.w, pc.h); g.restore();
+    }
+    g.clearRect(0, sh - 1, S2.width, S2.height - sh + 1); g.clearRect(sw - 1, 0, S2.width - sw + 1, S2.height); // nothing may stand at or beyond the edge of the part that is copied out – it would show as a hairline
+    g.globalCompositeOperation = 'destination-out'; const rk = Math.max(0.6, s * hp.tw / 150); g.globalAlpha = 1; { const band = Math.max(10, hp.hh * s * env * 0.36), sx = (hp.ro * 0.6) % 120, swS = Math.min(640 - sx, sw * 64 / band); g.drawImage(baseRag, sx, 0, swS, 64, 0, sh - band, sw, band); } // the underside is torn and tattered, not cut
+    { const sf = g.createLinearGradient(0, sh - 20 * rk, 0, sh); sf.addColorStop(0, 'rgba(0,0,0,0)'); sf.addColorStop(1, 'rgba(0,0,0,0.35)'); g.fillStyle = sf; g.fillRect(0, sh - 20 * rk, sw, 20 * rk); // the rim runs out softly
+      const rr = Math.max(8, hp.hh * s * env * 0.3); if (xr > xl) for (const ex of [xl, xr]) { const rg = g.createRadialGradient(ex, sh, rr * 0.3, ex, sh, rr); rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(ex - rr, sh - rr, 2 * rr, rr); } } // no corners at the two ends
+    g.globalCompositeOperation = 'source-atop'; const h0 = hp.hh * s * env, sg = g.createLinearGradient(0, sh - h0 * 0.55, 0, sh); sg.addColorStop(0, `rgba(${dk},0)`); sg.addColorStop(0.6, `rgba(${dk},0.42)`); sg.addColorStop(1, `rgba(${dk},0.62)`); g.fillStyle = sg; g.fillRect(0, sh - h0 * 0.55, sw, h0 * 0.55); // grey underside
+    hp.csw = sw; hp.csh = sh; hp.fresh = true; }
+    B.globalAlpha = A; B.drawImage(hp.cv, 0, 0, hp.csw, hp.csh, X - hp.csw / 2, yb - hp.csh, hp.csw, hp.csh); // not snapped to whole pixels: a slowly drifting cloud would move in visible little jumps
+  }
+  B.globalAlpha = fa;
+}
+// a thunderstorm coming up: an ordinary heap shoots up into a tower, its top spreads into the cap, then the whole cloud comes closer,
+// grows over the sky and darkens it – until the storm is overhead
+const CBST = [[0.3, 0], [0.52, 0], [0.76, 0], [1, 0], [1, 0.35], [1, 0.7], [1, 1]], CBT = [45, 85, 140];
+function cbGeo() {
+  const tw = rnd(215, 265), base = rnd(0.6, 0.67) * H, top = rnd(0.03, 0.06) * H, hh = base - top, cols = [{ x: 0, w: tw * 0.8, h: 0.86, flare: true }];
+  for (let k = 0, m = 3 + Math.floor(Math.random() * 3), s0 = Math.random() < 0.5 ? 1 : -1; k < m; k++) cols.push({ x: (k % 2 ? s0 : -s0) * tw * rnd(0.45, 1.25), w: tw * rnd(0.3, 0.5), h: k === 0 ? rnd(0.4, 0.55) : rnd(0.18, 0.38) }); // billows crowding around the foot of the tower
+  return { base, tw, hh, cols, anvil: true, seed: (Math.random() * 1e6) | 0, dirS: toward() >= 0 ? 1 : -1, rag: 26, side: 0.36, dark: [0.34, 0.85], look: { t0: 0.22, t1: 0.44, alpha: 1, base: 4, lit: 230, shade: 190, depth: 14, side: true } };
+}
+function freeCb() { if (cbSeq) for (const p of cbSeq.pics) p.cv.width = p.cv.height = 0; cbSeq = null; }
+function cbMake() { const k = cbSeq.pics.length; if (k < CBST.length) cbSeq.pics.push(heapPic(cbSeq.c, Object.assign({}, cbSeq.o, { grow: CBST[k][0], anv: CBST[k][1], darkK: 0.3 + 0.7 * k / 6 }))); }
+function startCb(c) { freeCb(); cbSeq = { t: 0, mk: 0, o: cbGeo(), c: c.map((v) => Math.min(255, v + 14)), pics: [], x: W * rnd(0.56, 0.7) }; cbMake(); cbMake(); }
+function stepCb(dt) {
+  if (!cbSeq) { cbDark = Math.max(0, cbDark - dt * 0.2); return; }
+  const q = cbSeq; q.t += dt; q.mk += dt; if (q.mk > 1.5 && q.pics.length < CBST.length) { q.mk = 0; cbMake(); } // the later ages are painted one by one while the first ones already show
+  cbDark = 0.84 * sst(CBT[1], CBT[2], q.t);
+  if (q.t >= CBT[2]) { freeCb(); S.cb = null; S.mode = 'storm'; try { const sel = document.getElementById('cb'); if (sel) sel.value = ''; const b = document.querySelector('#modes button[data-m="storm"]'); if (b) b.click(); else { makeClouds(); fill(); } } catch (e) { makeClouds(); } } // now it is overhead: rain, wind and lightning take over
+}
+function cbPose() { const q = cbSeq, k = sst(CBT[1], CBT[2], q.t), k2 = k * k * (3 - 2 * k); return { k, x: q.x + (W * 0.5 - q.x) * k2, base: q.o.base + (H * 1.3 - q.o.base) * k2, s: 1 + 3 * k2 }; }
+function drawCbSeq(fa) {
+  const q = cbSeq, P = cbPose(), st = Math.min(q.pics.length - 1, q.t < CBT[0] ? 3 * q.t / CBT[0] : Math.min(6, 3 + 3 * (q.t - CBT[0]) / (CBT[1] - CBT[0]))), i = Math.min(q.pics.length - 1, Math.floor(st)), f = st - i;
+  B.save(); B.translate(P.x, P.base); B.scale(P.s, P.s); B.imageSmoothingEnabled = true;
+  for (const [k, a, sy] of [[i, 1, 1 + 0.05 * f], [i + 1, f, 0.95 + 0.05 * f]]) { if (a < 0.01 || !q.pics[k]) continue; const pc = q.pics[k], up = (q.o.base - pc.top) * sy; B.globalAlpha = fa * a * sst(0, 6, q.t); B.drawImage(pc.cv, -pc.pad, -up, pc.w, up + (pc.h - (q.o.base - pc.top))); }
+  B.restore(); B.globalAlpha = fa;
+}
+// the fully grown thunder cloud standing far away (cumulonimbus): it reaches through all storeys and hardly seems to move
+function makeCbStat(c) { const o = cbGeo(); cbStat = { o, pic: heapPic(c.map((v) => Math.min(255, v + 14)), o), x: W * rnd(0.25, 0.75) }; }
+function freeCbStat() { if (cbStat) cbStat.pic.cv.width = cbStat.pic.cv.height = 0; cbStat = null; }
+function drawCbStat(fa) { const q = cbStat, pc = q.pic; B.globalAlpha = fa; B.drawImage(pc.cv, q.x - pc.pad, pc.top, pc.w, pc.h); }
+// ---- drawing the sheets tilted into the view is done by the graphics chip (WebGL): one pass per storey, cheap even on a tablet.
+// It also lets the clouds change in themselves: a slowly wandering pattern makes tufts fade in at one place and out at another
+let GLc = null, gl = null, glU = null, glNoise = null;
+function glInit() {
+  if (gl !== null) return !!gl;
+  try {
+    GLc = document.createElement('canvas'); const x = GLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false }); if (!x) { gl = false; return false; }
+    const sh = (type, src) => { const s = x.createShader(type); x.shaderSource(s, src); x.compileShader(s); if (!x.getShaderParameter(s, x.COMPILE_STATUS)) throw new Error(x.getShaderInfoLog(s)); return s; };
+    const pr = x.createProgram();
+    x.attachShader(pr, sh(x.VERTEX_SHADER, 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }'));
+    x.attachShader(pr, sh(x.FRAGMENT_SHADER, `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform sampler2D T, N; uniform vec2 R, off, rt; uniform float yH, ts, scl, tm, evo, al; uniform vec3 hz;
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, R.y - gl_FragCoord.y);
+  float z = yH / (yH - p.y);
+  vec2 pl = vec2((p.x - R.x * 0.5) * z, yH * z);
+  vec2 uv = (vec2(pl.x * rt.x - pl.y * rt.y, pl.x * rt.y + pl.y * rt.x) * scl + off) / ts;
+  vec4 c = texture2D(T, uv);
+  vec2 st = (uv - off / ts) * 1.0;
+  float m = 0.5 * (texture2D(N, st * 1.4 + vec2(tm * 0.0016, tm * 0.0009)).r + texture2D(N, st * 0.62 - vec2(tm * 0.0011, -tm * 0.0014)).r);
+  c *= mix(1.0, smoothstep(0.38, 0.56, m), evo);
+  float f = clamp((z - 1.0) / 9.0, 0.0, 1.0);
+  c.rgb = mix(c.rgb, hz * c.a, f * 0.55);
+  gl_FragColor = c * (1.0 - 0.3 * f) * al;
+}`));
+    x.linkProgram(pr); if (!x.getProgramParameter(pr, x.LINK_STATUS)) throw new Error('link'); x.useProgram(pr);
+    const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW);
+    const loc = x.getAttribLocation(pr, 'a'); x.enableVertexAttribArray(loc); x.vertexAttribPointer(loc, 2, x.FLOAT, false, 0, 0);
+    glU = {}; for (const k of ['T', 'N', 'R', 'rt', 'off', 'yH', 'ts', 'scl', 'tm', 'evo', 'al', 'hz']) glU[k] = x.getUniformLocation(pr, k);
+    x.enable(x.BLEND); x.blendFunc(x.ONE, x.ONE_MINUS_SRC_ALPHA); x.pixelStorei(x.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    const nc = document.createElement('canvas'); nc.width = nc.height = 256; const ng = nc.getContext('2d'), im = ng.createImageData(256, 256); // the wandering pattern
+    for (let y = 0; y < 256; y++) for (let xx = 0; xx < 256; xx++) { const v = Math.max(0, Math.min(255, Math.round((fbm2(xx / 256 * 4, y / 256 * 4, 4, 4, 77, 4) - 0.5) * 1.9 * 255 + 128))), o = (y * 256 + xx) * 4; im.data[o] = im.data[o + 1] = im.data[o + 2] = v; im.data[o + 3] = 255; }
+    ng.putImageData(im, 0, 0); gl = x; glNoise = glTex(nc);
+  } catch (e) { gl = false; }
+  return !!gl;
+}
+function glTex(cv) {
+  const tx = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv); gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  const ex = gl.getExtension('EXT_texture_filter_anisotropic'); if (ex) gl.texParameterf(gl.TEXTURE_2D, ex.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(ex.MAX_TEXTURE_MAX_ANISOTROPY_EXT))); // keeps the far rows from turning to mush
+  return tx;
+}
+// draws the given storeys (all in one go) and sets the result into the picture
+function drawSheets(list, fa) {
+  list = list.filter((l) => !l.empty); if (!list.length) return;
+  if (!gl) { // no graphics chip: the sheets are laid flat over the sky – no depth, but everything still shows
+    for (const l of list) { if (!l.pat) l.pat = B.createPattern(l.cv, 'repeat'); const k = TSU / TPX / l.scl; B.save(); B.globalAlpha = fa; B.translate(-mod(l.off[0], TSU) / l.scl, -mod(l.off[1], TSU) / l.scl); B.scale(k, k); B.fillStyle = l.pat; B.fillRect(0, 0, (W + TSU * 2) / k, (H + TSU * 2) / k); B.restore(); }
+    return;
+  }
+  const gw = Math.round(W), gh = Math.round(H); if (GLc.width !== gw || GLc.height !== gh) { GLc.width = gw; GLc.height = gh; }
+  gl.viewport(0, 0, gw, gh); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  const hzc = skyCols()[1];
+  gl.uniform2f(glU.R, gw, gh); gl.uniform1f(glU.yH, yHor()); gl.uniform1f(glU.ts, TSU); gl.uniform1f(glU.tm, t); gl.uniform1f(glU.al, 1); gl.uniform3f(glU.hz, hzc[0] / 255, hzc[1] / 255, hzc[2] / 255);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, glNoise); gl.uniform1i(glU.N, 1); gl.activeTexture(gl.TEXTURE0); gl.uniform1i(glU.T, 0);
+  for (const l of list) { gl.bindTexture(gl.TEXTURE_2D, l.tex); gl.uniform2f(glU.off, mod(l.off[0], TSU), mod(l.off[1], TSU)); gl.uniform1f(glU.al, l.kind === 'veil' ? 0.72 + 0.28 * Math.sin(t / 38) : 1); gl.uniform1f(glU.scl, l.scl); gl.uniform2f(glU.rt, Math.cos(l.rot), Math.sin(l.rot)); gl.uniform1f(glU.evo, l.evo); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
+  B.globalAlpha = fa; B.drawImage(GLc, 0, 0, W, H);
+}
+// what each kind of cloud does: [how much it changes in itself, how much of the wind's drift shows]
+const HABIT = { cirrus: [0.3, 1], veil: [0.45, 0.15], fleece: [0.75, 1], alto: [0.75, 1], sheet: [0.1, 0.12], shreds: [0.7, 1], lenti: [0.5, 0], stratocu: [0.5, 0.6], stratus: [0.3, 0.4], mass: [0.3, 1] };
+
+// ---------- test: a cloud that flows ----------
+// Not put together from pictures but worked out afresh in every frame, as a density that keeps deforming like smoke: where it is dense the cloud is
+// white and crisp, where it thins it turns into a veil, tears off and is gone. Welling, thinning, tearing and merging then come by themselves.
+let FLc = null, flGl = null, flU = null;
+function flowInit() {
+  if (flGl !== null) return !!flGl;
+  try {
+    FLc = document.createElement('canvas'); FLc.width = 2064; FLc.height = 1986; // one sheet for all clouds of a frame: 2 very large fields, 8 large, 24 medium, 64 small ones
+    const x = FLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true }); if (!x) { flGl = false; return false; }
+    const sh = (type, src) => { const q = x.createShader(type); x.shaderSource(q, src); x.compileShader(q); if (!x.getShaderParameter(q, x.COMPILE_STATUS)) throw new Error(x.getShaderInfoLog(q)); return q; };
+    const pr = x.createProgram();
+    x.attachShader(pr, sh(x.VERTEX_SHADER, 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }'));
+    x.attachShader(pr, sh(x.FRAGMENT_SHADER, `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec2 R, O, L, SH; uniform vec3 LB; uniform float tm, d, G, E, sd, SN, LOW; uniform vec3 lit, shd;
+float hash(vec3 p) { p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+// the pattern is turned from one fineness to the next: left upright it shows the grid it is made on, as upright stripes
+vec3 turn(vec3 p) { return vec3(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8, p.z) * 2.03 + 11.3; }
+float fbm3(vec3 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * vn(p); p = turn(p); a *= 0.5; } return s / 0.875; }
+float bil(vec3 p) { float a = 0.5, s = 0.0; p = vec3(p.x * 0.866 - p.y * 0.5, p.x * 0.5 + p.y * 0.866, p.z); for (int i = 0; i < 4; i++) { float q = 2.0 * vn(p) - 1.0; s += a * (sqrt(q * q + 0.045) - 0.1); p = turn(p); a *= 0.5; } return s / 0.9375; } // round bulges with soft folds between them, like a cauliflower – a hard fold shows as an edge
+// how dense the cloud is at a place. xs runs downwind, y upwards from the base. k = 1: with the small curls of the rim; k = 0: only the large smooth bulges
+float dens(vec2 p, float k) {
+  vec2 o = vec2(sd * 3.1, sd * 1.7);
+  float xs = p.x * d - 0.22 * p.y, yy = max(p.y - 0.16 * G, 0.0);    // the top leans ahead; upright near the base, so the underside is level and broad
+  float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
+  float env = 1.0 - sqrt(ex * ex + ey * ey + 0.004);                          // a heap: 1 in the middle of the base, 0 at the rim
+  float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
+  env = max(env, 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004));                  // a second heap beside or above it: a tower, a shoulder
+  env *= 0.86 + 0.3 * fbm3(vec3(p * 0.8 + 5.0 + o, tm * 0.022));      // the large outline changes slowly; it is the bulges on it that work visibly
+  vec2 ps = p / pow(max(G, 0.14), 0.78);                               // the bulges are sized to the cloud as it is now: a young small cloud has its own small bulges
+  vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
+  vec2 f = ps * 1.6 + o + wp * 0.4 - vec2(-d * tm * 0.02, tm * 0.04);  // the bulges rise slowly, fed from the upwind side
+  float n = bil(vec3(f, tm * 0.1));
+  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.02, tm * 0.07), tm * 0.17));
+  float dn = env * 1.3 + (n - 0.34) * 1.05 + (fine - 0.34) * mix(0.13, 0.3, k);
+  dn -= (1.0 - smoothstep(0.02, 0.2, G)) * 0.6;                       // a cloud begins as a small puff out of nothing and ends as one
+  dn -= E * (0.3 + 1.6 * fbm3(vec3(p * 1.5 + o + 21.0, tm * 0.05)));  // passing away: it thins unevenly, tears into shreds, and these go one by one
+  // the underside keeps its height but is no ruled line: bays and hanging shreds that form and go, about half as fast as the bulges above
+  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.075)) - 0.5) * 0.4;
+  if (k > 0.5) { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.1), tm * 0.25)); dn += (frill - 0.5) * 0.14; if (R.x > 600.0) dn += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.3)) - 0.5) * 0.085; bn += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.1)) - 0.5) * 0.2; }
+  float base = smoothstep(0.0, 0.2, ps.y + bn);
+  return dn * base - (1.0 - base) * 0.3;
+}
+void main() {
+  vec2 q = (gl_FragCoord.xy - O) / R, p = vec2((q.x - 0.5) * 2.0 * R.x / R.y * 0.82, q.y * 1.64 - 0.2);
+  float D = dens(p, 1.0), xs = p.x * d, gs = pow(max(G, 0.14), 0.78);
+  float soft = mix(0.05, 0.24, smoothstep(-0.2, 1.1, xs / G)) * mix(0.45, 1.0, G) + E * 0.22 + (1.0 - smoothstep(0.0, 0.3, p.y / gs)) * 0.1; // crisp where it wells up, softer where it goes and below
+  if (R.x > 600.0) soft *= 0.7; float a = smoothstep(0.0, soft, D); // a very near cloud: crisper rim
+  // light as on a body, not on an embossed sheet: at every place it is asked how much more cloud stands between it and the sun than here.
+  // So the side turned to the sun is bright as a whole and the far side lies in a broad soft shadow, and a bulge or tower shades what is behind it
+  float D0 = dens(p, 0.0), D1 = dens(p + L * 0.08 * gs, 0.0), D2 = dens(p + L * 0.3 * gs, 0.0);
+  float shade = exp(-(max(0.0, D1 - D0) * 4.2 + max(0.0, D2 - D0) * 1.9) * (1.0 + 0.6 * LOW)); // a low sun: light and shadow lie further apart
+  float hi = clamp((D0 - D1) * 3.2, 0.0, 1.0);                         // the flank of a bulge that faces the sun
+  float l = (0.2 - 0.02 * LOW + (0.6 + 0.02 * LOW) * shade + (0.28 + 0.12 * LOW) * hi) * mix(mix(0.5, 0.86, LOW), 1.0, smoothstep(0.02, 0.1 + 0.5 * G * SH.y, p.y)); // bright above, blue-grey below, measured on the cloud's own height
+  l *= 1.0 - 0.3 * SN * smoothstep(0.25, 1.0, D);                      // a cloud close to the sun is seen against the light: its body is darker …
+  l = clamp(l, 0.0, 1.0);
+  l = mix(l, 1.0, (1.0 - a) * 0.5);                                    // thin parts let the light through
+  vec3 c = mix(shd, lit, l);
+  c = mix(c, mix(vec3(1.0, 0.99, 0.95), vec3(1.0, 0.86, 0.6), LOW), SN * (1.0 - smoothstep(0.0, 0.42, D)) * 0.85); // … and its thin rim glows
+  vec2 ed = min(q, 1.0 - q); a *= smoothstep(0.0, 0.06, min(ed.x, ed.y)); // nothing may touch the edge of its field
+  gl_FragColor = vec4(c * a, a);
+}`));
+    x.linkProgram(pr); if (!x.getProgramParameter(pr, x.LINK_STATUS)) throw new Error(x.getProgramInfoLog(pr)); x.useProgram(pr);
+    const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW);
+    const al = x.getAttribLocation(pr, 'a'); x.enableVertexAttribArray(al); x.vertexAttribPointer(al, 2, x.FLOAT, false, 0, 0);
+    flU = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) flU[n] = x.getUniformLocation(pr, n);
+    flGl = x; return true;
+  } catch (e) { console.warn('WeatherScope: flow cloud', e); flGl = false; return false; }
+}
+let flows = null;
+// The clouds stand in the plane of the sky, spread evenly over a field much larger than what the picture shows, and the whole field drifts with the wind
+// and comes round again. So the picture is always stocked the same way wherever the wind goes: what leaves on one side is followed from the other,
+// from the left, from above. Seen flat towards the horizon the same spread shows ever more clouds, ever closer together.
+const FLCOUNT = 1300, FLZ0 = 0.85, FLZ1 = 13.5;
+function flowHalf() { return (W * 1.1) * FLZ1; }
+function newFlow(f, first) {
+  const k = Math.random();
+  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(200, 380); f.p = first ? Math.random() : 0; f.E0 = 0; // nearly one size in the sky: how large a cloud looks tells how far it is
+  // kinds: the plain heap; a broad flat one; one with a tower; a small loose one
+  if (k < 0.3) { f.sh = [rnd(0.9, 1.05), rnd(0.9, 1.1)]; f.lb = [0, 0.05, 0.05]; }
+  else if (k < 0.55) { f.sh = [1.1, rnd(0.5, 0.68)]; f.lb = [rnd(-0.5, 0.5), rnd(0.4, 0.6), rnd(0.55, 0.8)]; }
+  else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
+  else { f.sh = [rnd(0.6, 0.8), rnd(0.5, 0.7)]; f.lb = [rnd(-0.6, 0.6), rnd(0.25, 0.4), rnd(0.4, 0.7)]; f.E0 = rnd(0.12, 0.25); f.size *= 0.82; }
+}
+function drawFlow(fa) {
+  if (!flowInit()) return;
+  const x = flGl, v = layerWind(2), dir = v[0] < 0 ? -1 : 1, dt = drawFlow.dt || 0, sp = sunPos(), cd = cloudCol(), XH = flowHalf(); drawFlow.dt = 0;
+  if (!flows) { flows = Array.from({ length: FLCOUNT }, () => { const f = {}; newFlow(f, true); return f; }); }
+  // the colour of the light and of the shadow. By day: white, and bluish where the sky alone lights it. With the sun low: the side towards it glows warm, the far side is dark and cool
+  { const low = S.tod === 'night' ? 0 : sst(0.15, 1, lowSun().k), c0 = S.tod === 'night' ? cd : MODES[S.mode].cloud, li = mix(c0.map((q) => Math.min(255, q + 14)), [255, 186, 128], 0.72 * low), sh = mix([c0[0] * 0.5, c0[1] * 0.6, c0[2] * 0.8], [122, 86, 110], 0.85 * low);
+    x.uniform1f(flU.d, dir); x.uniform1f(flU.LOW, low); x.uniform3f(flU.lit, li[0] / 255, li[1] / 255, li[2] / 255); x.uniform3f(flU.shd, sh[0] / 255, sh[1] / 255, sh[2] / 255); }
+  x.disable(x.SCISSOR_TEST); x.viewport(0, 0, FLc.width, FLc.height); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT); x.enable(x.SCISSOR_TEST);
+  const vis = [], lsK = S.tod === 'night' ? 0 : lowSun().k;
+  for (const f of flows) {
+    f.X += v[0] * HEAPDRIFT * dt; f.z += v[1] * HEAPDRIFT * dt / yHor(); f.p += dt / f.life; f.A = 0; f.t = null;
+    if (f.p >= 1) newFlow(f, false); // a new cloud wells up somewhere else
+    if (f.X > XH) f.X -= 2 * XH; else if (f.X < -XH) f.X += 2 * XH; if (f.z > FLZ1) f.z -= FLZ1 - FLZ0; else if (f.z < FLZ0) f.z += FLZ1 - FLZ0; // round the field
+    const cw = f.size / f.z, X = W / 2 + f.X / f.z; if (X - cw / 2 > W + 30 || X + cw / 2 < -30) continue;
+    // further away the same stretch of sky takes ever less room in the picture: there only some of the clouds are let through, or the horizon would be one white band
+    const act = sst(f.u - 0.05, f.u + 0.05, Math.min(1.1, 1.5 / f.z)); if (act < 0.02) continue;
+    const ch = cw * 300 / 512, yb = yOf(f.z), top = yb - ch * 0.88, hz = Math.min(1, (f.z - 1) / 10); // the base of the cloud lies at 12 % of its field
+    f.A = fa * (1 - sst(0.97, 1, f.p)) * (1 - 0.5 * hz) * sst(0.9, 0.97, f.z) * (1 - sst(12, 13.4, f.z)); if (f.A < 0.01) { f.A = 0; continue; } // no fading in or out as a whole: that looks like a ghost
+    f.sx = X; f.yb = yb; f.cw = cw; f.ch = ch; f.top = top;
+    f.G = Math.max(0.03, act * sst(0, 0.22, f.p) * (1 - 0.3 * sst(0.6, 1, f.p)) * (0.94 + 0.08 * Math.sin(t / 43 + f.sd))); f.E = Math.min(1, f.E0 + Math.pow(Math.max(0, (f.p - 0.52) / 0.45), 1.3)); // it wells up from a puff, holds, and passes away by thinning, slowly
+    vis.push(f);
+  }
+  // first all clouds are worked out on the one sheet – the largest in the large fields –, then they are set into the sky from it, far ones first
+  vis.sort((a, b) => b.cw - a.cw);
+  vis.forEach((f, i) => {
+    let tw, ox, oy;
+    if (i < 2) { tw = 1024; ox = i * 1032; oy = 0; } // the two nearest: a field of double size, or they are stretched and look out of focus
+    else if (i < 10) { const j = i - 2; tw = 512; ox = (j % 4) * 516; oy = 608 + Math.floor(j / 4) * 304; }
+    else if (i < 34) { const j = i - 10; tw = 254; ox = (j % 8) * 258; oy = 1216 + Math.floor(j / 8) * 153; }
+    else if (i < 98) { const j = i - 34; tw = 125; ox = (j % 16) * 129; oy = 1675 + Math.floor(j / 16) * 77; }
+    else { f.A = 0; return; }
+    const rw = Math.max(40, Math.min(tw, Math.ceil(f.cw * DPR))), rh = Math.round(rw * 300 / 512); f.t = [ox, oy, rw, rh];
+    const lx = sp.x - f.sx, ly = (f.top + f.ch * 0.5) - sp.y, ll = Math.hypot(lx, ly) || 1;
+    let ux = lx / ll, uy = Math.max(0.3, ly / ll); ux = ux * (1 - lsK) + (lx < 0 ? -1 : 1) * lsK; uy = uy * (1 - lsK) + 0.3 * lsK; { const un = Math.hypot(ux, uy) || 1; ux /= un; uy /= un; }
+    x.viewport(ox, oy, rw, rh); x.scissor(ox, oy, rw, rh);
+    x.uniform2f(flU.R, rw, rh); x.uniform2f(flU.O, ox, oy); x.uniform2f(flU.L, ux, uy); x.uniform2f(flU.SH, f.sh[0], f.sh[1]); x.uniform3f(flU.LB, f.lb[0], f.lb[1], f.lb[2]);
+    x.uniform1f(flU.tm, f.p * f.life * 0.42 + f.sd * 5); /* each cloud's own clock, counted from its beginning: small numbers, and it never has to start over */ x.uniform1f(flU.sd, f.sd); x.uniform1f(flU.G, f.G); x.uniform1f(flU.E, f.E); x.uniform1f(flU.SN, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll));
+    x.drawArrays(x.TRIANGLE_STRIP, 0, 4);
+  });
+  vis.sort((a, b) => b.z - a.z);
+  for (const f of vis) { if (!f.t) continue; const [ox, oy, rw, rh] = f.t; B.globalAlpha = f.A; B.drawImage(FLc, ox + 0.5, FLc.height - oy - rh + 0.5, rw - 1, rh - 1, f.sx - f.cw / 2, f.top, f.cw, f.ch); }
+  B.globalAlpha = fa; drawFlow.n = vis.length;
+}
+// how much of the sun the flowing clouds hide: the part of each finished cloud picture that lies over the sun's disc is read back and its cover averaged
+let flowBuf = null;
+function flowSun(sx, sy, rr) {
+  if (S.cType !== 'flow' || !flows || !flGl) return 0; let clear = 1;
+  for (const f of flows) {
+    if (!(f.A >= 0.01) || !f.t || sx + rr < f.sx - f.cw / 2 || sx - rr > f.sx + f.cw / 2 || sy + rr < f.top || sy - rr > f.top + f.ch) continue;
+    const [ox, oy, rw, rh] = f.t, k = rw / f.cw, n = Math.max(2, Math.min(24, Math.round(2 * rr * k))), px = Math.round(ox + (sx - (f.sx - f.cw / 2)) * k - n / 2), py = Math.round(oy + rh - (sy - f.top) * k - n / 2);
+    const x0 = Math.max(ox, px), y0 = Math.max(oy, py), x1 = Math.min(ox + rw, px + n), y1 = Math.min(oy + rh, py + n); if (x1 <= x0 || y1 <= y0) continue;
+    const w = x1 - x0, h = y1 - y0; if (!flowBuf || flowBuf.length < w * h * 4) flowBuf = new Uint8Array(24 * 24 * 4);
+    try { flGl.readPixels(x0, y0, w, h, flGl.RGBA, flGl.UNSIGNED_BYTE, flowBuf); } catch (e) { continue; }
+    let a = 0; for (let i = 3; i < w * h * 4; i += 4) a += flowBuf[i]; a = a / 255 / (n * n); // the part of the disc outside this picture counts as clear
+    clear *= 1 - Math.min(1, a * 1.1) * Math.min(1, f.A * 1.3);
+  }
+  return 1 - clear;
+}
+function makeClouds() {
+  for (const l of layers) { if (l.tex && gl) gl.deleteTexture(l.tex); l.cv.width = l.cv.height = 0; } // free the old sheets
+  const c = cloudCol(), col = (d) => `${Math.max(0, Math.min(255, c[0] + d))},${Math.max(0, Math.min(255, c[1] + d))},${Math.max(0, Math.min(255, c[2] + d))}`, P = cloudPlan();
+  glInit(); haloK = P.hk === 'veil' ? Math.min(1, P.high) : 0; freeHeaps(); freeBanks(); freeCbStat(); freeLentis();
+  if (P.cbGrow) { if (!cbSeq) startCb(c); } else freeCb();
+  if (P.cb) makeCbStat(c);
+  layers = [0, 1, 2].map((li) => {
+    const rot = rnd(0.25, 0.6) * (Math.random() < 0.5 ? 1 : -1), cv = document.createElement('canvas'); cv.width = cv.height = TPX; const g = cv.getContext('2d'); g.setTransform(TPX / TSU, 0, 0, TPX / TSU, 0, 0); let kind = 'mass', empty = false;
+    if (li === 0) { // high up: finer and slower
+      const v = layerWind(0), ang = Math.atan2(v[1], v[0]) + rot; kind = P.hk;
+      if (P.hk === 'veil') { genVeil(g, P.high, c); genCirrus(g, 0.2, col, ang); }
+      else if (P.hk === 'fleece') { genFleece(g, P.high, c, 0); genCirrus(g, P.high * 0.25, col, ang); }
+      else { kind = 'cirrus'; genCirrus(g, P.high, col, ang); empty = P.high < 0.02; }
+    } else if (li === 1) {
+      kind = P.mk; if (P.mk === 'mass') genMass(g, 1, P.mid * 1.4, col); else if (P.mk === 'sheet') genSheet(g, P.mid, c, 0); else if (P.mk === 'lenti') { makeLentis(P.mid, c); empty = true; } else { kind = 'alto'; genFleece(g, P.mid, c, 1); empty = P.mid < 0.03; }
+    } else if (P.kind === 'cumulus' && P.mk === 'sheet' && P.low < 0.05) { kind = 'shreds'; genShreds(g, c); }
+    else if (P.kind === 'flow') { empty = true; } // the test cloud in the new technique draws itself
+    else if (P.kind === 'cumulus') { makeHeaps(P.low * (P.cb ? 0.6 : 1), c); empty = true; } // the heaps are single living clouds, not a sheet
+    else if (P.kind === 'stratocu') { kind = 'stratocu'; genStratocu(g, P.low, c); }
+    else if (P.kind === 'stratus' && (S.mode !== 'dry' || S.cType === 'stratus')) { kind = 'stratus'; genSheet(g, P.low, c, 1); }
+    else genMass(g, 2, P.low, col);
+    const hb = HABIT[kind] || HABIT.mass;
+    return { cv, tex: gl && !empty ? glTex(cv) : null, kind, empty, li, rot, scl: [1.25, 1.1, 1][li], evo: hb[0], drift: hb[1], off: [Math.random() * TSU, Math.random() * TSU] };
+  });
+}
+function stepSheets(dt) { for (const l of layers) { const v = layerWind(l.li), ca = Math.cos(l.rot), sa = Math.sin(l.rot), k = l.drift * l.scl * dt; l.off[0] = mod(l.off[0] - (v[0] * ca - v[1] * sa) * k, TSU); l.off[1] = mod(l.off[1] - (v[0] * sa + v[1] * ca) * k, TSU); } }
+
+// time of day: clear skies get their own colours; other weather is darkened at night and warmed in the morning/evening
+const CLEAR = { morning: ['#6f8fc4', '#f2b48a'], day: null, evening: ['#3f4f8a', '#ef8e6a'], night: ['#0b1430', '#1f2d55'] };
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), mix = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
+const fogGrey = () => ({ day: [178, 184, 190], morning: [196, 186, 178], evening: [170, 156, 150], night: [38, 42, 50] })[S.tod];
+function skyCols() { const c = skyBase(), f = [0, 0.35, 0.7, 0.92][S.fog]; return f ? c.map((x) => mix(x, fogGrey(), f)) : c; } // fog turns the sky grey
+// how far the day has turned to morning or evening colours: 0 with the sun above about 16 degrees, 1 at about 3 degrees and below – without a step in between
+function lowSun() {
+  if (S.tod === 'night') return { k: 0, side: 'evening' };
+  const el = S.sunEl === null || S.sunEl === undefined ? ({ morning: 7, evening: 7 }[S.tod] || 40) : S.sunEl;
+  const side = S.sunAz === null || S.sunAz === undefined ? (S.tod === 'morning' ? 'morning' : 'evening') : (S.sunAz < 180 ? 'morning' : 'evening');
+  return { k: sst(16, 3, el), side };
+}
+function skyBase() {
+  const m = MODES[S.mode];
+  if (S.tod === 'night') return m.clear ? CLEAR.night.map(hex) : m.sky.map(hex).map((x) => mix(x, [8, 12, 26], 0.72));
+  const c = m.sky.map(hex), ls = lowSun(); if (ls.k <= 0) return c;
+  const low = m.clear ? CLEAR[ls.side].map(hex) : (ls.side === 'morning' ? [mix(c[0], [150, 160, 190], 0.15), mix(c[1], [235, 185, 150], 0.3)] : [mix(c[0], [80, 80, 120], 0.25), mix(c[1], [225, 140, 110], 0.3)]);
+  return [mix(c[0], low[0], sst(0.35, 1, ls.k)), mix(c[1], low[1], sst(0, 0.8, ls.k))]; // the horizon warms first, the sky overhead follows
+}
+function cloudCol() {
+  const c = MODES[S.mode].cloud;
+  if (S.tod === 'night') return mix(c, [22, 28, 44], 0.86);
+  const ls = lowSun(); return ls.k > 0 ? mix(c, ls.side === 'morning' ? [255, 205, 170] : [250, 160, 130], (ls.side === 'morning' ? 0.25 : 0.3) * ls.k) : c;
+}
+const STARS = Array.from({ length: 160 }, () => [Math.random(), Math.pow(Math.random(), 1.4) * 0.75, rnd(0.4, 1.3), rnd(0, 6.3)]);
+function moonPhase() { const d = (Date.now() / 864e5 - 10957.25) % 29.530588853; return (d < 0 ? d + 29.53 : d) / 29.530588853; } // 0 new, .5 full
+let shimmer = { t: -1, next: rnd(20, 60) };
+// northern lights: curtains built from narrow upright strips of light (own colours, drawn here – no image)
+const AUR = [false, true].map((red) => { const c = document.createElement('canvas'); c.width = 2; c.height = 1024; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 1024);
+  (red ? [[0, '190,60,110,0'], [0.2, '190,65,130,.2'], [0.42, '170,80,165,.36'], [0.62, '90,205,160,.6'], [0.8, '125,255,175,1'], [1, '125,255,175,0']] : [[0, '90,200,170,0'], [0.3, '88,208,165,.13'], [0.6, '85,215,155,.48'], [0.8, '125,255,175,1'], [1, '125,255,175,0']]).forEach(([o, col]) => gr.addColorStop(o, `rgba(${col})`));
+  g.fillStyle = gr; g.fillRect(0, 0, 2, 1024); return c; });
+function drawAurora(lv) {
+  const n = [0, 1, 2, 3][lv], str = [0, 0.2, 0.42, 0.62][lv], spd = [0, 0.6, 1, 1.5][lv], sw = 2, tt = t * spd;
+  // drawn at half size (cheap, also for weak tablets) and blended with its neighbours in the small picture before it is enlarged:
+  // that blends neighbouring points in every browser – a single enlargement showed up as a grid of little blocks
+  const q = 2, aw = Math.ceil(W / q), ah = Math.ceil(H * 0.8 / q); if (!drawAurora.cv) drawAurora.cv = document.createElement('canvas'); const ac = drawAurora.cv; if (ac.width !== aw || ac.height !== ah) { ac.width = aw; ac.height = ah; }
+  const A = ac.getContext('2d'); A.setTransform(1 / q, 0, 0, 1 / q, 0, 0); A.clearRect(0, 0, W, H); A.save(); A.globalCompositeOperation = 'lighter';
+  // a faint glow low in the sky belongs to every level
+  const gg = A.createLinearGradient(0, 0, 0, H * 0.6); gg.addColorStop(0, 'rgba(70,200,150,0)'); gg.addColorStop(0.5, `rgba(70,200,150,${0.1 * str * (0.8 + 0.2 * Math.sin(tt * 0.21))})`); gg.addColorStop(1, 'rgba(70,200,150,0)'); A.fillStyle = gg; A.fillRect(0, 0, W, H * 0.6);
+  for (let ci = 0; ci < n; ci++) {
+    const pulse = 0.72 + 0.28 * Math.sin(tt * 0.27 + ci * 2.1), cx = W * (0.5 + 0.3 * Math.sin(tt * 0.035 + ci * 2.4)), half = W * (0.42 + 0.12 * Math.sin(tt * 0.05 + ci)), spr = AUR[lv === 3 && ci !== 1 ? 1 : 0];
+    for (let x = 0; x < W; x += sw) {
+      const u = Math.abs(x - cx) / half; if (u >= 1) continue; const env = Math.pow(1 - u * u, 3); /* runs out very gently at both ends, so no upright edge shows */
+      const ray = 0.5 + 0.5 * Math.sin(x * 0.085 + tt * 0.55 + ci * 1.7 + 2.6 * Math.sin(x * 0.0093 - tt * 0.17 + ci)), hs = 0.5 + 0.5 * Math.sin(x * 0.006 + tt * 0.09 + ci * 1.9), fine = 0.5 + 0.5 * Math.sin(x * 0.19 - tt * 0.9 + 1.9 * Math.sin(x * 0.021 + tt * 0.3));
+      const a = str * pulse * env * (lv === 1 ? 0.72 + 0.18 * ray : 0.62 + 0.32 * ray + 0.06 * fine); /* one closed band: the rays are only lighter streaks in it, never gaps */ if (a < 0.002) continue;
+      const yb = H * (0.3 + ci * 0.085) + Math.sin(x * 0.0041 + tt * 0.11 + ci * 1.3) * H * 0.055 + Math.sin(x * 0.0117 - tt * 0.07 + ci * 0.6) * H * 0.02 + Math.sin(x * 0.031 + tt * 0.13 + ci * 2) * H * 0.012; /* the lower edge is uneven too, not a straight line */
+      const h = H * (0.2 + 0.05 * ci) * 1.2 * (0.8 + 0.2 * hs + 0.05 * (ray - 0.5)) * (lv === 3 ? 1.25 : 1); /* the upper edge only sways gently, no spikes */
+      A.globalAlpha = Math.min(1, a); A.drawImage(spr, 0.5, 0, 1, 1024, x, yb - h, sw, h); /* exactly side by side: overlapping strips would show as fine lines */
+    }
+  }
+  A.restore(); A.globalAlpha = 1;
+  if (!drawAurora.cv2) drawAurora.cv2 = document.createElement('canvas'); const a2 = drawAurora.cv2; if (a2.width !== aw || a2.height !== ah) { a2.width = aw; a2.height = ah; }
+  const A2 = a2.getContext('2d'); A2.clearRect(0, 0, aw, ah); A2.globalCompositeOperation = 'lighter'; A2.globalAlpha = 0.25;
+  for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) A2.drawImage(ac, ox, oy); // whole steps: needs no smoothing by the browser
+  B.save(); B.globalCompositeOperation = 'lighter'; B.imageSmoothingEnabled = true; B.imageSmoothingQuality = 'high'; B.drawImage(a2, 0, 0, aw * q, ah * q); B.restore();
+}
+// ---- the sun: where it stands (as seen looking south: east on the left, west on the right) and the light it throws into the "lens"
+// azimuth 60°…300° spans the screen, the height follows the elevation – high in summer, flat in winter
+function sunPos() {
+  let az = S.sunAz, el = S.sunEl;
+  if (az === null || az === undefined || el === null || el === undefined) { const f = { morning: [112, 7], day: [180, 40], evening: [248, 7] }[S.tod] || [180, 40]; az = f[0]; el = f[1]; }
+  const e = Math.max(0, Math.min(66, el));
+  // the sun stays in the band of sky above the tiles: at the horizon it sits just above the first row (the page says where that is)
+  const sky = typeof host !== 'undefined' && host.sky ? host.sky() : 0, y0 = sky ? Math.max(0.15 * H, Math.min(0.6 * H, sky - 14)) : 0.32 * H;
+  return { x: Math.max(-0.06, Math.min(1.06, (az - 60) / 240)) * W, y: y0 - (y0 - 0.06 * H) * e / 66, low: Math.max(0, Math.min(1, 1 - el / 24)), el };
+}
+// how much cloud is in front of the sun right now (0…1), looked up a few times a second
+let sunCov = 0, sunCovTo = 0, sunCovT = -9;
+// how much of a point in the sky the heap clouds hide (0 … 1): worked out from where their lumps stand, the same way they are drawn
+function heapCoverAt(x, y) {
+  let clear = 1; const dir = layerWind(2)[0] < 0 ? 1 : -1;
+  for (const hp of heaps) {
+    if (hp.z < 0.95 || hp.z > 15.5) continue;
+    const s = hp.z0 / hp.z, X = W / 2 + hp.X / hp.z + (hp.pic ? 0 : heapLead(hp, s) * dir), yb = yOf(hp.z), reach = hp.tw * 1.6 * s; if (Math.abs(x - X) > reach || y > yb + 4 || y < yb - hp.hh * 2 * s) continue;
+    const env = sst(0, 0.22, hp.p) * (1 - 0.86 * sst(0.5, 1, hp.p)), A = sst(0, 0.1, hp.p) * (1 - sst(0.93, 1, hp.p)) * sst(0.95, 0.99, hp.z) * (1 - sst(13.5, 15.5, hp.z)); if (A < 0.02) continue;
+    if (hp.pic) { const e = 0.5 + 0.5 * env, rx = hp.tw * 0.8 * s * e, ry = hp.hh * 0.5 * s * e, d = Math.hypot((x - X) / rx, (y - (yb - ry)) / ry); clear *= 1 - A * sst(1.1, 0.6, d); continue; }
+    for (const b of hp.parts) {
+      const G = lumpGeo(b, hp, s, env), R = G.R; if (R < 2) continue;
+      const cx = X + G.dx * dir, cy = yb + G.dy - R * 0.8; if (cy - R > yb) continue;
+      clear *= 1 - A * G.a * (1 - 0.6 * G.gone) * sst(R * 0.86, R * 0.52, Math.hypot(x - cx, (y - cy) * 0.9));
+    }
+  }
+  return 1 - clear;
+}
+let sunHeapTo = 0, sunHeap = 0;
+function sunCover(sx, sy) {
+  if (t - sunCovT > 0.2) {
+    sunCovT = t; let clear = 1;
+    if (S.fog < 2) for (const l of layers) { if (l.empty) continue; try { const z = zOf(Math.max(0, Math.min(H, sy))), px = (sx - W / 2) * z, py = yHor() * z, ca = Math.cos(l.rot), sa = Math.sin(l.rot), u = mod(((px * ca - py * sa) * l.scl + l.off[0]) / TSU * TPX, TPX), v = mod(((px * sa + py * ca) * l.scl + l.off[1]) / TSU * TPX, TPX), a = l.cv.getContext('2d').getImageData(Math.floor(u), Math.floor(v), 1, 1).data[3] / 255; clear *= 1 - Math.min(1, a * 1.15) * (1 - 0.5 * l.evo); } catch (e) { /* not readable: treat as clear */ } }
+    { let hc = 0; const rr = Math.min(W, H) / 800 * 13; const fl = flowSun(sx, sy, rr); for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]]) hc += Math.max(heapCoverAt(sx + ox * rr, sy + oy * rr), fl); sunHeapTo = S.fog < 2 ? Math.min(1, hc / 9 * 1.08) : 0; } sunCovTo = 1 - clear * (1 - sunHeapTo);
+  }
+  sunHeap += (sunHeapTo - sunHeap) * 0.07; sunCov += (sunCovTo - sunCov) * 0.07; return sunCov;
+}
+const mixRGB = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(',');
+// star-shaped rays around the sun and soft discs of light across the picture, as when a camera looks into the sun. Own drawing.
+const RAYS = Array.from({ length: 14 }, (_, i) => ({ a: i * Math.PI * 2 / 14 + rnd(-0.07, 0.07), l: rnd(0.45, 1), w: rnd(0.7, 1.3), p: rnd(0, 6) }));
+const GHOSTS = [[0.42, 15, 0, 0.17, 0], [0.7, 33, 1, 0.13, 1], [0.93, 8, 3, 0.26, 0], [1.28, 50, 2, 0.1, 1], [1.6, 21, 4, 0.11, 2], [1.94, 68, 0, 0.065, 1]]; // [place along the line, size, colour, strength, kind]
+function drawSunFx(sx, sy, low, k, part, rayK = 1) { // part 1: only the sun itself; part 2: only the discs of light across the picture; otherwise both
+  if (k <= 0.01) return;
+  const u = Math.min(W, H) / 800, warm = [255, 150, 80], pale = [255, 243, 192];
+  B.save(); B.globalCompositeOperation = 'lighter';
+  if (part !== 2) {
+  if (low > 0.05) { const vr = Math.max(W, H) * 0.95, vg = B.createRadialGradient(sx, sy, 0, sx, sy, vr); vg.addColorStop(0, `rgba(255,170,95,${0.16 * low * k})`); vg.addColorStop(0.45, `rgba(255,150,90,${0.06 * low * k})`); vg.addColorStop(1, 'rgba(255,150,90,0)'); B.fillStyle = vg; B.fillRect(0, 0, W, H); } // low sun: warm haze over the picture
+  const RL = Math.min(W, H) * (0.135 + 0.2 * low), rc = mixRGB(pale, [255, 205, 140], low), rg = B.createRadialGradient(sx, sy, 0, sx, sy, RL);
+  const rc0 = mixRGB(pale, [255, 246, 214], low); rg.addColorStop(0, `rgba(${rc0},${(0.7 + 0.25 * low) * k * rayK})`); rg.addColorStop(0.25, `rgba(${rc},${(0.3 + 0.2 * low) * k * rayK})`); rg.addColorStop(1, `rgba(${rc},0)`); B.fillStyle = rg; // fine rays as before, a little fainter (broad wedges looked like a drawn star); the soft glow under them ties the sun to the soft clouds
+  const rot = 0.02 * Math.sin(t * 0.05); B.globalCompositeOperation = 'source-over';
+  { const gl = B.createRadialGradient(sx, sy, 0, sx, sy, RL * 0.7); gl.addColorStop(0, `rgba(${rc},${0.5 * k})`); gl.addColorStop(0.35, `rgba(${rc},${0.2 * k})`); gl.addColorStop(1, `rgba(${rc},0)`); B.fillStyle = gl; B.beginPath(); B.arc(sx, sy, RL * 0.7, 0, 7); B.fill(); B.fillStyle = rg; } // a soft glow carries the sun
+  for (const r of RAYS) { const len = RL * r.l * (0.9 + 0.1 * Math.sin(t * 0.6 + r.p)), a = r.a + rot, wd = (1.9 + 1.9 * low) * u * r.w, ca = Math.cos(a), sa = Math.sin(a);
+    B.beginPath(); B.moveTo(sx - sa * wd, sy + ca * wd); B.lineTo(sx + ca * len, sy + sa * len); B.lineTo(sx + sa * wd, sy - ca * wd); B.closePath(); B.fill(); }
+  const cr = (7.3 + 3.3 * low) * u, cg = B.createRadialGradient(sx, sy, 0, sx, sy, cr * 3.4); cg.addColorStop(0, `rgba(255,254,240,${k})`); cg.addColorStop(0.24, `rgba(255,248,216,${0.92 * k})`); cg.addColorStop(0.55, `rgba(255,243,196,${0.38 * k})`); cg.addColorStop(1, 'rgba(255,240,185,0)'); B.fillStyle = cg; B.beginPath(); B.arc(sx, sy, cr * 3.4, 0, 7); B.fill(); B.globalCompositeOperation = 'lighter';
+  if (low > 0.05) { const er = RL * 0.55, eg = B.createRadialGradient(sx, sy, 0, sx, sy, er); eg.addColorStop(0, `rgba(255,226,170,${0.5 * low * k})`); eg.addColorStop(0.4, `rgba(255,200,130,${0.2 * low * k})`); eg.addColorStop(1, 'rgba(255,190,120,0)'); B.fillStyle = eg; B.beginPath(); B.arc(sx, sy, er, 0, 7); B.fill(); } // the evening sun glows
+  }
+  if (part !== 1) {
+  // discs on the line from the sun through the middle of the picture
+  const vx = W * 0.5 - sx, vy = H * 0.52 - sy, cols = [mixRGB([255, 212, 150], [255, 125, 60], low), mixRGB([255, 172, 112], [255, 82, 48], low), mixRGB([255, 156, 140], [255, 104, 92], low), '255,255,245', mixRGB([170, 222, 255], [150, 235, 205], low)];
+  for (const [q, size, ci, al, kind] of GHOSTS) {
+    const gx = sx + vx * q, gy = sy + vy * q, r = size * u * (1 + 0.25 * low), a = al * 1.45 * k * (0.85 + 0.15 * Math.sin(t * 0.4 + q * 5)) * (0.75 + 0.5 * low), c = cols[ci];
+    const g = B.createRadialGradient(gx, gy, 0, gx, gy, r);
+    if (kind === 0) { g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(0.6, `rgba(${c},${a * 0.55})`); g.addColorStop(1, `rgba(${c},0)`); }
+    else if (kind === 1) { g.addColorStop(0, `rgba(${c},${a * 0.62})`); g.addColorStop(0.78, `rgba(${c},${a * 0.8})`); g.addColorStop(0.9, `rgba(${c},${a * 1.25})`); g.addColorStop(1, `rgba(${c},0)`); }
+    else { g.addColorStop(0, `rgba(${c},0)`); g.addColorStop(0.7, `rgba(${c},${a * 0.15})`); g.addColorStop(0.88, `rgba(${c},${a * 1.3})`); g.addColorStop(1, `rgba(${c},0)`); }
+    B.fillStyle = g; B.beginPath(); B.arc(gx, gy, r, 0, 7); B.fill();
+  }
+  }
+  B.restore();
+}
+// the sun behind thin cloud: a dull bright spot, and behind the high veil a pale ring around it (22° halo)
+function drawSunVeil(sx, sy, k, cov) {
+  if (k <= 0.01) return; const u = Math.min(W, H) / 800;
+  B.save(); B.globalCompositeOperation = 'lighter';
+  if (cov > 0.12) { const r = 95 * u, gr = B.createRadialGradient(sx, sy, 0, sx, sy, r), a = 0.5 * k * Math.min(1, cov * 1.3) * (1 - 0.45 * cov); gr.addColorStop(0, `rgba(255,250,236,${a})`); gr.addColorStop(0.16, `rgba(255,248,232,${a * 0.7})`); gr.addColorStop(0.5, `rgba(255,246,230,${a * 0.2})`); gr.addColorStop(1, 'rgba(255,246,230,0)'); B.fillStyle = gr; B.beginPath(); B.arc(sx, sy, r, 0, 7); B.fill(); }
+  if (haloK > 0.05) { const r = Math.min(W, H) * 0.13, a = 0.075 * k * haloK, gr = B.createRadialGradient(sx, sy, r * 0.8, sx, sy, r * 1.4); gr.addColorStop(0, 'rgba(255,225,205,0)'); gr.addColorStop(0.22, `rgba(255,228,208,${a * 0.75})`); gr.addColorStop(0.36, `rgba(255,252,246,${a})`); gr.addColorStop(0.62, `rgba(225,238,255,${a * 0.4})`); gr.addColorStop(1, 'rgba(225,238,255,0)'); B.fillStyle = gr; B.beginPath(); B.arc(sx, sy, r * 1.3, 0, 7); B.fill(); }
+  B.restore();
+}
+// shooting star: rare, only in a clear night sky (first one soon, so it can be seen in the preview; then every 2–4 minutes)
+let meteor = null, nextMeteor = rnd(15, 40);
+const BLOB = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  [[0, 1], [0.25, 0.82], [0.5, 0.5], [0.75, 0.18], [1, 0]].forEach(([o, a]) => gr.addColorStop(o, `rgba(255,255,255,${a})`)); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return c; })();
+const blob = (g, x, y, rx, ry, a) => { g.globalAlpha = a; g.drawImage(BLOB, x - rx, y - ry, rx * 2, ry * 2); g.globalAlpha = 1; };
+let fogL = [], wisps = [];
+// wisps of fog in front of the tiles: soft irregular patches, pre-drawn once
+const WISP = Array.from({ length: 6 }, () => {
+  const cw = 420, ch = 160, raw = document.createElement('canvas'); raw.width = cw; raw.height = ch; const g = raw.getContext('2d');
+  for (let k = 0; k < 18; k++) { const x = rnd(130, cw - 130), y = rnd(60, ch - 60), rx = rnd(35, 90), ry = rnd(12, 26); /* kept well inside, so nothing is cut off at the border */ blob(g, x, y, rx * 1.4, ry * 1.6, 0.5); }
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; const g2 = cv.getContext('2d'); blurDraw(g2, raw, 10);
+  // fade towards the border so no straight edge can show
+  g2.globalCompositeOperation = 'destination-in'; const m = g2.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, cw / 2); m.addColorStop(0, '#000'); m.addColorStop(0.7, '#000'); m.addColorStop(1, 'rgba(0,0,0,0)'); g2.save(); g2.translate(cw / 2, ch / 2); g2.scale(1, ch / cw); g2.translate(-cw / 2, -ch / 2); g2.fillStyle = m; g2.fillRect(0, ch / 2 - cw / 2, cw, cw); /* the whole sprite, otherwise the part outside is cut off straight */ g2.restore(); return cv;
+});
+function newWisp(any) { return { s: Math.floor(Math.random() * WISP.length), cx: rnd(0, W), cy: rnd(0, H), sc: rnd(0.9, 1.9), per: rnd(10, 30), per2: rnd(12, 34), ph: rnd(0, 6.3), life: any ? rnd(5, 60) : 0, max: rnd(70, 140) }; }
+function oldWisp(any) { const dirS = toward() >= 0 ? 1 : -1, sc = rnd(0.8, 1.8); return { s: Math.floor(Math.random() * WISP.length), x: any ? rnd(-200, W) : (S.wind > 8 ? (dirS > 0 ? -420 * sc : W + 50) : rnd(-100, W)), y: rnd(-40, H - 60), sc, life: any ? rnd(0, 20) : 0, max: rnd(14, 30), ph: rnd(0, 6), v: rnd(0.6, 1.4) }; }
+function makeFog() {
+  for (const l of fogL) l.cv.width = l.cv.height = 0;
+  fogL = [0.25, 0.45, 0.8].map((sp, li) => {
+    const LW = Math.ceil(W * 1.6 / 4) * 4, raw = document.createElement('canvas'); raw.width = LW; raw.height = H; const g = raw.getContext('2d');
+    for (let k = 0; k < 14 + li * 6; k++) {
+      const x = Math.random() * LW, y = H * rnd(0.25 + li * 0.1, 1.05), rx = rnd(180, 420), ry = rnd(30, 80);
+      for (const dx of [0, -LW, LW]) blob(g, x + dx, y, rx * 1.4, ry * 1.6, 0.55);
+    }
+    const cv = blurWrap(raw, LW, 14); // no seam where copies meet
+    return { cv, LW, sp, ox: Math.random() * LW };
+  });
+}
+function fill() {
+  const m = MODES[S.mode], area = W * H / 2100;
+  const nr = Math.round((m.rain || 0) * area), ns = Math.round((m.snow || 0) * area * 0.6);
+  wetStart = t;
+  while (rain.length < nr) rain.push(newRain(true)); rain.length = nr;
+  while (snow.length < ns) snow.push(newFlake(true)); snow.length = ns;
+  document.getElementById('cond').textContent = m.name;
+  skyChrome();
+}
+function skyChrome() {
+  const m = MODES[S.mode], sc0 = skyCols()[0]; document.body.style.background = `rgb(${sc0})`;
+  // brighter sky = a little more tint in the glass, so white values stay readable
+  const lum = (c) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255, L = Math.max(...skyCols().map(lum)) + (m.clear && S.tod !== 'night' ? 0.25 : 0);
+  document.documentElement.style.setProperty('--glass', Math.min(0.38, Math.max(0.2, 0.2 + (L - 0.45) * 0.36)).toFixed(2));
+}
+const toward = () => Math.sin(((S.dir + 180) % 360) * Math.PI / 180);
+function gust() { const n = (Math.sin(t * 0.53) + Math.sin(t * 1.37 + 1.3) + Math.sin(t * 0.21 + 4)) / 1.6 - 0.25; return 1 + 0.6 * Math.pow(Math.max(0, Math.min(1, n)), 1.5); }
+const windVX = () => toward() * S.wind * 7 * gust();
+// where new particles enter: from the top, or from the windward side when they fly more sideways than down
+function entry(vx, vy, any) {
+  if (any) return [rnd(-50, W + 50), rnd(-20, H)];
+  const side = Math.abs(vx) * H, top = vy * W;
+  if (Math.random() < side / (side + top)) return [vx > 0 ? rnd(-30, -5) : rnd(W + 5, W + 30), rnd(-20, H)];
+  return [rnd(-50, W + 50) - vx / vy * 40, rnd(-60, -5)];
+}
+function newRain(any) {
+  const z = rnd(0.3, 1), v = 750 + 750 * z, [x, y] = entry(windVX() * z, v, any);
+  return { x, y, z, v, len: (10 + 22 * z) * (MODES[S.mode].len || 1) };
+}
+function newFlake(any) {
+  const z = rnd(0.25, 1), v = 35 + 70 * z, [x, y] = entry(windVX() * 0.6 * z, v, any);
+  return { x, y, z, r: 0.9 + 2.3 * z, v, ph: Math.random() * 6.3 };
+}
+
+function rects() { return tiles.map((el) => el.getBoundingClientRect()); }
+// snow cap per tile: one height per 2 px, and an uneven upper limit (hills and hollows, rounded at the ends)
+function capOf(i, R) {
+  const o = T[i], n = Math.ceil(R.width / COL);
+  // how uneven the snow lies depends on the wind: calm = an even blanket with gentle waves, strong wind = drifts
+  const wb = Math.round(Math.min(1, Math.max(0, (S.wind - 8) / 32)) * 4) / 4, key = (o.maxh || MAXH) + '|' + wb;
+  if (!o.cap || o.cap.length !== n || !o.lim || o.lim.length !== n || o.limFor !== key) {
+    o.limFor = key;
+    if (!o.cap || o.cap.length !== n) { const old = o.cap; o.cap = new Float32Array(n); if (old) for (let k = 0; k < n; k++) o.cap[k] = old[Math.floor(k * old.length / n)] || 0; }
+    if (!o.ph) { o.ph = [rnd(0, 6), rnd(0, 6), rnd(0, 6)]; o.fr = [rnd(0.04, 0.08), rnd(0.12, 0.2), rnd(0.3, 0.5)]; } // the same hills stay, they only grow or flatten
+    const ph = o.ph, fr = o.fr;
+    const tgt = Float32Array.from({ length: n }, (_, k) => {
+      const nn = (0.28 * Math.sin(k * fr[0] + ph[0]) + 0.12 * Math.sin(k * fr[1] + ph[1]) + 0.05 * Math.sin(k * fr[2] + ph[2])) / 0.45; // -1 … 1, never a straight stretch
+      const nc = 0.5 * Math.sin(k * fr[0] + ph[0]) + 0.34 * Math.sin(k * fr[1] + ph[1]) + 0.16 * Math.sin(k * fr[2] + ph[2]); // calm: shorter, flatter waves
+      const nz = (0.78 + 0.19 * nc) * (1 - wb) + (0.56 + 0.45 * nn) * wb;
+      const e = Math.min(k, n - 1 - k) * COL, taper = 0.55 + 0.45 * Math.sqrt(Math.min(1, e / 26)), mh = o.maxh || MAXH;
+      const base = mh * nz * taper, eb = Math.max(0, 1 - e / 30); // snow banks up at the edges: ends at least 3/4 of the allowed height
+      return base * (1 - eb) + Math.max(base, mh * 0.75) * eb;
+    });
+    if (!o.lim || o.lim.length !== n) o.lim = tgt; else o.limT = tgt; // an existing blanket reshapes slowly
+  }
+  return o.cap;
+}
+
+function step(dt) {
+  const m = MODES[S.mode], R = rects(), vx = windVX(), sp = S.speed, gf = gust();
+  const wantW = [0, 4, 8, 14][S.fog];
+  if (S.tod === 'night' && m.clear && !S.fog) {
+    nextMeteor -= dt * sp * (S.mode === 'partly' ? 0.6 : 1); // fewer when clouds are in the way
+    if (nextMeteor <= 0 && !meteor) { const left = Math.random() < 0.5, ang = (left ? Math.PI - rnd(0.35, 0.9) : rnd(0.35, 0.9)); meteor = { x: rnd(0.15, 0.85) * W, y: rnd(0.03, 0.4) * H, dx: Math.cos(ang), dy: Math.sin(ang), len: rnd(140, 320), tail: rnd(60, 130), life: 0, dur: rnd(0.45, 0.85), br: rnd(0.6, 1) }; nextMeteor = rnd(120, 240); }
+  }
+  if (meteor) { meteor.life += dt; if (meteor.life >= meteor.dur) meteor = null; }
+  while (wisps.length < wantW) wisps.push(newWisp(wisps.length < wantW / 2));
+  for (const w of wisps) { w.life += dt; if (S.wind > 25) w.cx += toward() * (S.wind - 25) * 0.15 * dt; } // fog stays where it is; only strong wind shifts it slowly
+  wisps = wisps.filter((w) => w.life < w.max && w.cx > -300 && w.cx < W + 300).slice(0, wantW);
+  fogL.forEach((l) => { l.ox = (l.ox + (S.wind > 25 ? toward() * (S.wind - 25) * 0.3 : 0) * l.sp * dt) % l.LW; if (l.ox < 0) l.ox += l.LW; });
+  stepSheets(dt); stepHeaps(dt); drawFlow.dt = (drawFlow.dt || 0) + dt;
+  // rain: splashes on the top edges, wets the glass
+  for (const p of rain) {
+    const py = p.y; p.y += p.v * dt; p.x += vx * p.z * dt;
+    if (S.on && p.z > 0.68) {
+      for (let i = 0; i < R.length; i++) {
+        const r = R[i]; if (p.x < r.left + 8 || p.x > r.right - 8 || p.y < r.top - 2 || py > r.bottom) continue;
+        if (py < r.top && p.y >= r.top && Math.random() < 0.3) { for (let k = 0; k < 3; k++) splash.push({ x: p.x, y: r.top, vx: rnd(-60, 60) + vx * 0.1, vy: rnd(-140, -50), life: rnd(0.2, 0.4) }); Object.assign(p, newRain(false)); break; }
+        if (p.y > r.top && Math.random() < 0.022 * WP().arr) { hitGlass(i, p.x - r.left, p.y - r.top, r); }
+      }
+    }
+    if (p.y - p.len > H || p.x < -250 || p.x > W + 250) Object.assign(p, newRain(false));
+  }
+  // snow: flies sideways in strong wind, with some swirling
+  for (const f of snow) {
+    const py = f.y; f.y += (f.v + Math.sin(t * 2.1 + f.ph + f.x * 0.01) * S.wind * 0.6) * dt; f.x += (vx * 0.6 * f.z + Math.sin(t * 1.3 + f.ph) * (18 + S.wind * 0.5)) * dt;
+    if (S.on && f.z > 0.5 && MODES[S.mode].slush) { for (let i = 0; i < R.length; i++) { const r = R[i]; if (f.x > r.left + 4 && f.x < r.right - 4 && f.y > r.top + 4 && f.y < r.bottom - 4 && Math.random() < 0.02) { hitGlass(i, f.x - r.left, f.y - r.top, r); Object.assign(f, newFlake(false)); break; } } }
+    else if (S.on && f.z > 0.5) {
+      for (let i = 0; i < R.length; i++) {
+        const r = R[i]; if (f.x < r.left + 3 || f.x > r.right - 3) continue;
+        const c = capOf(i, r), k = Math.max(0, Math.min(c.length - 1, Math.floor((f.x - r.left) / COL))), top = r.top - c[k];
+        if (py < top && f.y >= top && Math.random() < 0.4) { deposit(c, k, Math.pow(1 / 0.6, T[i].above || 0) * 1.5 * (MODES[S.mode].capf || 1) * sp * f.r / 2 / (1 + S.wind / 40) * (0.3 + 1.2 * T[i].lim[k] / (T[i].maxh || MAXH)) * ((T[i].maxh || MAXH) / MAXH)); Object.assign(f, newFlake(false)); break; }
+      }
+    }
+    if (f.y > H + 10 || f.y < -80 || f.x < -60 || f.x > W + 60) Object.assign(f, newFlake(false));
+  }
+  R.forEach((r, i) => {
+    let up = 999, lf = 999, rt = 999, above = 0;
+    R.forEach((q, j) => { if (j === i) return;
+      if (Math.min(q.right, r.right) - Math.max(q.left, r.left) > 10 && q.bottom <= r.top + 1) { up = Math.min(up, r.top - q.bottom); above++; }
+      if (Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top) > 10) { if (q.right <= r.left + 1) lf = Math.min(lf, r.left - q.right); if (q.left >= r.right - 1) rt = Math.min(rt, q.left - r.right); } });
+    const o = T[i]; o.maxh = (up < 30 ? Math.max(3, up + 2) : 16) * (MODES[S.mode].capH || 1); /* between two rows the snow may reach 4 px over the empty rim of the tile above – otherwise it is only a flat line */ o.free = [lf, rt]; o.above = Math.min(4, above);
+    stepCap(i, r, dt, sp, vx, gf);
+  });
+  R.forEach((r, i) => stepWater(i, r, dt, vx));
+
+  for (const s of splash) { s.vy += 900 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; }
+  splash = splash.filter((s) => s.life > 0);
+  for (const c of clumps) {
+    if (c.delay > 0) { c.delay -= dt; continue; }
+    const py = c.y; c.vy += 520 * dt; c.x += (c.vx + vx * (c.xmin !== undefined ? 0.05 : 0.35)) * dt;
+    if (c.xmin !== undefined) c.x = Math.max(c.xmin + c.r * 0.5, Math.min(c.xmax - c.r * 0.5, c.x)); c.y += c.vy * dt; c.rot += c.vr * dt; c.life -= dt;
+    // 6: pieces that fall onto a tile below land there and stay
+    for (let i = 0; i < R.length && c.life > 0; i++) { if (i === c.src) continue; const r = R[i]; if (c.x < r.left + 3 || c.x > r.right - 3) continue; const cp = capOf(i, r), k = Math.max(0, Math.min(cp.length - 1, Math.floor((c.x - r.left) / COL))), top = r.top - cp[k]; if (py < top && c.y >= top) { const amt = Math.PI * c.r * c.r / 1.6, hp = T[i].heaps.find((q) => Math.abs(q.x - (c.x - r.left)) < 7); if (hp) { hp.h = Math.min(12, hp.h + amt / (hp.w * 0.45)); hp.x += ((c.x - r.left) - hp.x) * 0.2; } else T[i].heaps.push({ x: c.x - r.left, h: Math.min(12, amt / 3.5), w: 8 }); c.life = 0; for (let j = 0; j < 3; j++) powder.push({ x: c.x, y: top, vx: rnd(-25, 25), vy: rnd(-30, -5), life: rnd(0.3, 0.7) }); } }
+    if (c.r > 1.4 && Math.random() < dt * c.brk) { const a = c.r * rnd(0.45, 0.7); c.r = Math.sqrt(Math.max(0.5, c.r * c.r - a * a)); clumps.push({ ...c, vx: c.vx + rnd(-6, 6), vy: c.vy * rnd(0.85, 1), r: a, rot: rnd(0, 6), brk: c.brk * rnd(0.8, 1.6), lobes: [[rnd(-0.5, 0.5), rnd(-0.4, 0.4), rnd(0.5, 0.8)], [rnd(-0.6, 0.6), rnd(-0.5, 0.5), rnd(0.4, 0.7)]] }); for (let j = 0; j < 3; j++) powder.push({ x: c.x, y: c.y, vx: c.vx * 0.5 + rnd(-20, 20), vy: c.vy * 0.4, life: rnd(0.3, 0.8) }); }
+  }
+  clumps = clumps.filter((c) => c.life > 0 && c.y < H + 10).slice(-500);
+  for (const p of powder) { if (p.delay > 0) { p.delay -= dt; continue; } p.x += (p.vx + vx * (p.veil ? 0.08 : 0.4)) * dt; p.y += p.vy * dt; p.vy += (p.veil ? 60 : 30) * dt; p.life -= dt; if (p.xmin !== undefined) p.x = Math.max(p.xmin, Math.min(p.xmax, p.x)); }
+  powder = powder.filter((p) => p.life > 0).slice(-600);
+  for (const d of falls) { const py = d.y; d.vy += 900 * dt; d.y += d.vy * dt; d.x += vx * 0.05 * dt; for (const r of R) if (d.x > r.left + 4 && d.x < r.right - 4 && py < r.top && d.y >= r.top) { d.gone = true; for (let k = 0; k < 4; k++) splash.push({ x: d.x, y: r.top, vx: rnd(-50, 50), vy: rnd(-120, -40), life: rnd(0.2, 0.4) }); } }
+  falls = falls.filter((d) => !d.gone && d.y < H + 10);
+  const want = S.wind >= 39 ? Math.min(14, Math.round((S.wind - 35) / 4)) : 0;
+  if (lines.length < want && Math.random() < dt * 2) { const dirS = toward() >= 0 ? 1 : -1; lines.push({ x: dirS > 0 ? rnd(-300, W * 0.4) : rnd(W * 0.6, W + 300), y: rnd(0, H), len: rnd(90, 240), life: 0, max: rnd(1.2, 2.4), amp: rnd(4, 12), ph: rnd(0, 6) }); }
+  for (const l of lines) { l.life += dt; l.x += (Math.abs(toward()) < 0.25 ? 1 : Math.sign(toward())) * S.wind * 9 * gf * dt; }
+  lines = lines.filter((l) => l.life < l.max);
+  // thunderstorm: sheet lightning, now and then a visible bolt
+  if (m.light) {
+    nextFlash -= dt;
+    if (nextFlash <= 0) { flash = rnd(0.6, 1); nextFlash = rnd(4, 12); if (Math.random() < 0.45) bolt = makeBolt(); setTimeout(() => (flash = Math.max(flash, rnd(0.4, 0.8))), rnd(90, 160)); }
+  }
+  flash = Math.max(0, flash - dt * 2.5);
+  // a thunder cloud in the distance lights up from inside now and then
+  stepCb(dt);
+  cbGlow = Math.max(0, cbGlow - dt * 3); if (cbStat || (cbSeq && cbSeq.t > CBT[0] + 20)) { cbNext -= dt; if (cbNext <= 0) { cbGlow = rnd(0.6, 1); cbAt = 0; cbNext = rnd(3, 9); if (Math.random() < 0.5) setTimeout(() => (cbGlow = Math.max(cbGlow, rnd(0.4, 0.8))), rnd(90, 180)); } }
+  if (bolt) { bolt.life -= dt; if (bolt.life <= 0) bolt = null; }
+}
+
+function stepCap(i, r, dt, sp, vx, gf) {
+  const o = T[i];
+  // a fresh heap from snow that fell down: settles over a few seconds and spreads into the cap
+  if (o.heaps.length) {
+    for (const hp of o.heaps) {
+      const V = hp.h * hp.w, steep = hp.h / hp.w; // volume stays; a steep pile slumps wider and lower
+      if (steep > 0.32 || hp.h > 12) { hp.w = Math.min(60, hp.w + dt * Math.min(sp, 3) * (2 + steep * 10)); hp.h = Math.min(12, V / hp.w); }
+      if (S.temp > 0) { hp.h = Math.max(0, hp.h - 0.004 * S.temp * dt * sp); }
+    }
+    for (let a = 0; a < o.heaps.length; a++) for (let b = a + 1; b < o.heaps.length; b++) { const A = o.heaps[a], Bh = o.heaps[b]; if (Bh.h > 0 && Math.abs(A.x - Bh.x) < (A.w + Bh.w) * 0.35) { const V = A.h * A.w + Bh.h * Bh.w; A.x = (A.x * A.h * A.w + Bh.x * Bh.h * Bh.w) / V; A.w = Math.max(A.w, Bh.w); A.h = Math.min(12, V / A.w); Bh.h = 0; } }
+    o.heaps = o.heaps.filter((hp) => hp.h > 0.25);
+  }
+  if (!o.cap) return; const c = capOf(i, r), L = o.lim, n = c.length, MH = o.maxh || MAXH; let sum = 0;
+  if (o.limT) { const rr = dt * Math.min(sp, 10) * 0.2; let open = false; for (let k = 0; k < n; k++) { const d = o.limT[k] - L[k]; if (Math.abs(d) > 0.02) { L[k] += Math.max(-rr, Math.min(rr, d)); open = true; } } if (!open) o.limT = null; }
+  // snow settles: steep steps slump to the neighbours
+  for (let k = 0; k < n - 1; k++) { const d = c[k] - c[k + 1], rep = 1.1 + 0.5 * Math.sin(k * 0.7 + i); if (Math.abs(d) > rep) { const mv = (Math.abs(d) - rep) / 2 * Math.sign(d); c[k] -= mv; c[k + 1] += mv; } }
+  const dirS = toward() >= 0 ? 1 : -1;
+  // wind: blows snow off the windward side and lays it down on the leeward side (the stronger, the more lopsided)
+  const wf = Math.min(1, Math.max(0, (S.wind - 25) / 45));
+  const pos = (k) => (dirS > 0 ? k / (n - 1) : 1 - k / (n - 1)); // 0 = windward end, 1 = leeward end
+  const Lw = (k) => L[k] * (1 - wf * 0.9 * (1 - pos(k)) ** 1.2 + wf * 0.45 * pos(k) ** 2);
+  if (wf > 0) {
+    const kk = 0.03 * wf * dt * Math.min(sp, 10);
+    for (let k = dirS > 0 ? n - 2 : 1; dirS > 0 ? k >= 0 : k < n; k -= dirS) { const ex = Math.max(0, c[k] - Lw(k)), mv = ex * Math.min(1, kk * 8) + c[k] * kk * (1 - pos(k)) * 0.3; c[k] -= mv; c[k + dirS] += mv; }
+  }
+  for (let k = 0; k < n; k++) {
+    if (S.temp > 0) c[k] = Math.max(0, c[k] - 0.004 * S.temp * dt * sp * (0.6 + Math.random() * 0.8));
+    const lk = Math.min(MH * 1.15, Lw(k)); if (c[k] > lk + 1.5) { if (wf > 0 && pos(k) > 0.9 && c[k] - lk - 1.5 > 0.2 && Math.random() < 0.3) powder.push({ x: dirS > 0 ? r.right + rnd(0, 3) : r.left - rnd(0, 3), y: r.top - lk, vx: dirS * rnd(5, 20), vy: rnd(5, 30), life: rnd(0.5, 1.2) }); c[k] = lk + 1.5; } // full: further snow just doesn't stay
+    sum += c[k];
+  }
+  // thick snow rolls over the corners and hangs down; only a heavy overhang breaks off – as one big round piece, straight down
+  for (const side of [0, 1]) {
+    const ks = [...Array(10)].map((_, j) => (side ? n - 1 - 4 - j : 4 + j)), hEnd = ks.reduce((a, k) => a + c[k], 0) / ks.length, lEnd = ks.reduce((a, k) => a + Math.min(MH * 1.15, Lw(k)), 0) / ks.length;
+    const lee = (side === 1) === (dirS > 0), ovMax = MH * (lee ? 0.8 + 0.5 * wf : 0.8 * (1 - 0.8 * wf));
+    // an overhang forms once this end has reached its own full height
+    if (hEnd > lEnd * 0.9 && hEnd > 1.5 && S.temp <= 0 && (lee || wf < 0.3)) o.ov[side] = Math.min(ovMax, o.ov[side] + dt * sp * 0.05 * (lee ? 1 + 2 * wf : 1 - 0.7 * wf));
+    else if (o.ov[side] > ovMax) o.ov[side] = Math.max(ovMax, o.ov[side] - dt * Math.min(sp, 10) * 0.3);
+    else if (S.temp > 0 || hEnd < lEnd * 0.5 || (!lee && wf >= 0.3)) o.ov[side] = Math.max(0, o.ov[side] - dt * sp * (0.02 + Math.max(0, S.temp) * 0.01));
+    // a heavy overhang first sags for a few seconds (a crack opens), then the sagging part lets go
+    if (!o.sag[side] && o.ov[side] > Math.max(3.5, ovMax * 0.75) && Math.random() < dt * sp * (0.01 + 0.05 * Math.max(0, o.ov[side] / ovMax - 0.75))) {
+      // size of the break: mostly a corner piece; where the snow is thick, now and then a medium or a big section
+      const endH = ks.reduce((a, k) => a + c[k], 0) / ks.length, u = Math.random(), thick = MH >= 10 && endH >= MH * 0.6;
+      const Wb = thick && u < 0.08 ? rnd(40, Math.min(80, r.width * 0.45)) : thick && u < 0.3 ? rnd(20, 40) : 20;
+      o.sag[side] = { t: 0, dur: Wb > 38 ? rnd(4, 7) : Wb > 20 ? rnd(3, 5) : rnd(2, 4), W: Wb };
+    }
+    const sg = o.sag[side];
+    if (sg) sg.t += dt * Math.min(sp, 3);
+    if (sg && sg.t >= sg.dur) {
+      o.sag[side] = null;
+      const nb = Math.min(n - 2, Math.round(sg.W / COL)), big = sg.W > 20, cols = [...Array(nb)].map((_, j) => (side ? n - 1 - j : j));
+      const take = cols.reduce((a, k, j) => { const f = big ? rnd(0.55, 0.85) * (1 - 0.3 * (j / nb) ** 3) : rnd(0.3, 0.55); const t = c[k] * f; c[k] -= t; return a + t; }, 0);
+      const mass = take * COL + o.ov[side] * o.ov[side] * 1.6, hx = Math.min(o.ov[side] * 0.8, (o.free[side] || 999) / 2 - 1);
+      for (let k = 0; k < 4; k++) { const q = side ? n - 1 - nb - k : nb + k; if (q > 0 && q < n - 1) c[q] = (c[q - 1] + c[q] * 2 + c[q + 1]) / 4; }
+      const fr = o.free[side] || 999, edge = side ? r.right : r.left, sgn = side ? 1 : -1;
+      const lim = fr < 999 ? [edge + sgn * 1.5, edge + sgn * (fr - 1.5)] : [edge - sgn * 2, edge + sgn * 12];
+      breakUp({ i, side: sgn, mass, big, x: edge + sgn * Math.min(hx, fr / 2) * 0.5, y: r.top + o.ov[side] * 0.7, xmin: Math.min(...lim), xmax: Math.max(...lim) }, r);
+      o.ov[side] = rnd(0, 1.5);
+    }
+  }
+  if (gf > 1.3 && S.wind > 25 && Math.random() < dt * 6) {
+    const k = dirS > 0 ? Math.floor(rnd(0, 14)) : n - 1 - Math.floor(rnd(0, 14)); // powder blown off the windward edge
+    if (c[k] > 0.8) { c[k] -= 0.15; for (let j = 0; j < 5; j++) powder.push({ x: r.left + k * COL, y: r.top - c[k], vx: vx * rnd(0.6, 1.2), vy: rnd(-25, 10), life: rnd(0.6, 1.4) }); }
+  }
+  if (S.temp > 0 && sum / n > 0.25 && Math.random() < dt * 0.4 * sp) hitGlass(i, rnd(10, r.width - 10), rnd(3, 10), r, true);
+}
+// a slab or clump turns into falling pieces of very different sizes plus powder
+// what comes down is a loose cascade: many small irregular crumbs released over a moment, plus a fine veil of powder,
+// all kept inside the gap between two tiles (wider only at an outer edge)
+function breakUp(s, r) {
+  let left = s.mass; const w = s.xmax - s.xmin;
+  while (left > 0.2) {
+    const u = Math.random(), sz = Math.min(left, s.big ? (u < 0.6 ? rnd(0.3, 1.5) : u < 0.9 ? rnd(1.5, 4) : rnd(4, 9)) : (u < 0.75 ? rnd(0.2, 1.2) : u < 0.95 ? rnd(1.2, 3) : rnd(3, 6))); left -= sz;
+    clumps.push({ x: s.xmin + Math.random() * w, y: s.y + rnd(-3, 2), vx: rnd(-3, 3), vy: rnd(0, 20), r: Math.max(0.6, Math.sqrt(sz / Math.PI) * 1.1), rot: rnd(0, 6), vr: 0, brk: rnd(0.5, 2), life: 4, sh: rnd(1, 1.25), src: s.i, delay: rnd(0, s.big ? 0.9 : 0.45), xmin: s.xmin, xmax: s.xmax, lobes: [[rnd(-0.6, 0.6), rnd(-0.5, 0.5), rnd(0.35, 0.6)], [rnd(-0.6, 0.6), rnd(-0.5, 0.5), rnd(0.3, 0.5)]] });
+  }
+  for (let j = 0; j < Math.min(s.big ? 160 : 70, s.mass); j++) powder.push({ x: s.xmin + Math.random() * w, y: s.y + rnd(-4, 6), vx: rnd(-3, 3), vy: rnd(10, 60), life: rnd(0.8, 2), veil: rnd(1.5, 3.5), delay: rnd(0, 0.6), xmin: s.xmin - 1, xmax: s.xmax + 1 });
+}
+function deposit(c, k, a) { const w = [0.12, 0.22, 0.32, 0.22, 0.12]; for (let j = -2; j <= 2; j++) { const q = k + j; if (q >= 0 && q < c.length) c[q] += a * w[j + 2] / COL * rnd(0.6, 1.4); } }
+
+// water on the glass, modelled on real footage: drops sit still, new ones appear, touching neighbours flow together;
+// only a heavy drop shoots down, sweeps its path clean and leaves a rivulet that breaks up into a row of elongated drops
+const SPR = (() => { // drop sprites: irregular outline, dark rim, lighter inside (brightest low down), small highlight
+  const out = [];
+  for (let s = 0; s < 28; s++) {
+    const el = s < 20 ? rnd(0.85, 1.25) : rnd(1.6, 3.2), N = 8, rr = [...Array(N)].map(() => rnd(0.82, 1.12));
+    const S0 = 40, cv = document.createElement('canvas'); cv.width = S0; cv.height = Math.round(S0 * Math.max(1, el)); const g = cv.getContext('2d');
+    const cx = S0 / 2, cy = cv.height / 2, R0 = S0 * 0.42, ry = (cv.height / 2) * 0.9;
+    const blob = (k) => { g.beginPath(); for (let a = 0; a <= N; a++) { const t = (a % N) / N * Math.PI * 2, q = rr[a % N] * k, heavy = Math.sin(t) > 0 ? 1.06 : 0.96; const x = cx + Math.cos(t) * R0 * q, y = cy + Math.sin(t) * ry * q * heavy; if (!a) g.moveTo(x, y); else { const t0 = ((a - 0.5) % N) / N * Math.PI * 2; g.quadraticCurveTo(cx + Math.cos(t0) * R0 * q * 1.04, cy + Math.sin(t0) * ry * q * 1.04 * heavy, x, y); } } g.closePath(); };
+    g.fillStyle = 'rgba(14,20,30,.62)'; blob(1); g.fill();
+    const gr = g.createLinearGradient(0, cy - ry, 0, cy + ry); gr.addColorStop(0, 'rgba(120,135,155,.20)'); gr.addColorStop(0.55, 'rgba(185,198,214,.30)'); gr.addColorStop(1, 'rgba(235,242,248,.55)');
+    g.fillStyle = gr; blob(0.78); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.ellipse(cx - R0 * 0.32, cy - ry * 0.42, R0 * 0.16, ry * 0.12, -0.4, 0, 6.3); g.fill();
+    out.push({ cv, el });
+  }
+  return out;
+})();
+const sprite = (el) => { const pool = el > 1.5 ? SPR.slice(20) : SPR.slice(0, 20); return Math.floor(SPR.indexOf(pool[Math.floor(Math.random() * pool.length)])); };
+// drops that touch flow together: the smaller ones visibly slide into the bigger one, which wobbles a moment
+function mergeInto(o, nd) {
+  let vol = nd.r * nd.r * nd.el, X = nd.x * vol, Y = nd.y * vol, n = 0; const parts = [];
+  for (let k = o.drops.length - 1; k >= 0; k--) { const d = o.drops[k]; if (d === nd || d.sat || d.pend || (d.calm && t < d.calm) || (nd.calm && t < nd.calm)) continue; if (Math.abs(d.x - nd.x) < (d.r + nd.r) * 1.6 && Math.abs(d.y - nd.y) < (d.r * d.el + nd.r * nd.el) * 1.4) { const v = d.r * d.r * d.el; vol += v; X += d.x * v; Y += d.y * v; parts.push(d); o.drops.splice(k, 1); n++; } }
+  if (!n) return 0;
+  nd.x = X / vol; nd.y = Y / vol; nd.r = Math.min(6.5, Math.sqrt(vol / nd.el)); nd.wob = 1; let big = nd; for (const d of parts) if (d.r > big.r) big = d; nd.s = big.s; delete nd.life;
+  if (nd.calm || parts.some((d) => d.calm)) { nd.el = Math.max(1, nd.el * 0.85); nd.hold = t + rnd(WP().hold[0], WP().hold[1]); delete nd.calm; } // pieces of a track flowing together: no new run right away
+  for (const d of parts) o.merging.push({ x: d.x, y: d.y, r: d.r, el: d.el, s: d.s, tx: nd.x, ty: nd.y, t: 0 });
+  return n;
+}
+function addDrop(o, x, y, r, el, R) {
+  // a new drop lands: briefly flat and wide, then pulls together; if it hit a drop, it shows a moment before they flow together
+  const nd = { x, y, r, el: el || 1, s: sprite(el || 1), wob: 0, age: 0 };
+  const touches = o.drops.some((d) => Math.abs(d.x - x) < (d.r + r) * 1.6 && Math.abs(d.y - y) < (d.r * d.el + r) * 1.4);
+  if (!touches && o.drops.length >= (R.width * R.height) / WP().dens) return;
+  if (touches) nd.pend = rnd(0.1, 0.18);
+  o.drops.push(nd);
+  if (Math.random() < 0.3) for (let j = 0; j < 2 + Math.floor(Math.random() * 2); j++) { const a = rnd(0, 6.3), dd = r * rnd(2.2, 3.6); o.drops.push({ x: x + Math.cos(a) * dd, y: y + Math.sin(a) * dd, r: rnd(0.35, 0.6), el: 1, s: sprite(1), wob: 0, age: 0, life: rnd(30, 80), sat: true }); }
+}
+function hitGlass(i, x, y, r, big) {
+  const o = T[i]; if (x < 4 || x > r.width - 4 || y < 3 || y > r.height - 5) return;
+  const P = WP(), hard = P.hard;
+  if (!big && Math.random() < hard && o.splats.length < 1) { // a big raindrop slaps onto the glass: a wide splash that shoots straight down
+    o.splats.push({ x, y, r: rnd(4.5, 6), t: 0, parts: [...Array(5)].map(() => [rnd(-1.4, 1.4), rnd(-0.5, 0.8), sprite(1), rnd(0.8, 1.3)]) });
+    for (let j = 0; j < 5 + Math.floor(Math.random() * 5); j++) { const a = rnd(0, 6.3), dd = rnd(10, 24); o.drops.push({ x: x + Math.cos(a) * dd, y: y + Math.sin(a) * dd * 0.7, r: rnd(0.35, 0.8), el: 1, s: sprite(1), wob: 0, age: 0, life: rnd(30, 80), sat: true }); }
+    return;
+  }
+  const u = Math.random(), lg = P.lg, md = P.md; // mixed sizes on arrival
+  const sz = big ? rnd(2, 3) : u < lg ? rnd(2.8, 3.6) : u < lg + md ? rnd(1.6, 2.6) : rnd(0.8, 1.5);
+  addDrop(o, x, y, sz, 1, r);
+}
+function newRiv(o, x, y, rr, v0, budget) { o.rivs.push({ x, y, r: rr, path: [[x, y, rr, t]], dx: rnd(-0.08, 0.08), v: v0, budget, bk: 0, t: 0, mode: 'run' }); }
+function stepWater(i, r, dt, vx) {
+  const o = T[i], P = WP();
+  // drops landing straight on the glass: quicker in the first seconds, then the steady rate of this kind of rain
+  if (!o.field) o.field = [rnd(0, 6), rnd(0, 6), rnd(0.012, 0.03), rnd(0.012, 0.03)];
+  const boost = 1 + 5 * Math.exp(-(t - (wetStart || 0)) / 8), rate = P.arr * boost * r.width * r.height / 9000;
+  for (let n = 0; n < 6 && Math.random() < rate * dt - n; n++) {
+    const x = rnd(4, r.width - 4), y = rnd(3, r.height - 5), f = o.field;
+    const dense = 0.45 + 0.55 * (0.5 + 0.25 * Math.sin(x * f[2] + f[0]) + 0.25 * Math.sin(y * f[3] + f[1])); // denser and freer patches
+    const fresh = (o.cleared || []).some((c) => Math.abs(x - c.x) < c.w && y > c.y0 && y < c.y1 && Math.random() > (t - c.t) / 25); // fresh tracks stay free for a while
+    if (Math.random() < dense && !fresh) hitGlass(i, x, y, r);
+  }
+  // fine wetting between the drops: many tiny dots, swept away by rivulets, slowly back
+  if (!o.mist) o.mist = [];
+  const mistN = Math.max((P.mist || 0) * r.width * r.height / 140, S.fog === 3 ? r.width * r.height / 200 : 0); // dense fog: the tiles steam up a little
+  for (let n = 0; n < 8 && o.mist.length < mistN && Math.random() < (mistN * 0.03 * boost) * dt - n; n++) o.mist.push([rnd(3, r.width - 3), rnd(3, r.height - 3), rnd(0.25, 0.6)]);
+  if (!P.dryOff && o.mist.length > mistN * 1.05) o.mist.length = Math.floor(mistN);
+  if (o.cleared) o.cleared = o.cleared.filter((c) => t - c.t < 25);
+  if (P.dryOff) { // no rain: what is on the glass slowly dries up, the smallest first
+    if (o.drops.length && Math.random() < dt * 1.5 * (P.dryF || 1)) { let m = 0; for (let q = 1; q < o.drops.length; q++) if (o.drops[q].r < o.drops[m].r) m = q; const d = o.drops[m]; d.r -= 0.25; if (d.r < 0.4) o.drops.splice(m, 1); }
+    if (o.mist.length > mistN) { const n = Math.ceil(o.mist.length * dt * 0.03 * (Math.random() * 2)); for (let q = 0; q < n && o.mist.length > mistN; q++) o.mist.splice(Math.floor(Math.random() * o.mist.length), 1); }
+  }
+  for (const m of o.merging) { m.t += dt; const f = Math.min(1, m.t / 0.25) * 0.35; m.x += (m.tx - m.x) * f; m.y += (m.ty - m.y) * f; m.r *= 1 - f * 0.3; }
+  o.merging = o.merging.filter((m) => m.t < 0.25);
+  const wet = MODES[S.mode].wet || 1;
+  for (let k = o.drops.length - 1; k >= 0; k--) {
+    const d = o.drops[k]; if (!d) continue;
+    d.wob = Math.max(0, (d.wob || 0) - dt * 2.5); d.age = (d.age || 0) + dt;
+    if (d.el > 1.25 && d.r < 2.5 && !d.ret && d.age > 3) d.el = Math.max(1.15, d.el - dt * 0.12); // leftover pieces pull together, rounder
+    const hw = d.r * 1.8 + 1.5, hh = d.r * 1.8 * d.el + 1;
+    d.x = Math.max(hw, Math.min(r.width - hw, d.x)); if (d.y < hh) d.y = hh;
+    if (d.y + hh > r.height - 2 && !d.sat) { // drawn onto the bottom edge at once: it becomes a hanging drop there
+      o.drops.splice(k, 1); const p = o.pool.find((q) => Math.abs(q.x - d.x) < 8);
+      if (p) p.r = Math.min(4.5, Math.sqrt(p.r * p.r + d.r * d.r * 0.7)); else if (d.r > 0.9) o.pool.push({ x: d.x, r: Math.min(4, d.r * 0.8), st: 0 });
+      continue;
+    }
+    if (d.pend !== undefined) { d.pend -= dt; if (d.pend <= 0) { delete d.pend; if (mergeInto(o, d)) k = Math.min(k, o.drops.length - 1); } continue; }
+    if (d.sat) continue;
+    if (d.g === undefined) { const P = WP(); d.g = rnd(P.gmin, P.gmin + 0.6); d.gr = d.g + rnd(0.6, 1.0); if (d.hold === undefined) d.hold = t + rnd(P.hold[0], P.hold[1]); }
+    if (d.calm) { if (t < d.calm) continue; delete d.calm; if (mergeInto(o, d)) { k = Math.min(k, o.drops.length - 1); } continue; } // after a moment, pieces flow together with what they touch
+    // now and then a big drop stretches as if to go, then pulls back round
+    if (d.ret) { d.ret.t += dt; const ph = d.ret.t / d.ret.dur; d.el = d.ret.el0 + Math.sin(Math.min(1, ph) * Math.PI) * 0.45; if (ph >= 1) { d.el = d.ret.el0; delete d.ret; } continue; }
+    if (d.r > 2.6 && Math.random() < dt * 0.015) { d.ret = { t: 0, dur: rnd(1.5, 3), el0: d.el }; continue; }
+    if (t < d.hold) continue; // big drops hang still for a long while
+    if (d.r > d.g) {
+      d.el = Math.min(1.55, d.el + dt * 0.35);
+      d.y += Math.pow((d.r - d.g) / (d.gr - d.g) + 0.08, 2) * 9 * dt * (0.6 + Math.random() * 0.8); // barely at first, faster just before it lets go
+      if (mergeInto(o, d)) k = Math.min(k, o.drops.length - 1);
+      if (d.y > r.height - 6) { o.drops.splice(o.drops.indexOf(d), 1); continue; }
+      if (d.r > d.gr && o.rivs.length < WP().maxr) { o.drops.splice(o.drops.indexOf(d), 1); newRiv(o, d.x, d.y, Math.min(6, d.r * 1.05), rnd(15, 35), d.r * 3.6 * rnd(2, 6)); } // usually just a stretch; it runs through only if it gathers enough
+    } else if (d.r > (WP().smin || 2.8) && o.rivs.length < Math.min(2, WP().maxr) && Math.random() < dt * 0.016 * (d.r - (WP().smin || 2.8)) * WP().slip) {
+      // a short slip: a few drop lengths, then it sticks again – unless it picks up enough on the way
+      o.drops.splice(o.drops.indexOf(d), 1); newRiv(o, d.x, d.y, d.r, rnd(10, 25), d.r * 3.6 * d.el * rnd(2, 5));
+    }
+  }
+  for (const sp of o.splats) {
+    sp.t += dt;
+    for (let k = o.drops.length - 1; k >= 0; k--) { const d = o.drops[k]; if (d.sat) continue; if (Math.abs(d.x - sp.x) < sp.r * 3 && Math.abs(d.y - sp.y) < sp.r * 2.2) { sp.r = Math.min(6.5, Math.sqrt(sp.r * sp.r + d.r * d.r * d.el)); o.drops.splice(k, 1); } }
+    if (sp.t > rnd(0.08, 0.14)) { sp.done = true; newRiv(o, sp.x, sp.y, sp.r, rnd(450, 700), Infinity); o.rivs[o.rivs.length - 1].wide = 1; }
+  }
+  o.splats = o.splats.filter((sp) => !sp.done);
+  for (const v of o.rivs) {
+    // once it has stopped, the track tears open at several places over 1-2 s (the top a little earlier) and leaves a row of pieces
+    if (v.mode === 'break' && !v.segs) {
+      (o.cleared = o.cleared || []).push({ x: v.path[0][0], w: 6 + v.r * 2, y0: v.path[0][1], y1: v.y, t });
+      v.segs = []; const L = v.path.length; let a = 0;
+      while (a < L - 1) { const b = Math.min(L - 1, a + Math.floor(rnd(3, 8))); v.segs.push({ a, b, tt: t + 0.35 + 0.6 * (a / L) + rnd(0, 1.0), on: false }); a = b; }
+    }
+    if (v.segs) {
+      for (const g of v.segs) if (!g.on && t >= g.tt) {
+        g.on = true;
+        const n = Math.random() < 0.85 ? (Math.random() < 0.4 ? 2 : 1) : 0;
+        for (let k = 0; k < n; k++) {
+          let th = g.a; for (let m = g.a; m <= g.b; m++) if ((v.path[m][4] || 1) + (v.path[m][5] || 1) > (v.path[th][4] || 1) + (v.path[th][5] || 1)) th = m;
+          const q = v.path[n > 1 ? g.a + Math.floor(Math.random() * (g.b - g.a + 1)) : th], seg = Math.max(2, Math.abs(v.path[g.b][1] - v.path[g.a][1]));
+          const w = Math.max(0.6, q[2] * rnd(0.18, 0.4));
+          o.drops.push({ x: q[0] + (q[6] || 0) + rnd(-0.8, 0.8), y: q[1] + rnd(-2, 2), r: w, el: Math.max(1.1, Math.min(3.8, seg / (2 * w) * rnd(0.4, 1.1))), s: sprite(2), life: rnd(60, 160), age: 0.2, fi: t, calm: t + rnd(1, 3), rot: Math.random() < 0.35 ? rnd(-0.35, 0.35) : 0 });
+        }
+      }
+      if (v.segs.every((g) => g.on && t - g.tt > 0.4)) v.done = true;
+    }
+    if (v.mode === 'run') {
+      const sl = WP().slow || 1, acc = (40 + v.r * v.r * 45) * sl, vmax = (120 + v.r * v.r * 90) * sl;
+      if (v.r > 6.2 && !v.noThru) { if (Math.random() < 0.12) v.budget = Infinity; else v.noThru = true; } // only when really heavy: it runs all the way
+      const lim = v.budget === Infinity ? vmax : Math.min(vmax, 60 + v.budget * 6); // a stretch-only drop stays slow enough to stop where its stretch ends
+      v.v = v.r < 2.1 || v.budget <= 0 ? Math.max(0, v.v - Math.max(900, v.v * 10) * dt) : Math.min(Math.max(lim, v.v * 0.9), v.v + acc * dt);
+      if (v.v < 4 && v.path.length > 2) { v.mode = 'break'; o.drops.push({ x: v.x, y: v.y, r: Math.max(1.5, v.r), el: rnd(1.3, 1.7), s: sprite(1), wob: 0.8, age: 0.2 }); continue; } // stops and stays as an elongated drop
+      const dyAll = v.v * dt, nsub = Math.max(1, Math.ceil(dyAll / 3)), dy = dyAll / nsub;
+      for (let q = 0; q < nsub && v.y <= r.height - 4; q++) {
+        v.y += dy;
+        v.ddx = Math.max(-0.03, Math.min(0.03, (v.ddx || 0) * 0.85 + rnd(-0.006, 0.006)));
+        v.dx = Math.max(-0.22, Math.min(0.22, v.dx * 0.97 + v.ddx));
+        if (Math.random() < dy * 0.002) v.ddx += rnd(-0.06, 0.06); // now and then a bigger swerve
+        if (v.tx === undefined) v.tx = v.x;
+        v.tx += v.dx * dy + vx * 0.00002 * dy;
+        // a drop just beside the path pulls the rivulet over (one smooth jog, not a zigzag)
+        for (const d of o.drops) { const ox = d.x - v.tx, oy = d.y - v.y; if (oy > 0 && oy < 8 && Math.abs(ox) < (v.r + d.r) * 2.6 && Math.abs(ox) > (v.r + d.r) * 0.6) { v.tx += ox * 0.6; break; } }
+        if (v.tx < 8 || v.tx > r.width - 8) { v.dx = -v.dx; v.tx = Math.max(8, Math.min(r.width - 8, v.tx)); } // turn away from the edge
+        v.x += (v.tx - v.x) * 0.15;
+        // jagged track: each edge gets its own width that jumps from spot to spot, the middle jitters a pixel or two, bulges where it took in water
+        if (!v.jn || (v.jn -= dy) <= 0) { v.jn = rnd(2, 5); v.wl = rnd(0.45, 1.45); v.wr = rnd(0.45, 1.45); v.jx = rnd(-0.3, 0.3); }
+        v.bump = Math.max(1, (v.bump || 1) - dy * 0.12);
+        v.wide = Math.max(0, (v.wide || 0) - dy / 90); const wf = 1 + 1.6 * v.wide;
+        v.path.push([v.x, v.y, v.r, t, v.wl * v.bump * wf, v.wr * v.bump * wf, v.jx]); v.budget -= dy;
+        v.r = Math.sqrt(Math.max(1, v.r * v.r - 0.012 * dy)); // leaves a little water in the track
+        // sweeps up everything it touches (with its visible width) and gets heavier
+        if (o.mist) o.mist = o.mist.filter((m) => Math.abs(m[0] - v.x) > v.r * 1.6 || Math.abs(m[1] - v.y) > dy + 2);
+        for (let k = o.drops.length - 1; k >= 0; k--) { const d = o.drops[k]; if (Math.abs(d.x - v.x) < (v.r + d.r) * 1.3 && Math.abs(d.y - v.y) < (d.r * d.el + v.r) * 1.5) { v.bump = rnd(1.6, 2.2); v.r = Math.min(6.5, Math.sqrt(v.r * v.r + d.r * d.r * d.el * 0.45)); if (v.budget !== Infinity) v.budget += d.r * rnd(0.3, 0.8); o.drops.splice(k, 1); } }
+      }
+      if (v.y > r.height - 4) { v.mode = 'break'; v.y = r.height - 4; const p = o.pool.find((q) => Math.abs(q.x - v.x) < 6); if (p) p.r = Math.min(4.5, Math.sqrt(p.r * p.r + v.r * v.r * 0.6)); else o.pool.push({ x: v.x, r: Math.min(4, v.r * 0.75), st: 0 }); }
+    }
+  }
+  o.rivs = o.rivs.filter((v) => !v.done);
+  const cap = (r.width * r.height) / WP().dens; if (o.drops.length > cap * 1.1) { o.drops.sort((p, q) => q.r - p.r); o.drops.length = Math.floor(cap); }
+  for (const p of o.pool) {
+    p.st += dt * Math.max(0, p.r - 1.8) * 1.5; // a heavier drop stretches downwards
+    if (p.st > p.r * 1.3 || Math.random() < dt * 0.01) { p.gone = true; falls.push({ x: r.left + p.x, y: r.bottom + p.r * 2 + p.st, vy: 40, r: Math.min(3.2, p.r) }); }
+  }
+  o.pool = o.pool.filter((p) => !p.gone);
+  for (const d of o.drops) if (d.life !== undefined) d.life -= dt;
+  o.drops = o.drops.filter((d) => d.life === undefined || d.life > 0);
+  if (S.temp > 3 && Math.random() < dt * 0.2 && o.drops.length) o.drops.splice(Math.floor(Math.random() * o.drops.length), 1); // slowly drying in mild weather
+}
+
+// lightning bolt: a jagged main channel with a few branches
+function makeBolt() {
+  const segs = [], grow = (x, y, ang, len, w, depth) => {
+    let px = x, py = y; const n = Math.round(len / 14);
+    for (let k = 0; k < n; k++) {
+      const nx = px + Math.sin(ang) * 14 + rnd(-9, 9), ny = py + Math.cos(ang) * 14 + rnd(-2, 4);
+      segs.push([px, py, nx, ny, w]); px = nx; py = ny; ang += rnd(-0.35, 0.35) * 0.6;
+      if (depth < 2 && Math.random() < 0.07) grow(px, py, ang + rnd(0.5, 1) * (Math.random() < 0.5 ? -1 : 1), len * rnd(0.2, 0.4), w * 0.55, depth + 1);
+    }
+  };
+  grow(rnd(W * 0.1, W * 0.9), rnd(0, H * 0.08), rnd(-0.3, 0.3), rnd(H * 0.45, H * 0.85), 2.2, 0);
+  return { segs, life: rnd(0.25, 0.45), max: 0.45 };
+}
+
+// the tile's top edge, which bends down into the rounded corners (radius 18 px)
+const RAD = 18, edgeY = (r, x) => { const e = Math.min(x - r.left, r.right - x); return e >= RAD ? r.top : r.top + RAD - Math.sqrt(Math.max(0, RAD * RAD - (RAD - Math.max(0, e)) ** 2)); };
+function smoothCap(r, c, ov, o) {
+  // outline over the cap with soft curves, lying on the edge and following it into the rounded corners
+  const n = c.length, xs = [], tops = [], bases = [];
+  const drop = (k) => { let d = 0; for (const side of [0, 1]) { const sg = o && o.sag[side]; if (!sg || sg.W <= 20) continue; const dist = (side ? n - 1 - k : k) * COL; if (dist < sg.W) d += Math.min(1, sg.t / sg.dur) * c[k] * 0.45 * (1 - dist / sg.W); } return d; };
+  for (let k = 0; k < n; k++) { const x = r.left + k * COL + 1, b = edgeY(r, x) + 0.6; xs.push(x); bases.push(b); tops.push(b - (c[k] > 0.12 ? c[k] + 0.5 - drop(k) : 0)); }
+  F.beginPath(); F.moveTo(xs[0], bases[0]);
+  let px = xs[0], py = tops[0];
+  for (let k = 1; k < n; k++) { F.quadraticCurveTo(px, py, (px + xs[k]) / 2, (py + tops[k]) / 2); px = xs[k]; py = tops[k]; }
+  F.lineTo(xs[n - 1], bases[n - 1]);
+  for (let k = n - 1; k >= 0; k--) F.lineTo(xs[k], bases[k]);
+  F.closePath();
+}
+// snow rolling over a corner: from the cap's top it bulges out (as far as the gap allows) and hangs down, round underneath
+function overhang(r, c, o, side) {
+  const ov = o.ov[side]; if (ov < 0.6) return; const n = c.length, k = side ? n - 1 - 6 : 6, h = c[k]; if (h < 1.5) return;
+  const sk = o.sag[side] ? Math.min(1, o.sag[side].t / o.sag[side].dur) : 0;
+  const sg = side ? 1 : -1, ex = side ? r.right : r.left, hx = Math.max(1, Math.min(ov * 0.8, (o.free[side] || 999) / 2 - 1)), hv = ov * (1 + 0.9 * sk);
+  const x1 = ex - sg * 14, y1 = edgeY(r, x1) + 0.6 - h - 0.5;
+  const gr = F.createLinearGradient(0, y1, 0, r.top + hv); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, '#e9eff5'); gr.addColorStop(1, '#b9c7d6');
+  F.fillStyle = gr; F.beginPath(); F.moveTo(x1, y1);
+  F.bezierCurveTo(ex + sg * hx * 0.3, y1 - 0.5, ex + sg * hx, r.top - h * 0.3, ex + sg * hx * 0.9, r.top + hv * 0.45);
+  F.quadraticCurveTo(ex + sg * hx * 0.6, r.top + hv, ex - sg * 1, r.top + hv * 0.8);
+  F.quadraticCurveTo(ex - sg * 4, r.top + 3, x1, edgeY(r, x1) + 0.6); F.closePath(); F.fill();
+  F.fillStyle = 'rgba(90,110,135,.18)'; F.beginPath(); F.ellipse(ex + sg * hx * 0.35, r.top + hv * 0.75, hx * 0.6 + 1, hv * 0.22 + 0.5, 0, 0, 6.3); F.fill();
+  if (sk > 0.15) { const cx = ex - sg * Math.max(9, (o.sag[side].W || 20) - 4), kc = Math.max(0, Math.min(n - 1, Math.round((cx - r.left) / COL))); F.strokeStyle = `rgba(105,122,145,${0.7 * sk})`; F.lineWidth = 0.9; F.beginPath(); F.moveTo(cx, edgeY(r, cx) + 0.6 - c[kc] - 0.5); F.lineTo(cx + sg * 1.2, edgeY(r, cx) - (c[kc]) * (1 - sk)); F.lineTo(cx - sg * 0.5, edgeY(r, cx) + 0.5); F.stroke(); }
+}
+
+function draw() {
+  const m = MODES[S.mode], vx = windVX(), R = rects();
+  const sk = skyCols(), g = B.createLinearGradient(0, 0, 0, H); g.addColorStop(0, `rgb(${sk[0]})`); g.addColorStop(1, `rgb(${sk[1]})`);
+  B.fillStyle = g; B.fillRect(0, 0, W, H);
+  const fv = [1, 0.45, 0.12, 0][S.fog]; // fog hides the sky
+  if (S.tod === 'night' && m.clear && fv > 0) { B.globalAlpha = fv; // stars twinkle, the moon in its real phase
+    for (const st of STARS) { const a = 0.45 + 0.4 * Math.sin(t * 1.3 + st[3]) * Math.sin(t * 0.37 + st[3] * 2); B.fillStyle = `rgba(255,255,255,${Math.max(0.08, a)})`; B.fillRect(st[0] * W, st[1] * H, st[2], st[2]); }
+    if (S.aurora && !S.fog) { drawAurora(S.aurora); B.globalAlpha = fv; }
+    if (meteor) { const q = meteor.life / meteor.dur, e = 1 - (1 - q) * (1 - q), d = meteor.len * e, hx = meteor.x + meteor.dx * d, hy = meteor.y + meteor.dy * d, tl = Math.min(d, meteor.tail), tx = hx - meteor.dx * tl, ty = hy - meteor.dy * tl, a = Math.sin(Math.PI * Math.min(1, q * 1.15)) * meteor.br;
+      if (a > 0 && tl > 1) { const lg = B.createLinearGradient(tx, ty, hx, hy); lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(0.7, `rgba(225,235,255,${0.35 * a})`); lg.addColorStop(1, `rgba(255,255,255,${a})`);
+        B.strokeStyle = lg; B.lineWidth = 1.6; B.lineCap = 'round'; B.beginPath(); B.moveTo(tx, ty); B.lineTo(hx, hy); B.stroke(); B.fillStyle = `rgba(255,255,255,${a})`; B.beginPath(); B.arc(hx, hy, 1.4, 0, 7); B.fill(); } }
+    const ph = moonPhase(), mx = W * 0.16, my = H * 0.13, mr = 22, lit = Math.cos(ph * 2 * Math.PI);
+    const gl = B.createRadialGradient(mx, my, mr, mx, my, mr * 5); gl.addColorStop(0, 'rgba(220,228,255,.18)'); gl.addColorStop(1, 'rgba(220,228,255,0)'); B.fillStyle = gl; B.fillRect(mx - mr * 5, my - mr * 5, mr * 10, mr * 10);
+    if (!S.fog) { B.fillStyle = 'rgba(40,48,70,.9)'; B.beginPath(); B.arc(mx, my, mr, 0, 7); B.fill(); }
+    B.fillStyle = '#eef0f6'; B.beginPath(); const right = ph < 0.5; B.arc(mx, my, mr, -Math.PI / 2, Math.PI / 2, !right); B.ellipse(mx, my, Math.abs(lit) * mr, mr, 0, Math.PI / 2, -Math.PI / 2, (lit > 0) === right); B.fill(); B.globalAlpha = 1;
+  }
+  if (m.clear && S.tod !== 'night' && fv > 0) { // a warm, soft glow of the sun – in fog only a pale bright spot, in dense fog none
+    B.globalAlpha = S.fog === 2 ? 0.55 : fv;
+    const sp0 = sunPos(), sx = sp0.x, sy = sp0.y, sr = Math.max(W, H) * 0.55;
+    const sg = B.createRadialGradient(sx, sy, 0, sx, sy, sr); const warm = mixRGB([255, 248, 225], [255, 200, 140], sp0.low);
+    sg.addColorStop(0, `rgba(${warm},.75)`); sg.addColorStop(0.08, `rgba(${warm},.45)`); sg.addColorStop(0.35, `rgba(${warm},.12)`); sg.addColorStop(1, `rgba(${warm},0)`);
+    B.fillStyle = sg; B.fillRect(0, 0, W, H); B.globalAlpha = 1;
+  }
+  B.globalAlpha = [1, 0.55, 0, 0][S.fog]; // clouds: paler in haze, gone in fog
+  if (B.globalAlpha > 0) { const fa = B.globalAlpha, near = cbSeq && cbSeq.t > CBT[1] + 12;
+    drawSheets([layers[0]], fa); if (cbStat) drawCbStat(fa); if (cbSeq && !near) drawCbSeq(fa); drawSheets([layers[1], layers[2]], fa); if (lentis.length) drawLentis(fa);
+    drawHeaps(fa);
+    if (S.cType === 'flow') { // the sun stands behind these clouds: they hide it themselves, and its rays do not run across them
+      if (MODES[S.mode].clear && S.tod !== 'night' && S.fog < 2) { const sp0 = sunPos(); if (sp0.el > -1) { const cov = sunCover(sp0.x, sp0.y), other = Math.max(0, (cov - sunHeap) / (1 - sunHeap + 1e-3)), up = fv * (S.fog === 1 ? 0.45 : 1) * Math.min(1, (sp0.el + 1) / 3) * Math.max(0, 1 - cbDark * 1.6), ga = B.globalAlpha; B.globalAlpha = 1; drawSunFx(sp0.x, sp0.y, sp0.low, up * (1 - other), 1, Math.pow(Math.max(0, 1 - sunHeap * 1.25), 1.5)); B.globalAlpha = ga; } }
+      drawFlow(fa);
+    }
+    if (near) drawCbSeq(fa); }
+  B.globalAlpha = 1;
+  if (cbDark > 0.01) { const dg = B.createLinearGradient(0, 0, 0, H); dg.addColorStop(0, `rgba(22,27,40,${cbDark})`); dg.addColorStop(1, `rgba(34,40,54,${cbDark * 0.8})`); B.fillStyle = dg; B.fillRect(0, 0, W, H); } // the storm darkens the sky as it arrives
+  if (m.clear && S.tod !== 'night' && S.fog < 2) { const sp1 = sunPos(); if (sp1.el > -1) { const cov = sunCover(sp1.x, sp1.y), up = fv * (S.fog === 1 ? 0.45 : 1) * Math.min(1, (sp1.el + 1) / 3) * Math.max(0, 1 - cbDark * 1.6); /* the approaching storm swallows the sun */ drawSunFx(sp1.x, sp1.y, sp1.low, up * (1 - cov), S.cType === 'flow' ? 2 : 0); drawSunVeil(sp1.x, sp1.y, up * (1 - sunHeap), Math.max(0, cov - sunHeap)); } }
+  if (S.mode === 'partly' && S.tod !== 'night' && S.fog < 2) { const sh = Math.max(0, Math.sin(t * 0.11) * Math.sin(t * 0.047 + 1)) * 0.12; if (sh > 0.005) { B.fillStyle = `rgba(30,45,70,${sh})`; B.fillRect(0, 0, W, H); } } // a cloud shadow passes now and then
+  const FOG = [0, 0.2, 0.42, 0.66][S.fog]; // milky light: clouds fade into grey
+  if (FOG) { const fg = fogGrey(); B.fillStyle = `rgba(${fg},${FOG})`; B.fillRect(0, 0, W, H); }
+  if (S.fog === 2 && m.clear && S.tod !== 'night') { // in fog the sun only shines through as a pale bright spot
+    const sp2 = sunPos(), sx = sp2.x, sy = sp2.y, sr = Math.min(W, H) * 0.22;
+    const sg = B.createRadialGradient(sx, sy, 0, sx, sy, sr); const c = mixRGB([250, 250, 245], [255, 225, 195], sp2.low);
+    sg.addColorStop(0, `rgba(${c},.55)`); sg.addColorStop(0.25, `rgba(${c},.28)`); sg.addColorStop(1, `rgba(${c},0)`); B.fillStyle = sg; B.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
+  }
+  if (flash > 0) { B.fillStyle = `rgba(200,210,240,${flash * 0.35})`; B.fillRect(0, 0, W, H); }
+  if (cbGlow > 0 && cbSeq && S.fog < 2) { const P = cbPose(), r = cbSeq.o.tw * 0.9 * P.s, gy = P.base - cbSeq.o.hh * 0.4 * P.s, gg = B.createRadialGradient(P.x, gy, 0, P.x, gy, r); gg.addColorStop(0, `rgba(225,232,255,${0.5 * cbGlow})`); gg.addColorStop(0.5, `rgba(205,215,250,${0.2 * cbGlow})`); gg.addColorStop(1, 'rgba(205,215,250,0)'); B.save(); B.globalCompositeOperation = 'lighter'; B.fillStyle = gg; B.fillRect(P.x - r, gy - r, r * 2, r * 2); B.restore(); }
+  if (cbGlow > 0 && cbStat && S.fog < 2) { const q = cbStat, r = q.o.tw * 0.9, gy = q.o.base - q.o.hh * 0.4, gg = B.createRadialGradient(q.x, gy, 0, q.x, gy, r); gg.addColorStop(0, `rgba(225,232,255,${0.5 * cbGlow})`); gg.addColorStop(0.5, `rgba(205,215,250,${0.2 * cbGlow})`); gg.addColorStop(1, 'rgba(205,215,250,0)'); B.save(); B.globalCompositeOperation = 'lighter'; B.fillStyle = gg; B.fillRect(q.x - r, gy - r, r * 2, r * 2); B.restore(); }
+  if (bolt && (bolt.life > bolt.max * 0.6 || Math.floor(bolt.life * 40) % 2 === 0)) {
+    B.lineCap = 'round';
+    for (const [w, a] of [[8, 0.12], [3.5, 0.35], [1, 1]]) { B.strokeStyle = `rgba(225,230,255,${a})`; B.beginPath(); for (const s of bolt.segs) { B.lineWidth = w * s[4] / 2.2 + (a === 1 ? s[4] * 0.6 : 0); B.moveTo(s[0], s[1]); B.lineTo(s[2], s[3]); } B.stroke(); }
+  }
+  if (rain.length) {
+    for (const [lo, hi, a] of [[0, 0.6, 0.18], [0.6, 1.01, 0.32]]) {
+      B.beginPath(); B.strokeStyle = `rgba(215,226,238,${a})`; B.lineWidth = lo ? 1.1 : 0.8;
+      for (const p of rain) { if (p.z < lo || p.z >= hi) continue; const k = p.len / p.v; B.moveTo(p.x, p.y); B.lineTo(p.x - vx * p.z * k, p.y - p.len); }
+      B.stroke();
+    }
+  }
+  if (snow.length) {
+    for (const [lo, hi, a] of [[0, 0.55, 0.55], [0.55, 1.01, 0.92]]) {
+      B.beginPath(); B.fillStyle = `rgba(255,255,255,${a})`;
+      for (const f of snow) { if (f.z < lo || f.z >= hi) continue; B.moveTo(f.x + f.r, f.y); B.arc(f.x, f.y, f.r, 0, 6.3); }
+      B.fill();
+    }
+  }
+  if (S.fog) { // fog banks drift slowly (behind the tiles only)
+    const fa = [0, 0.35, 0.7, 1][S.fog] * (S.tod === 'night' ? 0.3 : 1); B.globalAlpha = fa;
+    fogL.slice(0, S.fog).forEach((l, li) => { // each bank thickens and thins and spreads a little, instead of drifting
+      const b = Math.sin(t * 2 * Math.PI / (18 + li * 7) + li * 2), sy = 1 + 0.06 * (b + 1), /* only ever taller than the screen: no edge at the bottom */ sx = 1 + 0.06 * Math.sin(t * 2 * Math.PI / (25 + li * 5) + li);
+      B.globalAlpha = fa * (0.75 + 0.25 * b) * (1 + 0.15 * Math.sin(t * 2 * Math.PI / 90));
+      for (let x = snapX(l.ox) - l.LW; x < W; x += l.LW) B.drawImage(l.cv, x, -(sy - 1) * H * 0.7, l.LW, H * sy); // only vertical swelling, so the copies still join without a seam
+    });
+    if (S.fog > 1 && S.wind > 25) B.globalAlpha = fa * 0.7;
+    B.globalAlpha = 1;
+  }
+  if (lines.length) {
+    B.lineWidth = 1.2; B.lineCap = 'round';
+    for (const l of lines) { const a = Math.sin(Math.PI * l.life / l.max) * 0.16; B.strokeStyle = `rgba(255,255,255,${a})`; B.beginPath(); B.moveTo(l.x, l.y); B.bezierCurveTo(l.x + l.len * 0.33, l.y - l.amp, l.x + l.len * 0.66, l.y + l.amp, l.x + l.len, l.y + Math.sin(l.ph) * l.amp * 0.5); B.stroke(); }
+  }
+  F.clearRect(0, 0, W, H);
+  if (S.on) {
+    F.globalAlpha = 0.8;
+    R.forEach((r, i) => {
+      const o = T[i];
+      if (o.mist && o.mist.length) { F.globalAlpha = 1; F.fillStyle = 'rgba(220,230,240,.22)'; F.beginPath(); for (const m of o.mist) F.rect(r.left + m[0], r.top + m[1], m[2] * 2, m[2] * 2); F.fill(); F.fillStyle = 'rgba(10,15,22,.16)'; F.beginPath(); for (const m of o.mist) F.rect(r.left + m[0], r.top + m[1] - 0.6, m[2] * 2, 0.6); F.fill(); }
+      if (!o.drops.length && !o.rivs.length && !o.merging.length && !o.splats.length) return;
+      F.globalAlpha = 0.72; // a little see-through so values stay readable
+      for (const d of [...o.drops, ...o.merging]) { F.globalAlpha = d.fi ? 0.72 * Math.min(1, (t - d.fi) / 0.5) : 0.72; const sp = SPR[d.s], wb = (d.wob ? 1 + 0.3 * d.wob * Math.sin(t * 38) : 1) * (d.age !== undefined && d.age < 0.16 ? 1 + (d.r > 2.5 ? 0.6 : 0.35) * (1 - d.age / 0.16) : 1), w = d.r * 3.6 * wb, h = d.r * 3.6 * d.el / wb; if (d.rot) { F.save(); F.translate(r.left + d.x, r.top + d.y); F.rotate(d.rot); F.drawImage(sp.cv, -w / 2, -h / 2, w, h); F.restore(); } else F.drawImage(sp.cv, r.left + d.x - w / 2, r.top + d.y - h / 2, w, h); }
+      F.globalAlpha = 0.72; // reset: otherwise the band inherits a fading-in drop's opacity and flickers
+      // rivulet: a band with dark edges and a light core; it dries from the top down, as a soft gradient
+      for (const v of o.rivs) {
+        const L = v.path.length; if (L < 2) continue;
+        const al = new Float32Array(L).fill(1);
+        if (v.segs) for (const g of v.segs) if (g.on) { const f = Math.max(0, 1 - (t - g.tt) / 0.35); for (let m = g.a; m <= g.b; m++) al[m] = Math.min(al[m], f); }
+        for (const [wd, a0, rgb] of [[1.05, 0.2, '14,20,30'], [0.55, 0.09, '205,218,232']]) {
+          const half = (n) => { const q = v.path[n]; return Math.max(0.25, q[2] * wd * 0.6 * WP().trk); };
+          for (let n = 0; n < L - 1; n++) {
+            const a = Math.min(al[n], al[n + 1]); if (a <= 0.01) continue;
+            const p0 = v.path[n], p1 = v.path[n + 1]; F.fillStyle = `rgba(${rgb},${a0 * a})`; F.beginPath();
+            F.moveTo(r.left + p0[0] + (p0[6] || 0) - half(n) * (p0[4] || 1), r.top + p0[1]); F.lineTo(r.left + p1[0] + (p1[6] || 0) - half(n + 1) * (p1[4] || 1), r.top + p1[1] + 0.4);
+            F.lineTo(r.left + p1[0] + (p1[6] || 0) + half(n + 1) * (p1[5] || 1), r.top + p1[1] + 0.4); F.lineTo(r.left + p0[0] + (p0[6] || 0) + half(n) * (p0[5] || 1), r.top + p0[1]); F.closePath(); F.fill();
+          }
+        }
+        if (v.mode === 'run') { const sp = SPR[v.s || 0], w = v.r * 2.7, h = w * (1.2 + Math.min(0.5, v.v / 1500)); F.drawImage(sp.cv, r.left + v.x - w / 2, r.top + v.y - h * 0.6, w, h); }
+      }
+      // splash of a big raindrop: a wide, flat, irregular smear for a moment
+      for (const sp of o.splats) { const g = 1 + sp.t * 5; for (const [ox, oy, si, sc] of sp.parts) { const w = sp.r * 3.6 * sc * g, h = w * 0.6; F.drawImage(SPR[si].cv, r.left + sp.x + ox * sp.r * 2 - w / 2, r.top + sp.y + oy * sp.r * 2 - h / 2, w, h); } }
+      F.globalAlpha = 0.8;
+    });
+    F.globalAlpha = 1;
+    F.fillStyle = 'rgba(210,225,240,.7)';
+    for (const d of falls) { const sp = SPR[20], w = d.r * 3.4, h = w * 1.4; F.drawImage(sp.cv, d.x - w / 2, d.y - h / 2, w, h); }
+    // hanging drops: a teardrop under the edge with a narrow neck
+    R.forEach((r, i) => { for (const p of T[i].pool) { const x = r.left + p.x, b = r.bottom - 0.5, q = p.r * 1.9, st = p.st * 1.9;
+      F.beginPath(); F.moveTo(x - q * 0.5, b); F.bezierCurveTo(x - q * 0.45, b + st * 0.6 + q * 0.4, x - q * 1.1, b + st + q * 0.9, x - q * 0.8, b + st + q * 1.6); F.arc(x, b + st + q * 1.35, q * 0.85, Math.PI * 0.85, Math.PI * 0.15, true); F.bezierCurveTo(x + q * 1.1, b + st + q * 0.9, x + q * 0.45, b + st * 0.6 + q * 0.4, x + q * 0.5, b); F.closePath();
+      F.fillStyle = 'rgba(190,205,222,.30)'; F.fill(); F.strokeStyle = 'rgba(14,20,30,.55)'; F.lineWidth = 1.3; F.stroke();
+      F.fillStyle = 'rgba(255,255,255,.75)'; F.beginPath(); F.arc(x - q * 0.35, b + st + q * 1.05, Math.max(0.6, q * 0.28), 0, 6.3); F.fill();
+      F.fillStyle = 'rgba(255,255,255,.3)'; F.beginPath(); F.arc(x, b + st + q * 1.35, q * 0.7, 0.3, Math.PI - 0.3); F.fill(); } });
+    F.fillStyle = 'rgba(225,235,245,.8)';
+    for (const s of splash) F.fillRect(s.x, s.y, 1.3, 1.3);
+    // snow caps
+    R.forEach((r, i) => {
+      const o = T[i]; if (!o.cap && !o.heaps.length) return; const c = capOf(i, r); let any = o.heaps.length > 0; for (let k = 0; k < c.length && !any; k++) if (c[k] > 0.12) any = true; if (!any) return;
+      const gr = F.createLinearGradient(0, r.top - (o.maxh || MAXH) - 2, 0, r.top + 1); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.7, '#f1f5f9'); gr.addColorStop(1, '#cfd9e4');
+      F.fillStyle = gr; smoothCap(r, c, o.ov, o); F.fill();
+      overhang(r, c, o, 0); overhang(r, c, o, 1);
+      for (const hp of o.heaps) { // fresh heap: a soft mound on top of the cap
+        const x0 = r.left + hp.x, k0 = Math.max(0, Math.min(c.length - 1, Math.round(hp.x / COL))), base = edgeY(r, x0) + 0.6 - c[k0];
+        F.fillStyle = gr; F.beginPath(); F.moveTo(x0 - hp.w, base + 1);
+        for (let dx = -hp.w; dx <= hp.w; dx += 1) { const e = dx / (hp.w * 0.5); F.lineTo(x0 + dx, base - hp.h * Math.exp(-e * e) * (1 + 0.06 * Math.sin(dx * 0.35 + hp.x))); }
+        F.lineTo(x0 + hp.w, base + 1); F.closePath(); F.fill();
+      }
+    });
+    for (const c of clumps) { if (c.delay > 0) continue; F.fillStyle = c.r > 2 ? '#f6f9fc' : 'rgba(255,255,255,.95)'; F.beginPath(); F.ellipse(c.x, c.y, c.r * c.sh, c.r / c.sh, c.rot, 0, 6.3); if (c.r > 1.2 && c.lobes) for (const [ox, oy, rr] of c.lobes) { const cs = Math.cos(c.rot), sn = Math.sin(c.rot), X = c.x + (ox * cs - oy * sn) * c.r, Y = c.y + (ox * sn + oy * cs) * c.r; F.moveTo(X + rr * c.r, Y); F.arc(X, Y, rr * c.r, 0, 6.3); } F.fill(); }
+    F.fillStyle = 'rgba(255,255,255,.6)';
+    for (const p of powder) { if (p.delay > 0) continue; if (p.veil) { F.globalAlpha = Math.min(1, p.life) * 0.18; F.beginPath(); F.arc(p.x, p.y, p.veil * (1 + (2 - p.life) * 0.4), 0, 6.3); F.fill(); } else { F.globalAlpha = Math.min(1, p.life) * 0.8; F.fillRect(p.x, p.y, 1.3, 1.3); } }
+    F.globalAlpha = 1;
+  }
+  if (S.fog) { // a light veil of fog in front of the tiles too – values stay readable
+    const fa = [0, 0.1, 0.18, 0.28][S.fog] * (S.tod === 'night' ? 0.3 : 1); F.globalAlpha = fa;
+    fogL.slice(0, S.fog).forEach((l, li) => { const b = Math.sin(t * 2 * Math.PI / (21 + li * 6) + li); F.globalAlpha = fa * (0.7 + 0.3 * b); for (let x = snapX(l.ox) - l.LW; x < W; x += l.LW) F.drawImage(l.cv, x, -0.025 * (b + 1) * H, l.LW, H * (1 + 0.05 * (b + 1))); });
+    // wisps that waver over the tiles: they thicken and thin, rise and sink, stretch and dissolve
+    const wa = [0, 0.16, 0.26, 0.34][S.fog] * (S.tod === 'night' ? 0.3 : 1);
+    const swell = 1 + 0.15 * Math.sin(t * 2 * Math.PI / 90); // the fog as a whole thickens and thins over a minute or two
+    for (const w of wisps) {
+      // each patch breathes: spreads out and thins, pulls back and thickens, in its own rhythm
+      const env = Math.min(1, w.life / 8, (w.max - w.life) / 8), b = Math.sin(t * 2 * Math.PI / w.per + w.ph), b2 = Math.sin(t * 2 * Math.PI / w.per2 + w.ph * 1.7);
+      const sc = w.sc * (1 + 0.35 * b), dens = 0.55 + 0.3 * b2 - 0.15 * b;
+      F.globalAlpha = Math.max(0, Math.min(1, wa * env * dens * swell)); const cv = WISP[w.s], dw = cv.width * sc * (1 + 0.15 * b2), dh = cv.height * sc;
+      F.drawImage(cv, w.cx - dw / 2, w.cy - dh / 2, dw, dh);
+    }
+    F.globalAlpha = 1; F.fillStyle = `rgba(${fogGrey()},${[0, 0.03, 0.06, 0.1][S.fog]})`; F.fillRect(0, 0, W, H);
+  }
+  if (m.clear && S.tod !== 'night' && S.fog < 2) { // rarely a soft gleam glides over the glass
+    if (shimmer.t < 0 && (shimmer.next -= 0.033) <= 0) shimmer.t = 0;
+    if (shimmer.t >= 0) {
+      shimmer.t += 0.033; const p = shimmer.t / 2.2, bx = -W * 0.3 + p * W * 1.6;
+      F.save(); F.beginPath(); for (const r of R) F.roundRect(r.left, r.top, r.width, r.height, 18); F.clip();
+      const sg = F.createLinearGradient(bx - 140, 0, bx + 140, H * 0.4); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,.07)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+      F.fillStyle = sg; F.fillRect(0, 0, W, H); F.restore();
+      if (p >= 1) { shimmer.t = -1; shimmer.next = rnd(60, 120); }
+    }
+  }
+  if (flash > 0) { F.fillStyle = `rgba(215,225,255,${flash * 0.18})`; F.fillRect(0, 0, W, H); }
+}
+
+function frame(ts) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = ts; return; }
+  if (ts - last < 32) return; // at most about 30 frames per second
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0.03); last = ts; t += dt;
+  step(dt); draw();
+}
+
+// remember the snow on the tiles (this browser only)
+function save() { try { localStorage.setItem('wsfx-caps2', JSON.stringify(T.map((o) => (o.cap ? Array.from(o.cap, (v) => Math.round(v * 10) / 10) : null)))); } catch (e) {} }
+function load() { try { const a = JSON.parse(localStorage.getItem('wsfx-caps2') || 'null'); if (Array.isArray(a)) a.forEach((c, i) => { if (c && i < T.length) T[i].cap = Float32Array.from(c); }); } catch (e) {} }
+
+const fmtT = (v) => `${v < 0 ? '−' : ''}${Math.abs(v)} °C`;
+const dirName = () => document.getElementById('dir').selectedOptions[0].textContent;
+function ui() {
+  document.getElementById('windo').textContent = `${S.wind} km/h`;
+  document.getElementById('windv').textContent = `${S.wind} km/h`;
+  document.getElementById('windd').textContent = `aus ${dirName()}`;
+  document.getElementById('tempo').textContent = fmtT(S.temp);
+}
+document.getElementById('modes').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.mode = b.dataset.m; document.querySelectorAll('#modes button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  if (S.mode.startsWith('snow') && S.temp > 0) { S.temp = -2; document.getElementById('temp').value = -2; ui(); }
+  makeClouds(); fill(); if (reduce) draw();
+});
+document.getElementById('wind').addEventListener('input', (e) => { S.wind = +e.target.value; ui(); });
+document.getElementById('dir').addEventListener('change', (e) => { S.dir = +e.target.value; ui(); });
+document.getElementById('temp').addEventListener('input', (e) => { S.temp = +e.target.value; ui(); });
+document.getElementById('ontiles').addEventListener('change', (e) => { S.on = e.target.checked; });
+function sunFromPanel() { // position of the sun from the two preview controls: part of the day and season
+  const p = +document.getElementById('sunp').value / 100, se = document.getElementById('season').value, mx = { winter: 17, mid: 41, summer: 64 }[se], half = { winter: 55, mid: 90, summer: 128 }[se];
+  S.sunAz = 180 + (p * 2 - 1) * half; S.sunEl = mx * Math.pow(Math.sin(Math.PI * p), 0.85);
+  document.getElementById('sunpv').textContent = `${Math.round(S.sunEl)}°`;
+  if (S.tod !== 'night') { const td = S.sunEl < 8 ? (p < 0.5 ? 'morning' : 'evening') : 'day'; if (td !== S.tod) { S.tod = td; document.getElementById('tod').value = td; makeClouds(); fill(); } else if (S.sunEl < 20) skyChrome(); }
+}
+function cloudsFromPanel() { // preview: the three storeys by hand, or left to the weather type
+  const man = document.getElementById('cman').checked; for (const [id, k] of [['chi', 'cHigh'], ['cmi', 'cMid'], ['clo', 'cLow']]) { const el = document.getElementById(id); el.disabled = !man; S[k] = man ? +el.value / 100 : null; }
+  makeClouds();
+}
+['cman', 'chi', 'cmi', 'clo'].forEach((id) => document.getElementById(id).addEventListener('change', cloudsFromPanel));
+document.getElementById('veer').addEventListener('change', (e) => { S.veer = +e.target.value; makeClouds(); });
+document.getElementById('ctype').addEventListener('change', (e) => { S.cType = e.target.value || null; makeClouds(); });
+document.getElementById('cb').addEventListener('change', (e) => { S.cb = e.target.value || null; makeClouds(); });
+document.getElementById('sunp').addEventListener('input', sunFromPanel); document.getElementById('season').addEventListener('change', sunFromPanel);
+document.getElementById('tod').addEventListener('change', (e) => { S.tod = e.target.value; const v = { morning: 7, day: 50, evening: 93 }[S.tod]; if (v !== undefined) { document.getElementById('sunp').value = v; sunFromPanel(); } makeClouds(); fill(); });
+document.getElementById('aur').addEventListener('change', (e) => { S.aurora = +e.target.value; });
+document.getElementById('fog').addEventListener('change', (e) => { S.fog = +e.target.value; fill(); });
+document.getElementById('speed').addEventListener('change', (e) => { S.speed = +e.target.value; });
+document.getElementById('hidet').addEventListener('click', (e) => { const m = document.querySelector('main'), off = m.style.visibility !== 'hidden'; m.style.visibility = off ? 'hidden' : ''; e.target.textContent = off ? 'Kacheln einblenden' : 'Kacheln ausblenden'; e.target.setAttribute('aria-pressed', off ? 'true' : 'false'); }); // preview only: look at the bare sky
+document.getElementById('reset').addEventListener('click', () => { T.forEach((o) => { o.cap = null; o.lim = null; o.ov = [0, 0]; o.sag = [null, null]; o.heaps = []; o.drops = []; o.rivs = []; o.merging = []; o.splats = []; o.pool = []; o.mist = []; o.cleared = []; }); wetStart = t; splash = []; clumps = []; powder = []; falls = []; lines = []; bolt = null; flash = 0; save(); });
+document.getElementById('clear').addEventListener('click', () => { T.forEach((o) => { o.cap = null; o.ov = [0, 0]; }); slabs = []; save(); });
+addEventListener('resize', size);
+load(); size(); ui();
+sunFromPanel();
+setInterval(save, 5000);
+if (reduce) draw(); else requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
