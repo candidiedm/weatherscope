@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 131 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 132 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -21,10 +21,13 @@ precision highp float;
 precision mediump float;
 #endif
 uniform vec2 R, O, L, SH; uniform vec3 LB; uniform float tm, d, G, E, sd, SN, LOW; uniform vec3 lit, shd;
-float hash(vec3 p) { p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+// the random value at each crossing of the grid is worked out in whole numbers only, exactly: every graphics chip then gets the same value for a crossing whichever
+// neighbouring field asks for it. With a value made from the fraction of a huge product, a phone chip gets two slightly different ones – and the fields show as straight edges, bars and strokes
+vec4 perm(vec4 x) { return mod((x * 34.0 + 1.0) * x, 289.0); }
+float vn(vec3 p) { vec3 i = floor(p), f = p - i; f = f * f * (3.0 - 2.0 * f); i = mod(i, 289.0);
+  vec4 b = i.xxyy + vec4(0.0, 1.0, 0.0, 1.0), k1 = perm(b.xyxy), k2 = perm(k1.xyxy + b.zzww), c = k2 + i.zzzz;
+  vec4 o1 = fract(perm(perm(c) + 17.0) * (1.0 / 41.0)), o2 = fract(perm(perm(c + 1.0) + 17.0) * (1.0 / 41.0)), o3 = o2 * f.z + o1 * (1.0 - f.z);
+  vec2 o4 = o3.yw * f.x + o3.xz * (1.0 - f.x); return o4.y * f.y + o4.x * (1.0 - f.y); }
 // the pattern is turned from one fineness to the next: left upright it shows the grid it is made on, as upright stripes
 vec3 turn(vec3 p) { return vec3(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8, p.z) * 2.03 + 11.3; }
 float fbm3(vec3 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * vn(p); p = turn(p); a *= 0.5; } return s / 0.875; }
