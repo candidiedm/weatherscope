@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 128 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 129 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -96,7 +96,7 @@ void main() {
   l = clamp(l, 0.0, 1.0);
   l = mix(l, 1.0, (1.0 - a) * 0.5);                                    // thin parts let the light through
   vec3 c = mix(shd, lit, l);
-  c = mix(c, mix(vec3(1.0, 0.99, 0.95), vec3(1.0, 0.86, 0.6), LOW), SN * (1.0 - smoothstep(0.0, 0.42, D)) * 0.85); // … and its thin rim glows
+  c = mix(c, mix(vec3(1.0, 0.99, 0.95), vec3(1.0, 0.86, 0.6), LOW), SN * (1.0 - smoothstep(0.0, 0.42, D)) * 0.8 * (0.18 + 0.82 * (1.0 - a))); // … and its thin rim glows
   vec2 ed = min(q, 1.0 - q); a *= smoothstep(0.0, 0.06, min(ed.x, ed.y)); // nothing may touch the edge of its field
   gl_FragColor = vec4(c * a, a);
 }`;
