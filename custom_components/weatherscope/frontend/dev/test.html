@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 130 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 131 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -36,7 +36,7 @@ float dens(vec2 p, float k) {
   float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
   float env = 1.0 - sqrt(ex * ex + ey * ey + 0.004);                          // a heap: 1 in the middle of the base, 0 at the rim
   float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
-  env = max(env, 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004));                  // a second heap beside or above it: a tower, a shoulder
+  { float e2 = 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004); env = 0.5 * (env + e2 + sqrt((env - e2) * (env - e2) + 0.012)); } // the two heaps run into each other in a round hollow: a sharp fold between them shows in the light as a straight stroke or a bar                  // a second heap beside or above it: a tower, a shoulder
   env *= 0.86 + 0.3 * fbm3(vec3(p * 0.8 + 5.0 + o, tm * 0.022));      // the large outline changes slowly; it is the bulges on it that work visibly
   vec2 ps = p / pow(max(G, 0.14), 0.78);                               // the bulges are sized to the cloud as it is now: a young small cloud has its own small bulges
   vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
@@ -58,7 +58,7 @@ vec2 dens2(vec2 p) {
   float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
   float env = 1.0 - sqrt(ex * ex + ey * ey + 0.004);                          // a heap: 1 in the middle of the base, 0 at the rim
   float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
-  env = max(env, 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004));                  // a second heap beside or above it: a tower, a shoulder
+  { float e2 = 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004); env = 0.5 * (env + e2 + sqrt((env - e2) * (env - e2) + 0.012)); } // the two heaps run into each other in a round hollow: a sharp fold between them shows in the light as a straight stroke or a bar                  // a second heap beside or above it: a tower, a shoulder
   env *= 0.86 + 0.3 * fbm3(vec3(p * 0.8 + 5.0 + o, tm * 0.022));      // the large outline changes slowly; it is the bulges on it that work visibly
   vec2 ps = p / pow(max(G, 0.14), 0.78);                               // the bulges are sized to the cloud as it is now: a young small cloud has its own small bulges
   vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
@@ -79,7 +79,8 @@ float envf(vec2 p) {
   float xs = p.x * d - 0.22 * p.y, yy = max(p.y - 0.16 * G, 0.0);
   float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
   float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
-  return max(1.0 - sqrt(ex * ex + ey * ey + 0.004), 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004)) * smoothstep(-0.05, 0.15, p.y);
+  float e1 = 1.0 - sqrt(ex * ex + ey * ey + 0.004), e2 = 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004);
+  return 0.5 * (e1 + e2 + sqrt((e1 - e2) * (e1 - e2) + 0.012));
 }
 void main() {
   vec2 q = (gl_FragCoord.xy - O) / R, p = vec2((q.x - 0.5) * 2.0 * R.x / R.y * 0.82, q.y * 1.64 - 0.2);
