@@ -3,7 +3,7 @@
 <title>WeatherScope Wolken-Test</title>
 <style>
 html,body{margin:0;height:100%;background:#3f7fc4;overflow:hidden;font-family:system-ui,sans-serif;color:#fff}
-#c{position:fixed;inset:0;width:100%;height:100%}
+canvas{position:fixed;inset:0;width:100%;height:100%}
 #top{position:fixed;left:0;right:0;top:0;padding:12px 16px;background:rgba(10,20,40,.72);font-size:18px;line-height:1.35}
 #diag{color:#ffd27a;margin-top:6px;font-size:17px;word-break:break-word}
 #prev{color:#ff9a8a;margin-top:6px;font-size:16px}
@@ -11,8 +11,8 @@ html,body{margin:0;height:100%;background:#3f7fc4;overflow:hidden;font-family:sy
 button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#fff;color:#123;font-weight:600}
 button.on{background:#ffd27a}
 </style></head><body>
-<canvas id="c"></canvas>
-<div id="top"><div>Wolken-Test · Stand 123 (sparsam) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<canvas id="c"></canvas><canvas id="g"></canvas>
+<div id="top"><div>Wolken-Test · Stand 124 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -75,6 +75,12 @@ vec2 dens2(vec2 p) {
   float base = smoothstep(0.0, 0.2, ps.y + bk), bas0 = smoothstep(0.0, 0.2, ps.y + bn);
   return vec2((dn + dk) * base - (1.0 - base) * 0.3, (dn + d0) * bas0 - (1.0 - bas0) * 0.3);
 }
+float envf(vec2 p) {
+  float xs = p.x * d - 0.22 * p.y, yy = max(p.y - 0.16 * G, 0.0);
+  float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
+  float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
+  return max(1.0 - sqrt(ex * ex + ey * ey + 0.004), 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004)) * smoothstep(-0.05, 0.15, p.y);
+}
 void main() {
   vec2 q = (gl_FragCoord.xy - O) / R, p = vec2((q.x - 0.5) * 2.0 * R.x / R.y * 0.82, q.y * 1.64 - 0.2);
   vec2 DD = dens2(p); float D = DD.x, xs = p.x * d, gs = pow(max(G, 0.14), 0.78);
@@ -82,7 +88,7 @@ void main() {
   if (R.x > 600.0) soft *= 0.7; float a = smoothstep(0.0, soft, D); // a very near cloud: crisper rim
   // light as on a body, not on an embossed sheet: at every place it is asked how much more cloud stands between it and the sun than here.
   // So the side turned to the sun is bright as a whole and the far side lies in a broad soft shadow, and a bulge or tower shades what is behind it
-  float D0 = DD.y, D1 = dens(p + L * 0.08 * gs, 0.0), D2 = dens(p + L * 0.3 * gs, 0.0);
+  float D0 = DD.y, D1 = dens(p + L * 0.08 * gs, 0.0), D2 = D0 + (envf(p + L * 0.3 * gs) - envf(p)) * 1.3;
   float shade = exp(-(max(0.0, D1 - D0) * 4.2 + max(0.0, D2 - D0) * 1.9) * (1.0 + 0.6 * LOW)); // a low sun: light and shadow lie further apart
   float hi = clamp((D0 - D1) * 3.2, 0.0, 1.0);                         // the flank of a bulge that faces the sun
   float l = (0.2 - 0.02 * LOW + (0.6 + 0.02 * LOW) * shade + (0.28 + 0.12 * LOW) * hi) * mix(mix(0.5, 0.86, LOW), 1.0, smoothstep(0.02, 0.1 + 0.5 * G * SH.y, p.y)); // bright above, blue-grey below, measured on the cloud's own height
@@ -94,19 +100,23 @@ void main() {
   vec2 ed = min(q, 1.0 - q); a *= smoothstep(0.0, 0.06, min(ed.x, ed.y)); // nothing may touch the edge of its field
   gl_FragColor = vec4(c * a, a);
 }`;
-const cv = document.getElementById('c'), B = cv.getContext('2d'), diag = document.getElementById('diag');
+const cv = document.getElementById('c'), B = cv.getContext('2d'), GC = document.getElementById('g'), diag = document.getElementById('diag');
 const rnd = (a, b) => a + Math.random() * (b - a), sst = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
-const QS = new URLSearchParams(location.search), BMAX = +(QS.get('max') || 40000), FMIN = +(QS.get('fade') || 2), FMAX = 12, BMIN = +(QS.get('min') || 4000), Q = +(QS.get('q') || 0.8);
-let FADE = FMIN, dgWait = 0; // how long one picture of a cloud blends into the next: as long as it takes until its turn comes again, so it never stands still
-let W = 0, H = 0, DPR = 1, level = 0, t = 0, last = 0, budget = +(QS.get('b') || 8000), started = 0;
-let FLc = null, x = null, U = null, err = '', info = '', lost = 0, dgF = 0, dgT = 0, dgSum = 0, dgPx = 0, dgJobs = 0, dgAge = 0, nVis = 0, nPic = 0;
+const QS = new URLSearchParams(location.search), BMAX = +(QS.get('max') || 60000), BMIN = +(QS.get('min') || 4000), FMIN = +(QS.get('fade') || 1.2), FMAX = 14, Q = +(QS.get('q') || 0.7);
+let FADE = 3; // how long a cloud takes from one picture to the next: as long as it takes until its turn comes again, so it is always on its way and never rests
+let W = 0, H = 0, level = 0, t = 0, last = 0, budget = +(QS.get('b') || 8000), started = 0;
+let x = null, U = null, U2 = null, P1 = null, P2 = null, FB = null, err = '', info = '', lost = 0, dgF = 0, dgT = 0, dgSum = 0, dgPx = 0, dgJobs = 0, dgLate = 0, nVis = 0, nPic = 0;
 const mark = (s) => { try { localStorage.setItem('wsfx-test-step', s); } catch (e) {} };
 try { const p = localStorage.getItem('wsfx-test-step'); if (p && p !== 'ok') document.getElementById('prev').textContent = 'Letzter Schritt vor dem letzten Abbruch: ' + p; localStorage.setItem('wsfx-test-step', 'ok'); } catch (e) {}
-function size() { W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); B.setTransform(DPR, 0, 0, DPR, 0, 0); }
+function sky() {
+  const g = B.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2f6fbd'); g.addColorStop(1, '#a9cdee'); B.fillStyle = g; B.fillRect(0, 0, W, H);
+  const sx = W * 0.72, sy = H * 0.3, r = Math.min(W, H) * 0.05, s = B.createRadialGradient(sx, sy, 0, sx, sy, r * 6); s.addColorStop(0, 'rgba(255,250,225,1)'); s.addColorStop(0.16, 'rgba(255,246,205,.95)'); s.addColorStop(0.3, 'rgba(255,244,200,.3)'); s.addColorStop(1, 'rgba(255,244,200,0)'); B.fillStyle = s; B.fillRect(sx - r * 6, sy - r * 6, r * 12, r * 12);
+}
+function size() { W = innerWidth; H = innerHeight; cv.width = W; cv.height = H; GC.width = W; GC.height = H; sky(); } // the sky stands still: painted once
 addEventListener('resize', size); size();
 const yHor = () => 1.06 * H, yOf = (z) => yHor() * (1 - 1 / z);
-// the sheet: fixed places in four sizes. A cloud keeps its picture there until a newer one is finished
-const CLS = [[640, 3, 3], [384, 5, 5], [192, 10, 6], [96, 20, 14]], SHEETW = 1940, free = [[], [], [], []]; let SHEETH = 0;
+// the sheet: fixed places in four sizes. A cloud has up to three pictures there: the one it comes from, the one it goes to, and the next one waiting
+const CLS = [[640, 3, 4], [384, 5, 7], [192, 10, 9], [96, 20, 16]], SHEETW = 1940, free = [[], [], [], []]; let SHEETH = 0;
 { let y = 0; CLS.forEach(([tw, per, rows], ci) => { const th = Math.round(tw * 300 / 512), st = Math.floor(SHEETW / per); for (let r = 0; r < rows; r++) { for (let i = 0; i < per; i++) free[ci].push({ c: ci, x: i * st, y, w: tw, h: th }); y += th + 3; } }); SHEETH = y; }
 const SLOTS = free.reduce((a, l) => a + l.length, 0);
 function take(rw) { let ci = CLS.length - 1; while (ci > 0 && CLS[ci][0] < rw) ci--; for (let c = ci; c < CLS.length; c++) if (free[c].length) return free[c].pop(); return null; }
@@ -114,24 +124,36 @@ const give = (v) => { if (v) free[v.s.c].push(v.s); return null; };
 function glInit() {
   if (x) return true; if (err) return false;
   try {
-    mark('Grafik anfordern'); FLc = document.createElement('canvas'); FLc.width = SHEETW; FLc.height = SHEETH;
-    x = FLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true }); if (!x) { err = 'WebGL nicht verfügbar'; return false; }
-    FLc.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost++; });
+    mark('Grafik anfordern');
+    x = GC.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false }); if (!x) { err = 'WebGL nicht verfügbar'; return false; }
+    GC.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost++; });
     try { const di = x.getExtension('WEBGL_debug_renderer_info'), hp = x.getShaderPrecisionFormat(x.FRAGMENT_SHADER, x.HIGH_FLOAT); info = (di ? x.getParameter(di.UNMASKED_RENDERER_WEBGL) : 'Chip unbekannt') + ' · highp ' + (hp && hp.precision > 0 ? hp.precision : 'nein'); } catch (e) { info = 'Info: ' + e.message; }
-    mark('Wolken-Programm übersetzen');
+    if (x.getParameter(x.MAX_TEXTURE_SIZE) < SHEETH) throw new Error('Blatt zu groß für diesen Chip: ' + x.getParameter(x.MAX_TEXTURE_SIZE));
     const sh = (type, src) => { const q = x.createShader(type); x.shaderSource(q, src); x.compileShader(q); if (!x.getShaderParameter(q, x.COMPILE_STATUS)) throw new Error(x.getShaderInfoLog(q)); return q; };
-    const pr = x.createProgram(); x.attachShader(pr, sh(x.VERTEX_SHADER, 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }')); x.attachShader(pr, sh(x.FRAGMENT_SHADER, FRAG));
-    mark('Wolken-Programm binden'); x.linkProgram(pr); if (!x.getProgramParameter(pr, x.LINK_STATUS)) throw new Error(x.getProgramInfoLog(pr)); x.useProgram(pr);
-    const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW);
-    const al = x.getAttribLocation(pr, 'a'); x.enableVertexAttribArray(al); x.vertexAttribPointer(al, 2, x.FLOAT, false, 0, 0);
-    U = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) U[n] = x.getUniformLocation(pr, n);
-    x.uniform1f(U.d, -1); x.uniform1f(U.LOW, 0); x.uniform3f(U.lit, 1, 1, 1); x.uniform3f(U.shd, 0.48, 0.58, 0.78);
-    x.viewport(0, 0, SHEETW, SHEETH); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT); x.enable(x.SCISSOR_TEST);
+    const prog = (vs, fs) => { const pr = x.createProgram(); x.attachShader(pr, sh(x.VERTEX_SHADER, vs)); x.attachShader(pr, sh(x.FRAGMENT_SHADER, fs)); x.bindAttribLocation(pr, 0, 'a'); x.linkProgram(pr); if (!x.getProgramParameter(pr, x.LINK_STATUS)) throw new Error(x.getProgramInfoLog(pr)); return pr; };
+    mark('Wolken-Programm übersetzen');
+    P1 = prog('attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }', FRAG);
+    mark('Zeichen-Programm übersetzen');
+    // setting the finished pictures into the sky: the picture it comes from and the one it goes to, mixed – the cheap part, done for every cloud in every frame
+    P2 = prog('attribute vec2 a; uniform vec4 rc; varying vec2 tc; void main(){ tc = a * 0.5 + 0.5; gl_Position = vec4(rc.xy + a * rc.zw, 0.0, 1.0); }',
+      'precision mediump float; uniform sampler2D S; uniform vec4 u0, u1; uniform vec3 kk; varying vec2 tc; void main(){ vec4 o = texture2D(S, u0.xy + tc * u0.zw) * kk.z, c = texture2D(S, u1.xy + tc * u1.zw); gl_FragColor = mix(o, c, kk.x) * kk.y; }');
+    const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW); x.enableVertexAttribArray(0); x.vertexAttribPointer(0, 2, x.FLOAT, false, 0, 0);
+    U = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) U[n] = x.getUniformLocation(P1, n);
+    U2 = {}; for (const n of ['rc', 'u0', 'u1', 'kk', 'S']) U2[n] = x.getUniformLocation(P2, n);
+    mark('Blatt ' + SHEETW + '×' + SHEETH + ' anlegen');
+    const tex = x.createTexture(); x.activeTexture(x.TEXTURE0); x.bindTexture(x.TEXTURE_2D, tex); x.texImage2D(x.TEXTURE_2D, 0, x.RGBA, SHEETW, SHEETH, 0, x.RGBA, x.UNSIGNED_BYTE, null);
+    x.texParameteri(x.TEXTURE_2D, x.TEXTURE_MIN_FILTER, x.LINEAR); x.texParameteri(x.TEXTURE_2D, x.TEXTURE_MAG_FILTER, x.LINEAR); x.texParameteri(x.TEXTURE_2D, x.TEXTURE_WRAP_S, x.CLAMP_TO_EDGE); x.texParameteri(x.TEXTURE_2D, x.TEXTURE_WRAP_T, x.CLAMP_TO_EDGE);
+    FB = x.createFramebuffer(); x.bindFramebuffer(x.FRAMEBUFFER, FB); x.framebufferTexture2D(x.FRAMEBUFFER, x.COLOR_ATTACHMENT0, x.TEXTURE_2D, tex, 0);
+    if (x.checkFramebufferStatus(x.FRAMEBUFFER) !== x.FRAMEBUFFER_COMPLETE) throw new Error('Blatt nicht benutzbar');
+    x.viewport(0, 0, SHEETW, SHEETH); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT);
+    x.useProgram(P1); x.uniform1f(U.d, -1); x.uniform1f(U.LOW, 0); x.uniform3f(U.lit, 1, 1, 1); x.uniform3f(U.shd, 0.48, 0.58, 0.78);
+    x.useProgram(P2); x.uniform1i(U2.S, 0); x.blendFunc(x.ONE, x.ONE_MINUS_SRC_ALPHA);
     mark('Programm bereit'); return true;
   } catch (e) { err = String(e && e.message || e).slice(0, 500); x = null; return false; }
 }
 const FLCOUNT = 1300, FLZ0 = 0.85, FLZ1 = 13.5, flowHalf = () => (W * 1.1) * FLZ1;
-function drop(f) { f.cur = give(f.cur); f.old = give(f.old); if (job && job.f === f) { give(job.v); job = null; } }
+let flows = null, job = null;
+function drop(f) { f.cur = give(f.cur); f.old = give(f.old); f.nxt = give(f.nxt); if (job && job.f === f) { give(job.v); job = null; } }
 function newFlow(f, first) {
   const k = Math.random(); drop(f);
   f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(200, 380); f.p = first ? Math.random() : 0; f.E0 = 0;
@@ -140,12 +162,8 @@ function newFlow(f, first) {
   else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
   else { f.sh = [rnd(0.6, 0.8), rnd(0.5, 0.7)]; f.lb = [rnd(-0.6, 0.6), rnd(0.25, 0.4), rnd(0.4, 0.7)]; f.E0 = rnd(0.12, 0.25); f.size *= 0.82; }
 }
-let flows = null, job = null;
-function sky() {
-  const g = B.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2f6fbd'); g.addColorStop(1, '#a9cdee'); B.fillStyle = g; B.fillRect(0, 0, W, H);
-  const sx = W * 0.72, sy = H * 0.3, r = Math.min(W, H) * 0.05, s = B.createRadialGradient(sx, sy, 0, sx, sy, r * 6); s.addColorStop(0, 'rgba(255,250,225,1)'); s.addColorStop(0.16, 'rgba(255,246,205,.95)'); s.addColorStop(0.3, 'rgba(255,244,200,.3)'); s.addColorStop(1, 'rgba(255,244,200,0)'); B.fillStyle = s; B.fillRect(sx - r * 6, sy - r * 6, r * 12, r * 12);
-}
-const put = (v, f, a) => { if (a < 0.004) return; const s = v.s; B.globalAlpha = a; B.drawImage(FLc, s.x + 0.5, SHEETH - s.y - v.rh + 0.5, v.rw - 1, v.rh - 1, f.sx - f.cw / 2, f.top, f.cw, f.ch); };
+const far = (f) => 1 + sst(3, 8, f.z); // far clouds are small and their working hardly shows: they take their time between two pictures
+const uv = (v) => [(v.s.x + 0.5) / SHEETW, (v.s.y + 0.5) / SHEETH, (v.rw - 1) / SHEETW, (v.rh - 1) / SHEETH];
 function clouds(dt) {
   if (!x || lost) return;
   if (!flows) flows = Array.from({ length: FLCOUNT }, () => { const f = {}; newFlow(f, true); return f; });
@@ -158,54 +176,62 @@ function clouds(dt) {
     const act = sst(f.u - 0.05, f.u + 0.05, Math.min(1.1, 1.5 / f.z)); if (act < 0.02) { drop(f); continue; }
     const ch = cw * 300 / 512, yb = yOf(f.z), top = yb - ch * 0.88, hz = Math.min(1, (f.z - 1) / 10);
     f.A = (1 - sst(0.97, 1, f.p)) * (1 - 0.5 * hz) * sst(0.9, 0.97, f.z) * (1 - sst(12, 13.4, f.z)); if (f.A < 0.01) { f.A = 0; drop(f); continue; }
-    f.sx = X; f.cw = cw; f.ch = ch; f.top = top;
-    f.G = Math.max(0.03, act * sst(0, 0.22, f.p) * (1 - 0.3 * sst(0.6, 1, f.p)) * (0.94 + 0.08 * Math.sin(t / 43 + f.sd))); f.E = Math.min(1, f.E0 + Math.pow(Math.max(0, (f.p - 0.52) / 0.45), 1.3));
-    if (f.old && t - f.cur.t >= f.cur.fd) f.old = give(f.old);
+    f.sx = X; f.cw = cw; f.ch = ch; f.top = top; f.act = act;
+    if (f.cur && t - f.cur.t >= f.cur.fd) { if (f.nxt) { give(f.old); f.old = f.cur; f.cur = f.nxt; f.cur.t = t; f.nxt = null; } else { f.old = give(f.old); dgLate++; } } // arrived: on to the next picture, which has been waiting
     vis.push(f);
   }
   nVis = vis.length;
-  // only a small part of the sheet is worked out per picture: one cloud after the other, a large one in strips over several pictures
+  // only a small part of the sheet is worked out per frame: one cloud after the other, a large one in strips over several frames
+  x.bindFramebuffer(x.FRAMEBUFFER, FB); x.useProgram(P1); x.disable(x.BLEND); x.enable(x.SCISSOR_TEST);
   let left = budget, guard = 0;
   while (left > 0 && guard++ < 40) {
     if (!job) {
-      let best = null, bs = -1;
-      for (const f of vis) { if (f.old) continue; const s = f.cur ? t - f.cur.t : 1e6 + f.cw; if (f.cur && s < f.cur.fd) continue; if (s > bs) { bs = s; best = f; } }
+      let best = null, bs = 0.35;
+      for (const f of vis) { if (f.nxt) continue; const s = f.cur ? (t - f.cur.t) / f.cur.fd : 1e6 + f.cw; if (s > bs) { bs = s; best = f; } } // whoever is nearest to arriving and has no next picture yet
       if (!best) break;
-      const f = best, want = Math.max(24, Math.ceil(f.cw * DPR * Q * (f.cur ? 1 : 0.5))), s = take(want); if (!s) break;
+      const f = best, want = Math.max(24, Math.ceil(f.cw * Q * (f.cur ? 1 : 0.5))), s = take(want); if (!s) break; // the very first picture at half size: there quickly, the fine one follows
       const rw = Math.min(s.w, want), rh = Math.round(rw * 300 / 512), lx = sp[0] - f.sx, ly = (f.top + f.ch * 0.5) - sp[1], ll = Math.hypot(lx, ly) || 1; let ux = lx / ll, uy = Math.max(0.3, ly / ll); { const un = Math.hypot(ux, uy) || 1; ux /= un; uy /= un; }
-      job = { f, v: { s, rw, rh, t: 0, fd: 1 }, y: 0, u: [ux, uy, f.p * f.life * 0.42 + f.sd * 5, f.G, f.E, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll)] };
+      // the picture shows the cloud as it will be at the moment it is fully there – so the cloud works at its true pace however long the sheet takes
+      const fd = f.cur ? FADE * far(f) : 0.8, T = f.cur ? Math.max(t, f.cur.t + f.cur.fd) + fd : t, p = Math.min(0.999, f.p + (T - t) / f.life);
+      const G = Math.max(0.03, f.act * sst(0, 0.22, p) * (1 - 0.3 * sst(0.6, 1, p)) * (0.94 + 0.08 * Math.sin(T / 43 + f.sd))), E = Math.min(1, f.E0 + Math.pow(Math.max(0, (p - 0.52) / 0.45), 1.3));
+      job = { f, v: { s, rw, rh, t: 0, fd }, y: 0, u: [ux, uy, p * f.life * 0.42 + f.sd * 5, G, E, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll)] };
     }
     const j = job, f = j.f, s = j.v.s, rw = j.v.rw, rh = j.v.rh, rows = Math.max(1, Math.min(rh - j.y, Math.ceil(left / rw)));
     x.viewport(s.x, s.y, rw, rh); x.scissor(s.x, s.y + j.y, rw, rows);
     x.uniform2f(U.R, rw, rh); x.uniform2f(U.O, s.x, s.y); x.uniform2f(U.L, j.u[0], j.u[1]); x.uniform2f(U.SH, f.sh[0], f.sh[1]); x.uniform3f(U.LB, f.lb[0], f.lb[1], f.lb[2]);
     x.uniform1f(U.tm, j.u[2]); x.uniform1f(U.sd, f.sd); x.uniform1f(U.G, j.u[3]); x.uniform1f(U.E, j.u[4]); x.uniform1f(U.SN, j.u[5]);
     x.drawArrays(x.TRIANGLE_STRIP, 0, 4); j.y += rows; left -= rw * rows; dgPx += rw * rows;
-    if (j.y >= rh) { if (f.cur) { dgAge += t - f.cur.t; dgWait += t - f.cur.t - f.cur.fd; dgJobs++; j.v.fd = FADE; } f.old = give(f.old); f.old = f.cur; j.v.t = t; f.cur = j.v; job = null; }
+    if (j.y >= rh) { dgJobs++; if (f.cur) f.nxt = j.v; else { j.v.t = t; f.cur = j.v; } job = null; }
   }
-  // set into the sky, far ones first. The new picture comes up over the old one, then the old one goes from under it: no jump and no thin moment
+  // set into the sky, far ones first
+  x.bindFramebuffer(x.FRAMEBUFFER, null); x.disable(x.SCISSOR_TEST); x.viewport(0, 0, GC.width, GC.height); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT); x.useProgram(P2); x.enable(x.BLEND);
   vis.sort((a, b) => b.z - a.z); nPic = 0;
-  for (const f of vis) { if (!f.cur) continue; nPic++; const age = t - f.cur.t, fd = f.cur.fd; if (f.old) put(f.old, f, f.A * (1 - sst(fd / 2, fd, age))); put(f.cur, f, f.A * sst(0, fd / 2, age)); }
-  B.globalAlpha = 1;
+  for (const f of vis) { if (!f.cur) continue; nPic++; const k = Math.min(1, (t - f.cur.t) / f.cur.fd), a = uv(f.cur), o = f.old ? uv(f.old) : a;
+    x.uniform4f(U2.rc, f.sx / W * 2 - 1, 1 - (f.top + f.ch / 2) / H * 2, f.cw / W, f.ch / H); x.uniform4f(U2.u0, o[0], o[1], o[2], o[3]); x.uniform4f(U2.u1, a[0], a[1], a[2], a[3]); x.uniform3f(U2.kk, k, f.A, f.old ? 1 : 0); x.drawArrays(x.TRIANGLE_STRIP, 0, 4); }
 }
 function frame(ts) {
   requestAnimationFrame(frame);
   if (document.hidden) { last = ts; return; }
   if (ts - last < 32) return;
   const dt = Math.min(0.05, (ts - last) / 1000 || 0.03); last = ts; t += dt;
-  const c0 = performance.now(); sky(); if (level > 0) { if (started === 1) mark('erstes Bild rechnen'); clouds(dt); if (started === 1) { mark('erstes Bild fertig'); started = 2; } }
+  const c0 = performance.now(); if (level > 0) { if (started === 1) mark('erstes Bild rechnen'); clouds(dt); if (started === 1) { mark('erstes Bild fertig'); started = 2; } }
   dgSum += performance.now() - c0; dgF++;
   if (ts - dgT > 1000) {
     const fps = dgF * 1000 / (ts - dgT), ms = dgSum / Math.max(1, dgF);
-    if (level > 0 && x && !lost) { if (fps >= 28) budget = Math.min(BMAX, budget * 1.25); else if (fps < 25) budget = Math.max(BMIN, budget * 0.6); { let px = 0; if (flows) for (const f of flows) if (f.cur) px += f.cur.rw * f.cur.rh; const want = Math.max(FMIN, Math.min(FMAX, px / (budget * Math.max(10, fps)) * 1.3)); FADE += (want - FADE) * 0.3; } if (fps >= 20) mark('ok'); else mark('läuft zäh: ' + fps.toFixed(0) + ' Bilder/s bei ' + Math.round(budget) + ' Punkten'); }
-    diag.textContent = 'Diagnose: ' + fps.toFixed(0) + ' Bilder/s · ' + ms.toFixed(0) + ' ms je Bild · ' + (level === 0 ? 'Wolken aus' : err ? 'FEHLER: ' + err : lost ? 'Grafik verloren ' + lost + '×' : x ? 'läuft · ' + nPic + ' von ' + nVis + ' Wolken fertig · rechnet ' + Math.round(dgPx / Math.max(1, dgF) / 1000) + ' Tsd. Punkte je Bild (Grenze ' + Math.round(budget / 1000) + ') · jede Wolke neu alle ' + (dgJobs ? (dgAge / dgJobs).toFixed(1) : '–') + ' s · Überblenden ' + FADE.toFixed(1) + ' s · Plätze frei ' + free.reduce((a, l) => a + l.length, 0) + '/' + SLOTS : 'startet …') + ' · ' + innerWidth + '×' + innerHeight + (info ? ' · ' + info : '');
-    dgF = 0; dgSum = 0; dgPx = 0; dgJobs = 0; dgAge = 0; dgT = ts;
+    if (level > 0 && x && !lost) {
+      if (fps >= 28) budget = Math.min(BMAX, budget * 1.2); else if (fps < 25) budget = Math.max(BMIN, budget * 0.6);
+      let px = 0; if (flows) for (const f of flows) if (f.cur) px += f.cur.rw * f.cur.rh / far(f); const want = Math.max(FMIN, Math.min(FMAX, px / (budget * Math.max(10, fps)) * 1.25)); FADE += (want - FADE) * 0.3;
+      if (fps >= 20) mark('ok'); else mark('läuft zäh: ' + fps.toFixed(0) + ' Bilder/s bei ' + Math.round(budget) + ' Punkten');
+    }
+    diag.textContent = 'Diagnose: ' + fps.toFixed(0) + ' Bilder/s · ' + ms.toFixed(0) + ' ms je Bild · ' + (level === 0 ? 'Wolken aus' : err ? 'FEHLER: ' + err : lost ? 'Grafik verloren ' + lost + '×' : x ? 'läuft · ' + nPic + ' von ' + nVis + ' Wolken da · rechnet ' + Math.round(dgPx / Math.max(1, dgF) / 1000) + ' Tsd. Punkte je Bild (Grenze ' + Math.round(budget / 1000) + ') · nahe Wolke neu alle ' + FADE.toFixed(1) + ' s · zu spät ' + dgLate + ' · Plätze frei ' + free.reduce((a, l) => a + l.length, 0) + '/' + SLOTS : 'startet …') + ' · ' + innerWidth + '×' + innerHeight + (info ? ' · ' + info : '');
+    dgF = 0; dgSum = 0; dgPx = 0; dgJobs = 0; dgLate = 0; dgT = ts;
   }
 }
 let lock = 0;
 for (const b of document.querySelectorAll('button[data-l]')) b.addEventListener('click', () => {
   const now = performance.now(); if (now < lock) return; lock = now + 3000; // further taps are ignored for a moment
   const l = +b.dataset.l; document.querySelectorAll('button[data-l]').forEach((q) => q.classList.toggle('on', q === b));
-  if (l === 0) { level = 0; mark('ok'); return; }
+  if (l === 0) { level = 0; mark('ok'); if (x) { x.bindFramebuffer(x.FRAMEBUFFER, null); x.disable(x.SCISSOR_TEST); x.clear(x.COLOR_BUFFER_BIT); } return; }
   diag.textContent = 'Diagnose: startet …'; mark('Start angetippt');
   setTimeout(() => { level = 1; if (!started) started = 1; glInit(); }, 400);
 });
