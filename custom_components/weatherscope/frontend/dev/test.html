@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 127 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 128 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -157,13 +157,13 @@ let flows = null, job = null;
 function drop(f) { f.cur = give(f.cur); f.old = give(f.old); f.nxt = give(f.nxt); if (job && job.f === f) { give(job.v); job = null; } }
 function newFlow(f, first) {
   const k = Math.random(); drop(f);
-  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(200, 380); f.p = first ? Math.random() : 0; f.E0 = 0;
+  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(320, 560); // a longer life, and a longer part of it for welling up: from a puff to a grown cloud in two to three minutes, not in half a one f.p = first ? Math.random() : 0; f.E0 = 0;
   if (k < 0.3) { f.sh = [rnd(0.9, 1.05), rnd(0.9, 1.1)]; f.lb = [0, 0.05, 0.05]; }
   else if (k < 0.55) { f.sh = [1.1, rnd(0.5, 0.68)]; f.lb = [rnd(-0.5, 0.5), rnd(0.4, 0.6), rnd(0.55, 0.8)]; }
   else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
   else { f.sh = [rnd(0.6, 0.8), rnd(0.5, 0.7)]; f.lb = [rnd(-0.6, 0.6), rnd(0.25, 0.4), rnd(0.4, 0.7)]; f.E0 = rnd(0.12, 0.25); f.size *= 0.82; }
 }
-const far = (f) => (1 + sst(3, 8, f.z)) * (0.45 + 0.55 * sst(0.04, 0.2, f.p)); // … and a cloud just welling up changes fastest of all: it gets its pictures twice as often, or its growing goes in jerks // far clouds are small and their working hardly shows: they take their time between two pictures
+const far = (f) => (1 + sst(3, 8, f.z)) * (0.45 + 0.55 * sst(0.04, 0.3, f.p)); // … and a cloud just welling up changes fastest of all: it gets its pictures twice as often, or its growing goes in jerks // far clouds are small and their working hardly shows: they take their time between two pictures
 const uv = (v) => [(v.s.x + 0.5) / SHEETW, (v.s.y + 0.5) / SHEETH, (v.rw - 1) / SHEETW, (v.rh - 1) / SHEETH];
 function clouds(dt) {
   if (!x || lost) return;
@@ -194,7 +194,7 @@ function clouds(dt) {
       const rw = Math.min(s.w, want), rh = Math.round(rw * 300 / 512), lx = sp[0] - f.sx, ly = (f.top + f.ch * 0.5) - sp[1], ll = Math.hypot(lx, ly) || 1; let ux = lx / ll, uy = Math.max(0.3, ly / ll); { const un = Math.hypot(ux, uy) || 1; ux /= un; uy /= un; }
       // the picture shows the cloud as it will be at the moment it is fully there – so the cloud works at its true pace however long the sheet takes
       const fd = f.cur ? FADE * far(f) : 0.8, T = f.cur ? Math.max(t, f.cur.t + f.cur.fd) + fd : t, p = Math.min(0.999, f.p + (T - t) / f.life);
-      const G = Math.max(0.03, f.act * sst(0, 0.22, p) * (1 - 0.3 * sst(0.6, 1, p)) * (0.94 + 0.08 * Math.sin(T / 43 + f.sd))), E = Math.min(1, f.E0 + Math.pow(Math.max(0, (p - 0.52) / 0.45), 1.3));
+      const G = Math.max(0.03, f.act * sst(0, 0.34, p) * (1 - 0.3 * sst(0.6, 1, p)) * (0.94 + 0.08 * Math.sin(T / 43 + f.sd))), E = Math.min(1, f.E0 + Math.pow(Math.max(0, (p - 0.52) / 0.45), 1.3));
       job = { f, v: { s, rw, rh, t: 0, fd }, y: 0, u: [ux, uy, p * f.life * 0.42 + f.sd * 5, G, E, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll)] };
     }
     const j = job, f = j.f, s = j.v.s, rw = j.v.rw, rh = j.v.rh, rows = Math.max(1, Math.min(rh - j.y, Math.ceil(left / rw)));
