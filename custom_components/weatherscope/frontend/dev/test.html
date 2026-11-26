@@ -157,7 +157,7 @@ let flows = null, job = null;
 function drop(f) { f.cur = give(f.cur); f.old = give(f.old); f.nxt = give(f.nxt); if (job && job.f === f) { give(job.v); job = null; } }
 function newFlow(f, first) {
   const k = Math.random(); drop(f);
-  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(320, 560); // a longer life, and a longer part of it for welling up: from a puff to a grown cloud in two to three minutes, not in half a one f.p = first ? Math.random() : 0; f.E0 = 0;
+  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(320, 560); /* a longer life, and a longer part of it for welling up: from a puff to a grown cloud in two to three minutes, not in half a one */ f.p = first ? Math.random() : 0; f.E0 = 0;
   if (k < 0.3) { f.sh = [rnd(0.9, 1.05), rnd(0.9, 1.1)]; f.lb = [0, 0.05, 0.05]; }
   else if (k < 0.55) { f.sh = [1.1, rnd(0.5, 0.68)]; f.lb = [rnd(-0.5, 0.5), rnd(0.4, 0.6), rnd(0.55, 0.8)]; }
   else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
