@@ -84,7 +84,8 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 16p
   <label>Nebel <select id="fog"><option value="0">aus</option><option value="1">Dunst</option><option value="2">Nebel</option><option value="3">dicht</option></select></label>
   <label>Zeitraffer <select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="30">30×</option></select></label>
   <button class="btn" id="reset">Zurücksetzen</button><button class="btn" id="clear">Schnee entfernen</button><button class="btn" id="hidet" aria-pressed="false">Kacheln ausblenden</button>
-  <div class="hint">Stand 119 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
+  <div class="hint" id="diag" style="color:#ffd27a">Diagnose: …</div>
+  <div class="hint">Stand 120 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
 </div>
 <script>
 {
@@ -603,11 +604,14 @@ const HABIT = { cirrus: [0.3, 1], veil: [0.45, 0.15], fleece: [0.75, 1], alto: [
 // Not put together from pictures but worked out afresh in every frame, as a density that keeps deforming like smoke: where it is dense the cloud is
 // white and crisp, where it thins it turns into a veil, tears off and is gone. Welling, thinning, tearing and merging then come by themselves.
 let FLc = null, flGl = null, flU = null;
+let flErr = '', flInfo = '', flLost = 0, flN = 0, dgF = 0, dgT = 0, dgFps = 0, dgMs = 0, dgSum = 0; // diagnosis for the tablet test
 function flowInit() {
   if (flGl !== null) return !!flGl;
   try {
     FLc = document.createElement('canvas'); FLc.width = 2064; FLc.height = 1986; // one sheet for all clouds of a frame: 2 very large fields, 8 large, 24 medium, 64 small ones
-    const x = FLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true }); if (!x) { flGl = false; return false; }
+    const x = FLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true }); if (!x) { flErr = 'WebGL nicht verfügbar'; flGl = false; return false; }
+    try { const di = x.getExtension('WEBGL_debug_renderer_info'); const hp = x.getShaderPrecisionFormat(x.FRAGMENT_SHADER, x.HIGH_FLOAT); flInfo = (di ? x.getParameter(di.UNMASKED_RENDERER_WEBGL) : 'Chip unbekannt') + ' · max ' + x.getParameter(x.MAX_TEXTURE_SIZE) + ' / ' + x.getParameter(x.MAX_VIEWPORT_DIMS)[0] + ' · Blatt ' + x.drawingBufferWidth + '×' + x.drawingBufferHeight + ' · highp ' + (hp && hp.precision > 0 ? hp.precision : 'nein'); } catch (e) { flInfo = 'Info: ' + e.message; }
+    FLc.addEventListener('webglcontextlost', () => { flLost++; });
     const sh = (type, src) => { const q = x.createShader(type); x.shaderSource(q, src); x.compileShader(q); if (!x.getShaderParameter(q, x.COMPILE_STATUS)) throw new Error(x.getShaderInfoLog(q)); return q; };
     const pr = x.createProgram();
     x.attachShader(pr, sh(x.VERTEX_SHADER, 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }'));
@@ -672,7 +676,7 @@ void main() {
     const al = x.getAttribLocation(pr, 'a'); x.enableVertexAttribArray(al); x.vertexAttribPointer(al, 2, x.FLOAT, false, 0, 0);
     flU = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) flU[n] = x.getUniformLocation(pr, n);
     flGl = x; return true;
-  } catch (e) { console.warn('WeatherScope: flow cloud', e); flGl = false; return false; }
+  } catch (e) { console.warn('WeatherScope: flow cloud', e); flErr = String(e && e.message || e).slice(0, 400); flGl = false; return false; }
 }
 let flows = null;
 // The clouds stand in the plane of the sky, spread evenly over a field much larger than what the picture shows, and the whole field drifts with the wind
@@ -726,7 +730,7 @@ function drawFlow(fa) {
     x.viewport(ox, oy, rw, rh); x.scissor(ox, oy, rw, rh);
     x.uniform2f(flU.R, rw, rh); x.uniform2f(flU.O, ox, oy); x.uniform2f(flU.L, ux, uy); x.uniform2f(flU.SH, f.sh[0], f.sh[1]); x.uniform3f(flU.LB, f.lb[0], f.lb[1], f.lb[2]);
     x.uniform1f(flU.tm, f.p * f.life * 0.42 + f.sd * 5); /* each cloud's own clock, counted from its beginning: small numbers, and it never has to start over */ x.uniform1f(flU.sd, f.sd); x.uniform1f(flU.G, f.G); x.uniform1f(flU.E, f.E); x.uniform1f(flU.SN, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll));
-    x.drawArrays(x.TRIANGLE_STRIP, 0, 4);
+    x.drawArrays(x.TRIANGLE_STRIP, 0, 4); flN++;
   });
   vis.sort((a, b) => b.z - a.z);
   for (const f of vis) { if (!f.t) continue; const [ox, oy, rw, rh] = f.t; B.globalAlpha = f.A; B.drawImage(FLc, ox + 0.5, FLc.height - oy - rh + 0.5, rw - 1, rh - 1, f.sx - f.cw / 2, f.top, f.cw, f.ch); }
@@ -1537,7 +1541,11 @@ function frame(ts) {
   if (document.hidden) { last = ts; return; }
   if (ts - last < 32) return; // at most about 30 frames per second
   const dt = Math.min(0.05, (ts - last) / 1000 || 0.03); last = ts; t += dt;
-  step(dt); draw();
+  const c0 = performance.now(); step(dt); draw(); dgSum += performance.now() - c0; dgF++;
+  if (ts - dgT > 1000) { dgFps = dgF * 1000 / (ts - dgT); dgMs = dgSum / Math.max(1, dgF); const el = document.getElementById('diag');
+    if (el) { let px = ''; if (flGl) { try { const b = new Uint8Array(4); flGl.readPixels(512, FLc.height - 300, 1, 1, flGl.RGBA, flGl.UNSIGNED_BYTE, b); px = ' · Probe ' + b[0] + ',' + b[1] + ',' + b[2] + ',' + b[3] + ' · GL-Fehler ' + flGl.getError(); } catch (e) { px = ' · Probe: ' + e.message; } }
+      el.textContent = 'Diagnose: ' + dgFps.toFixed(0) + ' Bilder/s · ' + dgMs.toFixed(0) + ' ms je Bild · Bildschirm ' + innerWidth + '×' + innerHeight + ' ×' + devicePixelRatio + ' · neue Technik: ' + (flGl === null ? 'noch nicht gestartet' : flGl ? 'läuft, ' + Math.round(flN / Math.max(1, dgF)) + ' Wolken je Bild' : 'FEHLER: ' + flErr) + (flLost ? ' · Grafik verloren ' + flLost + '×' : '') + (flInfo ? ' · ' + flInfo : '') + px; }
+    dgF = 0; dgSum = 0; flN = 0; dgT = ts; }
 }
 
 // remember the snow on the tiles (this browser only)
