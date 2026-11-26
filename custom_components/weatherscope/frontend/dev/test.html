@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 129 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 130 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -152,12 +152,18 @@ function glInit() {
     mark('Programm bereit'); return true;
   } catch (e) { err = String(e && e.message || e).slice(0, 500); x = null; return false; }
 }
-const FLCOUNT = 1300, FLZ0 = 0.85, FLZ1 = 13.5, flowHalf = () => (W * 1.1) * FLZ1;
+const FLNX = 65, FLNZ = 20, FLCOUNT = FLNX * FLNZ, FLZ0 = 0.85, FLZ1 = 13.5, flowHalf = () => (W * 1.1) * FLZ1;
+// the sky is divided into unseen plots, one cloud to each, standing anywhere within its plot; the rows are shifted against each other. So there is no large hole
+// and still no order to be seen. Where a cloud has passed away the next one wells up on the same plot – as over a warm patch of ground
+const rowOff = Array.from({ length: FLNZ }, () => Math.random());
 let flows = null, job = null;
 function drop(f) { f.cur = give(f.cur); f.old = give(f.old); f.nxt = give(f.nxt); if (job && job.f === f) { give(job.v); job = null; } }
 function newFlow(f, first) {
   const k = Math.random(); drop(f);
-  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(320, 560); /* a longer life, and a longer part of it for welling up: from a puff to a grown cloud in two to three minutes, not in half a one */ f.p = first ? Math.random() : 0; f.E0 = 0;
+  { const dX = 2 * flowHalf() / FLNX, dz = (FLZ1 - FLZ0) / FLNZ, jx = Math.random() * dX, jz = Math.random() * dz;
+    if (first) { const ci = f.i % FLNX, cj = Math.floor(f.i / FLNX); f.X = -flowHalf() + ((ci + rowOff[cj]) % FLNX) * dX + jx; f.z = FLZ0 + cj * dz + jz; } else { f.X += jx - f.jx; f.z += jz - f.jz; }
+    f.jx = jx; f.jz = jz; }
+  f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(320, 560); /* a longer life, and a longer part of it for welling up: from a puff to a grown cloud in two to three minutes, not in half a one */ f.p = first ? (f.i * 0.618034 + Math.floor(f.i / FLNX) * 0.37 + Math.random() * 0.3) % 1 : 0; /* neighbours begin at different ages */ f.E0 = 0;
   if (k < 0.3) { f.sh = [rnd(0.9, 1.05), rnd(0.9, 1.1)]; f.lb = [0, 0.05, 0.05]; }
   else if (k < 0.55) { f.sh = [1.1, rnd(0.5, 0.68)]; f.lb = [rnd(-0.5, 0.5), rnd(0.4, 0.6), rnd(0.55, 0.8)]; }
   else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
@@ -167,7 +173,7 @@ const far = (f) => (1 + sst(3, 8, f.z)) * (0.45 + 0.55 * sst(0.04, 0.3, f.p)); /
 const uv = (v) => [(v.s.x + 0.5) / SHEETW, (v.s.y + 0.5) / SHEETH, (v.rw - 1) / SHEETW, (v.rh - 1) / SHEETH];
 function clouds(dt) {
   if (!x || lost) return;
-  if (!flows) flows = Array.from({ length: FLCOUNT }, () => { const f = {}; newFlow(f, true); return f; });
+  if (!flows) flows = Array.from({ length: FLCOUNT }, (q, i) => { const f = { i }; newFlow(f, true); return f; });
   const v = [-40, 11], XH = flowHalf(), sp = [W * 0.72, H * 0.3], vis = [], mg = W * 0.12;
   for (const f of flows) {
     f.X += v[0] * 0.3 * dt; f.z += v[1] * 0.3 * dt / yHor(); f.p += dt / f.life; f.A = 0;
