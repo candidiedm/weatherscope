@@ -12,7 +12,7 @@ button{font-size:20px;padding:14px 22px;border-radius:14px;border:0;background:#
 button.on{background:#ffd27a}
 </style></head><body>
 <canvas id="c"></canvas><canvas id="g"></canvas>
-<div id="top"><div>Wolken-Test · Stand 126 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
+<div id="top"><div>Wolken-Test · Stand 127 (sparsam, gleichmäßig) · unten „Start“ antippen</div><div id="diag">Diagnose: noch nicht gestartet</div><div id="prev"></div></div>
 <div id="bar"><button data-l="1">Start</button><button data-l="0">Stopp</button><button id="hide">Texte ausblenden</button></div>
 <script>
 const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -102,7 +102,7 @@ void main() {
 }`;
 const cv = document.getElementById('c'), B = cv.getContext('2d'), GC = document.getElementById('g'), diag = document.getElementById('diag');
 const rnd = (a, b) => a + Math.random() * (b - a), sst = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
-const QS = new URLSearchParams(location.search), BMAX = +(QS.get('max') || 60000), BMIN = +(QS.get('min') || 4000), FMIN = +(QS.get('fade') || 1.2), FMAX = 14, Q = +(QS.get('q') || 0.85);
+const QS = new URLSearchParams(location.search), BMAX = +(QS.get('max') || 60000), BMIN = +(QS.get('min') || 4000), FMIN = +(QS.get('fade') || 1.0), FMAX = 14, Q = +(QS.get('q') || 0.85);
 let FADE = 3; // how long a cloud takes from one picture to the next: as long as it takes until its turn comes again, so it is always on its way and never rests
 let W = 0, H = 0, level = 0, t = 0, last = 0, budget = +(QS.get('b') || 8000), started = 0;
 let x = null, U = null, U2 = null, P1 = null, P2 = null, FB = null, err = '', info = '', lost = 0, dgF = 0, dgT = 0, dgSum = 0, dgPx = 0, dgJobs = 0, dgLate = 0, nVis = 0, nPic = 0;
@@ -163,7 +163,7 @@ function newFlow(f, first) {
   else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
   else { f.sh = [rnd(0.6, 0.8), rnd(0.5, 0.7)]; f.lb = [rnd(-0.6, 0.6), rnd(0.25, 0.4), rnd(0.4, 0.7)]; f.E0 = rnd(0.12, 0.25); f.size *= 0.82; }
 }
-const far = (f) => 1 + sst(3, 8, f.z); // far clouds are small and their working hardly shows: they take their time between two pictures
+const far = (f) => (1 + sst(3, 8, f.z)) * (0.45 + 0.55 * sst(0.04, 0.2, f.p)); // … and a cloud just welling up changes fastest of all: it gets its pictures twice as often, or its growing goes in jerks // far clouds are small and their working hardly shows: they take their time between two pictures
 const uv = (v) => [(v.s.x + 0.5) / SHEETW, (v.s.y + 0.5) / SHEETH, (v.rw - 1) / SHEETW, (v.rh - 1) / SHEETH];
 function clouds(dt) {
   if (!x || lost) return;
@@ -190,7 +190,7 @@ function clouds(dt) {
       let best = null, bs = 0.35;
       for (const f of vis) { if (f.nxt) continue; const s = f.cur ? (t - f.cur.t) / f.cur.fd : 1e6 + f.cw; if (s > bs) { bs = s; best = f; } } // whoever is nearest to arriving and has no next picture yet
       if (!best) break;
-      const f = best, want = Math.max(24, Math.ceil(f.cw * Q * (f.cur ? 1 : 0.5))), s = take(want); if (!s) break; // the very first picture at half size: there quickly, the fine one follows
+      const f = best, want = Math.max(24, Math.ceil(f.cw * Q * (f.cur || t > 30 ? 1 : 0.5))), s = take(want); if (!s) break; // only while the sky is first being filled the first picture is at half size; a cloud born later starts fine, or its small puff is a few coarse points
       const rw = Math.min(s.w, want), rh = Math.round(rw * 300 / 512), lx = sp[0] - f.sx, ly = (f.top + f.ch * 0.5) - sp[1], ll = Math.hypot(lx, ly) || 1; let ux = lx / ll, uy = Math.max(0.3, ly / ll); { const un = Math.hypot(ux, uy) || 1; ux /= un; uy /= un; }
       // the picture shows the cloud as it will be at the moment it is fully there – so the cloud works at its true pace however long the sheet takes
       const fd = f.cur ? FADE * far(f) : 0.8, T = f.cur ? Math.max(t, f.cur.t + f.cur.fd) + fd : t, p = Math.min(0.999, f.p + (T - t) / f.life);
