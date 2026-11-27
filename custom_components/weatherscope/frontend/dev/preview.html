@@ -85,7 +85,7 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 16p
   <label>Zeitraffer <select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="30">30×</option></select></label>
   <button class="btn" id="reset">Zurücksetzen</button><button class="btn" id="clear">Schnee entfernen</button><button class="btn" id="hidet" aria-pressed="false">Kacheln ausblenden</button>
   <div class="hint" id="diag" style="color:#ffd27a">Diagnose: …</div>
-  <div class="hint">Stand 120 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
+  <div class="hint">Stand 121 · Vorschau mit Beispielwerten. Schnee bleibt liegen und taut erst über 0 °C. Zeitraffer beschleunigt Liegenbleiben, Abrutschen und Tauen.</div>
 </div>
 <script>
 {
@@ -603,28 +603,46 @@ const HABIT = { cirrus: [0.3, 1], veil: [0.45, 0.15], fleece: [0.75, 1], alto: [
 // ---------- test: a cloud that flows ----------
 // Not put together from pictures but worked out afresh in every frame, as a density that keeps deforming like smoke: where it is dense the cloud is
 // white and crisp, where it thins it turns into a veil, tears off and is gone. Welling, thinning, tearing and merging then come by themselves.
-let FLc = null, flGl = null, flU = null;
-let flErr = '', flInfo = '', flLost = 0, flN = 0, dgF = 0, dgT = 0, dgFps = 0, dgMs = 0, dgSum = 0; // diagnosis for the tablet test
+let FLc = null, flGl = null, flU = null, flU2 = null, flP1 = null, flP2 = null, flFB = null;
+let flErr = '', flInfo = '', flLost = 0, dgF = 0, dgT = 0, dgFps = 0, dgMs = 0, dgSum = 0, dgPx = 0, dgLate = 0, flNVis = 0, flNPic = 0; // diagnosis line
+// Working out a cloud costs about a hundred steps for every point of it. A computer does that for all clouds in every frame; a wall tablet manages one frame a second that way.
+// So only a little is worked out per frame: every cloud keeps its finished picture on a sheet and gets a new one every second or two, and in between it is always on its way
+// from one picture to the next. Setting the finished pictures into the sky – moving, stretching, mixing – is the cheap part and is done for all clouds in every frame.
+const FLQ = 0.9, FLBMIN = 4000, FLBMAX = 120000, FLFMIN = 1.0, FLFMAX = 14;
+let flBudget = 12000, flFade = 3, flJob = null, flFree = null, flSW = 2064, flSH = 0, flSlots = 0;
+const flBig = () => { try { return (navigator.deviceMemory ? navigator.deviceMemory >= 8 : !matchMedia('(pointer: coarse)').matches); } catch (e) { return false; } }; // very large pictures for the nearest clouds only where there is memory for them
+function flowSheet() {
+  const CLS = (flBig() ? [[1024, 2, 3]] : []).concat([[640, 3, 4], [384, 5, 7], [192, 10, 9], [96, 21, 16]]); flFree = CLS.map(() => []); flW = CLS.map((q) => q[0]); let y = 0;
+  CLS.forEach(([tw, per, rows], ci) => { const th = Math.round(tw * 300 / 512), st = Math.floor(flSW / per); for (let r = 0; r < rows; r++) { for (let i = 0; i < per; i++) flFree[ci].push({ c: ci, x: i * st, y, w: tw, h: th }); y += th + 3; } });
+  flSH = y; flSlots = flFree.reduce((q, l) => q + l.length, 0);
+}
+let flW = null; // the widths of the sizes of place, largest first
+function flTake(rw) { let ci = flW.length - 1; while (ci > 0 && flW[ci] < rw) ci--; for (let c = ci; c < flW.length; c++) if (flFree[c].length) return flFree[c].pop(); for (let c = ci - 1; c >= 0; c--) if (flFree[c].length) return flFree[c].pop(); return null; }
+const flGive = (v) => { if (v) flFree[v.s.c].push(v.s); return null; };
+function flDrop(f) { f.cur = flGive(f.cur); f.old = flGive(f.old); f.nxt = flGive(f.nxt); if (flJob && flJob.f === f) { flGive(flJob.v); flJob = null; } }
 function flowInit() {
   if (flGl !== null) return !!flGl;
   try {
-    FLc = document.createElement('canvas'); FLc.width = 2064; FLc.height = 1986; // one sheet for all clouds of a frame: 2 very large fields, 8 large, 24 medium, 64 small ones
-    const x = FLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true }); if (!x) { flErr = 'WebGL nicht verfügbar'; flGl = false; return false; }
-    try { const di = x.getExtension('WEBGL_debug_renderer_info'); const hp = x.getShaderPrecisionFormat(x.FRAGMENT_SHADER, x.HIGH_FLOAT); flInfo = (di ? x.getParameter(di.UNMASKED_RENDERER_WEBGL) : 'Chip unbekannt') + ' · max ' + x.getParameter(x.MAX_TEXTURE_SIZE) + ' / ' + x.getParameter(x.MAX_VIEWPORT_DIMS)[0] + ' · Blatt ' + x.drawingBufferWidth + '×' + x.drawingBufferHeight + ' · highp ' + (hp && hp.precision > 0 ? hp.precision : 'nein'); } catch (e) { flInfo = 'Info: ' + e.message; }
-    FLc.addEventListener('webglcontextlost', () => { flLost++; });
+    flowSheet(); FLc = document.createElement('canvas'); FLc.width = bg.width; FLc.height = bg.height;
+    const x = FLc.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false }); if (!x) { flErr = 'WebGL nicht verfügbar'; flGl = false; return false; }
+    try { const di = x.getExtension('WEBGL_debug_renderer_info'); const hp = x.getShaderPrecisionFormat(x.FRAGMENT_SHADER, x.HIGH_FLOAT); flInfo = (di ? x.getParameter(di.UNMASKED_RENDERER_WEBGL) : 'Chip unbekannt') + ' · highp ' + (hp && hp.precision > 0 ? hp.precision : 'nein'); } catch (e) { flInfo = 'Info: ' + e.message; }
+    FLc.addEventListener('webglcontextlost', (e) => { e.preventDefault(); flLost++; });
+    if (x.getParameter(x.MAX_TEXTURE_SIZE) < Math.max(flSW, flSH)) throw new Error('Blatt zu groß für diesen Chip: ' + x.getParameter(x.MAX_TEXTURE_SIZE));
     const sh = (type, src) => { const q = x.createShader(type); x.shaderSource(q, src); x.compileShader(q); if (!x.getShaderParameter(q, x.COMPILE_STATUS)) throw new Error(x.getShaderInfoLog(q)); return q; };
-    const pr = x.createProgram();
-    x.attachShader(pr, sh(x.VERTEX_SHADER, 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }'));
-    x.attachShader(pr, sh(x.FRAGMENT_SHADER, `#ifdef GL_FRAGMENT_PRECISION_HIGH
+    const prog = (vs, fs) => { const pr = x.createProgram(); x.attachShader(pr, sh(x.VERTEX_SHADER, vs)); x.attachShader(pr, sh(x.FRAGMENT_SHADER, fs)); x.bindAttribLocation(pr, 0, 'a'); x.linkProgram(pr); if (!x.getProgramParameter(pr, x.LINK_STATUS)) throw new Error(x.getProgramInfoLog(pr)); return pr; };
+    flP1 = prog('attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }', `#ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
 precision mediump float;
 #endif
 uniform vec2 R, O, L, SH; uniform vec3 LB; uniform float tm, d, G, E, sd, SN, LOW; uniform vec3 lit, shd;
-float hash(vec3 p) { p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+// the random value at each crossing of the grid is worked out in whole numbers only, exactly: every graphics chip then gets the same value for a crossing whichever
+// neighbouring field asks for it. With a value made from the fraction of a huge product, a phone chip gets two slightly different ones – and the fields show as straight edges, bars and strokes
+vec4 perm(vec4 x) { return mod((x * 34.0 + 1.0) * x, 289.0); }
+float vn(vec3 p) { vec3 i = floor(p), f = p - i; f = f * f * (3.0 - 2.0 * f); i = mod(i, 289.0);
+  vec4 b = i.xxyy + vec4(0.0, 1.0, 0.0, 1.0), k1 = perm(b.xyxy), k2 = perm(k1.xyxy + b.zzww), c = k2 + i.zzzz;
+  vec4 o1 = fract(perm(perm(c) + 17.0) * (1.0 / 41.0)), o2 = fract(perm(perm(c + 1.0) + 17.0) * (1.0 / 41.0)), o3 = o2 * f.z + o1 * (1.0 - f.z);
+  vec2 o4 = o3.yw * f.x + o3.xz * (1.0 - f.x); return o4.y * f.y + o4.x * (1.0 - f.y); }
 // the pattern is turned from one fineness to the next: left upright it shows the grid it is made on, as upright stripes
 vec3 turn(vec3 p) { return vec3(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8, p.z) * 2.03 + 11.3; }
 float fbm3(vec3 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * vn(p); p = turn(p); a *= 0.5; } return s / 0.875; }
@@ -636,30 +654,60 @@ float dens(vec2 p, float k) {
   float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
   float env = 1.0 - sqrt(ex * ex + ey * ey + 0.004);                          // a heap: 1 in the middle of the base, 0 at the rim
   float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
-  env = max(env, 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004));                  // a second heap beside or above it: a tower, a shoulder
+  { float e2 = 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004); env = 0.5 * (env + e2 + sqrt((env - e2) * (env - e2) + 0.012)); } // the two heaps run into each other in a round hollow: a sharp fold between them shows in the light as a straight stroke or a bar                  // a second heap beside or above it: a tower, a shoulder
   env *= 0.86 + 0.3 * fbm3(vec3(p * 0.8 + 5.0 + o, tm * 0.022));      // the large outline changes slowly; it is the bulges on it that work visibly
   vec2 ps = p / pow(max(G, 0.14), 0.78);                               // the bulges are sized to the cloud as it is now: a young small cloud has its own small bulges
   vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
   vec2 f = ps * 1.6 + o + wp * 0.4 - vec2(-d * tm * 0.02, tm * 0.04);  // the bulges rise slowly, fed from the upwind side
   float n = bil(vec3(f, tm * 0.1));
-  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.02, tm * 0.07), tm * 0.17));
+  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.014, tm * 0.045), tm * 0.1));
   float dn = env * 1.3 + (n - 0.34) * 1.05 + (fine - 0.34) * mix(0.13, 0.3, k);
   dn -= (1.0 - smoothstep(0.02, 0.2, G)) * 0.6;                       // a cloud begins as a small puff out of nothing and ends as one
   dn -= E * (0.3 + 1.6 * fbm3(vec3(p * 1.5 + o + 21.0, tm * 0.05)));  // passing away: it thins unevenly, tears into shreds, and these go one by one
   // the underside keeps its height but is no ruled line: bays and hanging shreds that form and go, about half as fast as the bulges above
-  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.075)) - 0.5) * 0.4;
-  if (k > 0.5) { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.1), tm * 0.25)); dn += (frill - 0.5) * 0.14; if (R.x > 600.0) dn += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.3)) - 0.5) * 0.085; bn += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.1)) - 0.5) * 0.2; }
+  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.05)) - 0.5) * 0.4;
+  if (k > 0.5) { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.05), tm * 0.11)); dn += (frill - 0.5) * 0.14; if (R.x > 600.0) dn += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.13)) - 0.5) * 0.085; bn += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.06)) - 0.5) * 0.2; }
   float base = smoothstep(0.0, 0.2, ps.y + bn);
   return dn * base - (1.0 - base) * 0.3;
 }
+vec2 dens2(vec2 p) {
+  vec2 o = vec2(sd * 3.1, sd * 1.7);
+  float xs = p.x * d - 0.22 * p.y, yy = max(p.y - 0.16 * G, 0.0);    // the top leans ahead; upright near the base, so the underside is level and broad
+  float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
+  float env = 1.0 - sqrt(ex * ex + ey * ey + 0.004);                          // a heap: 1 in the middle of the base, 0 at the rim
+  float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
+  { float e2 = 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004); env = 0.5 * (env + e2 + sqrt((env - e2) * (env - e2) + 0.012)); } // the two heaps run into each other in a round hollow: a sharp fold between them shows in the light as a straight stroke or a bar                  // a second heap beside or above it: a tower, a shoulder
+  env *= 0.86 + 0.3 * fbm3(vec3(p * 0.8 + 5.0 + o, tm * 0.022));      // the large outline changes slowly; it is the bulges on it that work visibly
+  vec2 ps = p / pow(max(G, 0.14), 0.78);                               // the bulges are sized to the cloud as it is now: a young small cloud has its own small bulges
+  vec2 wp = vec2(fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 3.1), fbm3(vec3(ps * 1.4 + o, tm * 0.07) + 7.7)) - 0.5;
+  vec2 f = ps * 1.6 + o + wp * 0.4 - vec2(-d * tm * 0.02, tm * 0.04);  // the bulges rise slowly, fed from the upwind side
+  float n = bil(vec3(f, tm * 0.1));
+  float fine = bil(vec3(ps * 4.6 + o + wp * 0.6 - vec2(d * tm * 0.014, tm * 0.045), tm * 0.1));
+  float dn = env * 1.3 + (n - 0.34) * 1.05, dk = (fine - 0.34) * 0.3, d0 = (fine - 0.34) * 0.13;
+  dn -= (1.0 - smoothstep(0.02, 0.2, G)) * 0.6;                       // a cloud begins as a small puff out of nothing and ends as one
+  dn -= E * (0.3 + 1.6 * fbm3(vec3(p * 1.5 + o + 21.0, tm * 0.05)));  // passing away: it thins unevenly, tears into shreds, and these go one by one
+  // the underside keeps its height but is no ruled line: bays and hanging shreds that form and go, about half as fast as the bulges above
+  float bn = (fbm3(vec3(ps.x * 2.4 + o.x - d * tm * 0.03, ps.y * 2.0 + o.y, tm * 0.05)) - 0.5) * 0.4;
+  float bk = bn;
+  { float frill = fbm3(vec3(ps * 14.0 + o - vec2(0.0, tm * 0.05), tm * 0.11)); dk += (frill - 0.5) * 0.14; if (R.x > 600.0) dk += (fbm3(vec3(ps * 31.0 + o + 4.0, tm * 0.13)) - 0.5) * 0.085; bk += (frill - 0.5) * 0.12 + (fbm3(vec3(ps * 6.5 + o + 9.0, tm * 0.06)) - 0.5) * 0.2; }
+  float base = smoothstep(0.0, 0.2, ps.y + bk), bas0 = smoothstep(0.0, 0.2, ps.y + bn);
+  return vec2((dn + dk) * base - (1.0 - base) * 0.3, (dn + d0) * bas0 - (1.0 - bas0) * 0.3);
+}
+float envf(vec2 p) {
+  float xs = p.x * d - 0.22 * p.y, yy = max(p.y - 0.16 * G, 0.0);
+  float ex = (xs + 0.12) / (G * SH.x * (xs > -0.12 ? 1.2 : 0.95)), ey = yy / (0.8 * G * SH.y);
+  float e2x = (xs - LB.x * G) / (G * LB.y), e2y = yy / (0.8 * G * LB.z);
+  float e1 = 1.0 - sqrt(ex * ex + ey * ey + 0.004), e2 = 1.0 - sqrt(e2x * e2x + e2y * e2y + 0.004);
+  return 0.5 * (e1 + e2 + sqrt((e1 - e2) * (e1 - e2) + 0.012));
+}
 void main() {
   vec2 q = (gl_FragCoord.xy - O) / R, p = vec2((q.x - 0.5) * 2.0 * R.x / R.y * 0.82, q.y * 1.64 - 0.2);
-  float D = dens(p, 1.0), xs = p.x * d, gs = pow(max(G, 0.14), 0.78);
+  vec2 DD = dens2(p); float D = DD.x, xs = p.x * d, gs = pow(max(G, 0.14), 0.78);
   float soft = mix(0.05, 0.24, smoothstep(-0.2, 1.1, xs / G)) * mix(0.45, 1.0, G) + E * 0.22 + (1.0 - smoothstep(0.0, 0.3, p.y / gs)) * 0.1; // crisp where it wells up, softer where it goes and below
   if (R.x > 600.0) soft *= 0.7; float a = smoothstep(0.0, soft, D); // a very near cloud: crisper rim
   // light as on a body, not on an embossed sheet: at every place it is asked how much more cloud stands between it and the sun than here.
   // So the side turned to the sun is bright as a whole and the far side lies in a broad soft shadow, and a bulge or tower shades what is behind it
-  float D0 = dens(p, 0.0), D1 = dens(p + L * 0.08 * gs, 0.0), D2 = dens(p + L * 0.3 * gs, 0.0);
+  float D0 = DD.y, D1 = dens(p + L * 0.08 * gs, 0.0), D2 = D0 + (envf(p + L * 0.3 * gs) - envf(p)) * 1.3;
   float shade = exp(-(max(0.0, D1 - D0) * 4.2 + max(0.0, D2 - D0) * 1.9) * (1.0 + 0.6 * LOW)); // a low sun: light and shadow lie further apart
   float hi = clamp((D0 - D1) * 3.2, 0.0, 1.0);                         // the flank of a bulge that faces the sun
   float l = (0.2 - 0.02 * LOW + (0.6 + 0.02 * LOW) * shade + (0.28 + 0.12 * LOW) * hi) * mix(mix(0.5, 0.86, LOW), 1.0, smoothstep(0.02, 0.1 + 0.5 * G * SH.y, p.y)); // bright above, blue-grey below, measured on the cloud's own height
@@ -667,89 +715,129 @@ void main() {
   l = clamp(l, 0.0, 1.0);
   l = mix(l, 1.0, (1.0 - a) * 0.5);                                    // thin parts let the light through
   vec3 c = mix(shd, lit, l);
-  c = mix(c, mix(vec3(1.0, 0.99, 0.95), vec3(1.0, 0.86, 0.6), LOW), SN * (1.0 - smoothstep(0.0, 0.42, D)) * 0.85); // … and its thin rim glows
+  c = mix(c, mix(vec3(1.0, 0.99, 0.95), vec3(1.0, 0.86, 0.6), LOW), SN * (1.0 - smoothstep(0.0, 0.42, D)) * 0.8 * (0.18 + 0.82 * (1.0 - a))); // … and its thin rim glows
   vec2 ed = min(q, 1.0 - q); a *= smoothstep(0.0, 0.06, min(ed.x, ed.y)); // nothing may touch the edge of its field
   gl_FragColor = vec4(c * a, a);
-}`));
-    x.linkProgram(pr); if (!x.getProgramParameter(pr, x.LINK_STATUS)) throw new Error(x.getProgramInfoLog(pr)); x.useProgram(pr);
-    const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW);
-    const al = x.getAttribLocation(pr, 'a'); x.enableVertexAttribArray(al); x.vertexAttribPointer(al, 2, x.FLOAT, false, 0, 0);
-    flU = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) flU[n] = x.getUniformLocation(pr, n);
+}`);
+    // setting the finished pictures into the sky: the picture a cloud comes from and the one it goes to, mixed. The place on the sheet is worked out with full precision:
+    // with the coarse one a phone chip hits only every fifth point of so large a sheet – blocks, and stripes from the neighbouring picture
+    flP2 = prog('attribute vec2 a; uniform vec4 rc, u0, u1; varying vec2 t0, t1; void main(){ vec2 tc = a * 0.5 + 0.5; t0 = u0.xy + tc * u0.zw; t1 = u1.xy + tc * u1.zw; gl_Position = vec4(rc.xy + a * rc.zw, 0.0, 1.0); }',
+      '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nuniform sampler2D S; uniform vec3 kk; varying vec2 t0, t1; void main(){ vec4 o = texture2D(S, t0) * kk.z, c = texture2D(S, t1); gl_FragColor = mix(o, c, kk.x) * kk.y; }');
+    const buf = x.createBuffer(); x.bindBuffer(x.ARRAY_BUFFER, buf); x.bufferData(x.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), x.STATIC_DRAW); x.enableVertexAttribArray(0); x.vertexAttribPointer(0, 2, x.FLOAT, false, 0, 0);
+    flU = {}; for (const n of ['R', 'O', 'L', 'SH', 'LB', 'tm', 'd', 'G', 'E', 'sd', 'SN', 'LOW', 'lit', 'shd']) flU[n] = x.getUniformLocation(flP1, n);
+    flU2 = {}; for (const n of ['rc', 'u0', 'u1', 'kk', 'S']) flU2[n] = x.getUniformLocation(flP2, n);
+    const tex = x.createTexture(); x.activeTexture(x.TEXTURE0); x.bindTexture(x.TEXTURE_2D, tex); x.texImage2D(x.TEXTURE_2D, 0, x.RGBA, flSW, flSH, 0, x.RGBA, x.UNSIGNED_BYTE, null);
+    x.texParameteri(x.TEXTURE_2D, x.TEXTURE_MIN_FILTER, x.LINEAR); x.texParameteri(x.TEXTURE_2D, x.TEXTURE_MAG_FILTER, x.LINEAR); x.texParameteri(x.TEXTURE_2D, x.TEXTURE_WRAP_S, x.CLAMP_TO_EDGE); x.texParameteri(x.TEXTURE_2D, x.TEXTURE_WRAP_T, x.CLAMP_TO_EDGE);
+    flFB = x.createFramebuffer(); x.bindFramebuffer(x.FRAMEBUFFER, flFB); x.framebufferTexture2D(x.FRAMEBUFFER, x.COLOR_ATTACHMENT0, x.TEXTURE_2D, tex, 0);
+    if (x.checkFramebufferStatus(x.FRAMEBUFFER) !== x.FRAMEBUFFER_COMPLETE) throw new Error('Blatt nicht benutzbar');
+    x.viewport(0, 0, flSW, flSH); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT);
+    x.useProgram(flP2); x.uniform1i(flU2.S, 0); x.blendFunc(x.ONE, x.ONE_MINUS_SRC_ALPHA);
     flGl = x; return true;
   } catch (e) { console.warn('WeatherScope: flow cloud', e); flErr = String(e && e.message || e).slice(0, 400); flGl = false; return false; }
 }
 let flows = null;
-// The clouds stand in the plane of the sky, spread evenly over a field much larger than what the picture shows, and the whole field drifts with the wind
+// The clouds stand in the plane of the sky, spread over a field much larger than what the picture shows, and the whole field drifts with the wind
 // and comes round again. So the picture is always stocked the same way wherever the wind goes: what leaves on one side is followed from the other,
 // from the left, from above. Seen flat towards the horizon the same spread shows ever more clouds, ever closer together.
-const FLCOUNT = 1300, FLZ0 = 0.85, FLZ1 = 13.5;
+// The field is divided into unseen plots, one cloud to each, standing anywhere within its plot, the rows shifted against each other: so there is no large hole
+// and still no order to be seen. Where a cloud has passed away the next one wells up on the same plot – as over a warm patch of ground.
+const FLNX = 65, FLNZ = 20, FLCOUNT = FLNX * FLNZ, FLZ0 = 0.85, FLZ1 = 13.5, flRowOff = Array.from({ length: FLNZ }, () => Math.random());
 function flowHalf() { return (W * 1.1) * FLZ1; }
 function newFlow(f, first) {
-  const k = Math.random();
-  f.X = rnd(-1, 1) * flowHalf(); f.z = rnd(FLZ0, FLZ1); f.u = Math.random(); f.size = W * rnd(0.72, 1.02); f.sd = Math.random() * 40; f.life = rnd(200, 380); f.p = first ? Math.random() : 0; f.E0 = 0; // nearly one size in the sky: how large a cloud looks tells how far it is
+  const k = Math.random(); flDrop(f);
+  { const dX = 2 * flowHalf() / FLNX, dz = (FLZ1 - FLZ0) / FLNZ, jx = Math.random() * dX, jz = Math.random() * dz;
+    if (first) { const ci = f.i % FLNX, cj = Math.floor(f.i / FLNX); f.X = -flowHalf() + ((ci + flRowOff[cj]) % FLNX) * dX + jx; f.z = FLZ0 + cj * dz + jz; } else { f.X += jx - f.jx; f.z += jz - f.jz; }
+    f.jx = jx; f.jz = jz; }
+  f.u = Math.random(); f.size = W * rnd(0.72, 1.02); /* nearly one size in the sky: how large a cloud looks tells how far it is */ f.sd = Math.random() * 40; f.E0 = 0;
+  f.life = rnd(320, 560); /* from a puff to a grown cloud in two to three minutes */ f.p = first ? (f.i * 0.618034 + Math.floor(f.i / FLNX) * 0.37 + Math.random() * 0.3) % 1 : 0; /* neighbours begin at different ages */
   // kinds: the plain heap; a broad flat one; one with a tower; a small loose one
   if (k < 0.3) { f.sh = [rnd(0.9, 1.05), rnd(0.9, 1.1)]; f.lb = [0, 0.05, 0.05]; }
   else if (k < 0.55) { f.sh = [1.1, rnd(0.5, 0.68)]; f.lb = [rnd(-0.5, 0.5), rnd(0.4, 0.6), rnd(0.55, 0.8)]; }
   else if (k < 0.82) { f.sh = [rnd(0.85, 1.0), rnd(0.6, 0.8)]; f.lb = [rnd(-0.45, 0.35), rnd(0.42, 0.6), rnd(1.15, 1.45)]; }
   else { f.sh = [rnd(0.6, 0.8), rnd(0.5, 0.7)]; f.lb = [rnd(-0.6, 0.6), rnd(0.25, 0.4), rnd(0.4, 0.7)]; f.E0 = rnd(0.12, 0.25); f.size *= 0.82; }
 }
+const flFar = (f) => (1 + sst(3, 8, f.z)) * (0.45 + 0.55 * sst(0.04, 0.3, f.p)); // far clouds are small and their working hardly shows: they take their time between two pictures. A cloud just welling up changes fastest: it gets its pictures twice as often
+const flUv = (v) => [(v.s.x + 0.5) / flSW, (v.s.y + 0.5) / flSH, (v.rw - 1) / flSW, (v.rh - 1) / flSH];
 function drawFlow(fa) {
-  if (!flowInit()) return;
-  const x = flGl, v = layerWind(2), dir = v[0] < 0 ? -1 : 1, dt = drawFlow.dt || 0, sp = sunPos(), cd = cloudCol(), XH = flowHalf(); drawFlow.dt = 0;
-  if (!flows) { flows = Array.from({ length: FLCOUNT }, () => { const f = {}; newFlow(f, true); return f; }); }
-  // the colour of the light and of the shadow. By day: white, and bluish where the sky alone lights it. With the sun low: the side towards it glows warm, the far side is dark and cool
-  { const low = S.tod === 'night' ? 0 : sst(0.15, 1, lowSun().k), c0 = S.tod === 'night' ? cd : MODES[S.mode].cloud, li = mix(c0.map((q) => Math.min(255, q + 14)), [255, 186, 128], 0.72 * low), sh = mix([c0[0] * 0.5, c0[1] * 0.6, c0[2] * 0.8], [122, 86, 110], 0.85 * low);
-    x.uniform1f(flU.d, dir); x.uniform1f(flU.LOW, low); x.uniform3f(flU.lit, li[0] / 255, li[1] / 255, li[2] / 255); x.uniform3f(flU.shd, sh[0] / 255, sh[1] / 255, sh[2] / 255); }
-  x.disable(x.SCISSOR_TEST); x.viewport(0, 0, FLc.width, FLc.height); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT); x.enable(x.SCISSOR_TEST);
+  if (!flowInit() || flLost) return;
+  const x = flGl, v = layerWind(2), dir = v[0] < 0 ? -1 : 1, dt = drawFlow.dt || 0, sp = sunPos(), cd = cloudCol(), XH = flowHalf(), mg = W * 0.12; drawFlow.dt = 0;
+  if (FLc.width !== bg.width || FLc.height !== bg.height) { FLc.width = bg.width; FLc.height = bg.height; }
+  if (!flows) { flows = Array.from({ length: FLCOUNT }, (q, i) => { const f = { i }; newFlow(f, true); return f; }); drawFlow.t0 = t; }
   const vis = [], lsK = S.tod === 'night' ? 0 : lowSun().k;
   for (const f of flows) {
-    f.X += v[0] * HEAPDRIFT * dt; f.z += v[1] * HEAPDRIFT * dt / yHor(); f.p += dt / f.life; f.A = 0; f.t = null;
-    if (f.p >= 1) newFlow(f, false); // a new cloud wells up somewhere else
-    if (f.X > XH) f.X -= 2 * XH; else if (f.X < -XH) f.X += 2 * XH; if (f.z > FLZ1) f.z -= FLZ1 - FLZ0; else if (f.z < FLZ0) f.z += FLZ1 - FLZ0; // round the field
-    const cw = f.size / f.z, X = W / 2 + f.X / f.z; if (X - cw / 2 > W + 30 || X + cw / 2 < -30) continue;
+    f.X += v[0] * HEAPDRIFT * dt; f.z += v[1] * HEAPDRIFT * dt / yHor(); f.p += dt / f.life; f.A = 0;
+    if (f.p >= 1) newFlow(f, false); // a new cloud wells up on the same plot
+    if (f.X > XH) f.X -= 2 * XH; else if (f.X < -XH) f.X += 2 * XH; if (f.z > FLZ1) { f.z -= FLZ1 - FLZ0; flDrop(f); } else if (f.z < FLZ0) { f.z += FLZ1 - FLZ0; flDrop(f); } // round the field
+    const cw = f.size / f.z, X = W / 2 + f.X / f.z; if (X - cw / 2 > W + mg || X + cw / 2 < -mg) { flDrop(f); continue; } // a little beyond the edge it is already worked out, so it comes in finished
     // further away the same stretch of sky takes ever less room in the picture: there only some of the clouds are let through, or the horizon would be one white band
-    const act = sst(f.u - 0.05, f.u + 0.05, Math.min(1.1, 1.5 / f.z)); if (act < 0.02) continue;
+    const act = sst(f.u - 0.05, f.u + 0.05, Math.min(1.1, 1.5 / f.z)); if (act < 0.02) { flDrop(f); continue; }
     const ch = cw * 300 / 512, yb = yOf(f.z), top = yb - ch * 0.88, hz = Math.min(1, (f.z - 1) / 10); // the base of the cloud lies at 12 % of its field
-    f.A = fa * (1 - sst(0.97, 1, f.p)) * (1 - 0.5 * hz) * sst(0.9, 0.97, f.z) * (1 - sst(12, 13.4, f.z)); if (f.A < 0.01) { f.A = 0; continue; } // no fading in or out as a whole: that looks like a ghost
-    f.sx = X; f.yb = yb; f.cw = cw; f.ch = ch; f.top = top;
-    f.G = Math.max(0.03, act * sst(0, 0.22, f.p) * (1 - 0.3 * sst(0.6, 1, f.p)) * (0.94 + 0.08 * Math.sin(t / 43 + f.sd))); f.E = Math.min(1, f.E0 + Math.pow(Math.max(0, (f.p - 0.52) / 0.45), 1.3)); // it wells up from a puff, holds, and passes away by thinning, slowly
+    f.A = fa * (1 - sst(0.97, 1, f.p)) * (1 - 0.5 * hz) * sst(0.9, 0.97, f.z) * (1 - sst(12, 13.4, f.z)); if (f.A < 0.01) { f.A = 0; if (fa > 0.5) flDrop(f); continue; } // no fading in or out as a whole: that looks like a ghost
+    f.sx = X; f.yb = yb; f.cw = cw; f.ch = ch; f.top = top; f.act = act;
+    if (f.cur && t - f.cur.t >= f.cur.fd) { if (f.nxt) { flGive(f.old); f.old = f.cur; f.cur = f.nxt; f.cur.t = t; f.nxt = null; } else { f.old = flGive(f.old); dgLate++; } } // arrived: on to the next picture, which has been waiting
     vis.push(f);
   }
-  // first all clouds are worked out on the one sheet – the largest in the large fields –, then they are set into the sky from it, far ones first
-  vis.sort((a, b) => b.cw - a.cw);
-  vis.forEach((f, i) => {
-    let tw, ox, oy;
-    if (i < 2) { tw = 1024; ox = i * 1032; oy = 0; } // the two nearest: a field of double size, or they are stretched and look out of focus
-    else if (i < 10) { const j = i - 2; tw = 512; ox = (j % 4) * 516; oy = 608 + Math.floor(j / 4) * 304; }
-    else if (i < 34) { const j = i - 10; tw = 254; ox = (j % 8) * 258; oy = 1216 + Math.floor(j / 8) * 153; }
-    else if (i < 98) { const j = i - 34; tw = 125; ox = (j % 16) * 129; oy = 1675 + Math.floor(j / 16) * 77; }
-    else { f.A = 0; return; }
-    const rw = Math.max(40, Math.min(tw, Math.ceil(f.cw * DPR))), rh = Math.round(rw * 300 / 512); f.t = [ox, oy, rw, rh];
-    const lx = sp.x - f.sx, ly = (f.top + f.ch * 0.5) - sp.y, ll = Math.hypot(lx, ly) || 1;
-    let ux = lx / ll, uy = Math.max(0.3, ly / ll); ux = ux * (1 - lsK) + (lx < 0 ? -1 : 1) * lsK; uy = uy * (1 - lsK) + 0.3 * lsK; { const un = Math.hypot(ux, uy) || 1; ux /= un; uy /= un; }
-    x.viewport(ox, oy, rw, rh); x.scissor(ox, oy, rw, rh);
-    x.uniform2f(flU.R, rw, rh); x.uniform2f(flU.O, ox, oy); x.uniform2f(flU.L, ux, uy); x.uniform2f(flU.SH, f.sh[0], f.sh[1]); x.uniform3f(flU.LB, f.lb[0], f.lb[1], f.lb[2]);
-    x.uniform1f(flU.tm, f.p * f.life * 0.42 + f.sd * 5); /* each cloud's own clock, counted from its beginning: small numbers, and it never has to start over */ x.uniform1f(flU.sd, f.sd); x.uniform1f(flU.G, f.G); x.uniform1f(flU.E, f.E); x.uniform1f(flU.SN, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll));
-    x.drawArrays(x.TRIANGLE_STRIP, 0, 4); flN++;
-  });
-  vis.sort((a, b) => b.z - a.z);
-  for (const f of vis) { if (!f.t) continue; const [ox, oy, rw, rh] = f.t; B.globalAlpha = f.A; B.drawImage(FLc, ox + 0.5, FLc.height - oy - rh + 0.5, rw - 1, rh - 1, f.sx - f.cw / 2, f.top, f.cw, f.ch); }
+  flNVis = vis.length;
+  // the colour of the light and of the shadow. By day: white, and bluish where the sky alone lights it. With the sun low: the side towards it glows warm, the far side is dark and cool
+  x.bindFramebuffer(x.FRAMEBUFFER, flFB); x.useProgram(flP1); x.disable(x.BLEND); x.enable(x.SCISSOR_TEST);
+  { const low = S.tod === 'night' ? 0 : sst(0.15, 1, lowSun().k), c0 = S.tod === 'night' ? cd : MODES[S.mode].cloud, li = mix(c0.map((q) => Math.min(255, q + 14)), [255, 186, 128], 0.72 * low), sh = mix([c0[0] * 0.5, c0[1] * 0.6, c0[2] * 0.8], [122, 86, 110], 0.85 * low);
+    x.uniform1f(flU.d, dir); x.uniform1f(flU.LOW, low); x.uniform3f(flU.lit, li[0] / 255, li[1] / 255, li[2] / 255); x.uniform3f(flU.shd, sh[0] / 255, sh[1] / 255, sh[2] / 255); }
+  // only a small part of the sheet is worked out per frame: one cloud after the other, a large one in strips over several frames
+  let left = flBudget, guard = 0;
+  while (left > 0 && guard++ < 40) {
+    if (!flJob) {
+      let best = null, bs = 0.35;
+      for (const f of vis) { if (f.nxt) continue; const s = f.cur ? (t - f.cur.t) / f.cur.fd : 1e6 + f.cw; if (s > bs) { bs = s; best = f; } } // whoever is nearest to arriving and has no next picture yet
+      if (!best) break;
+      const f = best, want = Math.max(24, Math.ceil(f.cw * FLQ * (f.cur || t - drawFlow.t0 > 30 ? 1 : 0.5))), s = flTake(want); if (!s) break; // only while the sky is first being filled the first picture is at half size
+      const rw = Math.min(s.w, want), rh = Math.round(rw * 300 / 512), lx = sp.x - f.sx, ly = (f.top + f.ch * 0.5) - sp.y, ll = Math.hypot(lx, ly) || 1;
+      let ux = lx / ll, uy = Math.max(0.3, ly / ll); ux = ux * (1 - lsK) + (lx < 0 ? -1 : 1) * lsK; uy = uy * (1 - lsK) + 0.3 * lsK; { const un = Math.hypot(ux, uy) || 1; ux /= un; uy /= un; }
+      // the picture shows the cloud as it will be at the moment it is fully there – so the cloud works at its true pace however long the sheet takes
+      const fd = f.cur ? flFade * flFar(f) : 0.8, T = f.cur ? Math.max(t, f.cur.t + f.cur.fd) + fd : t, p = Math.min(0.999, f.p + (T - t) / f.life);
+      const G = Math.max(0.03, f.act * sst(0, 0.34, p) * (1 - 0.3 * sst(0.6, 1, p)) * (0.94 + 0.08 * Math.sin(T / 43 + f.sd))), E = Math.min(1, f.E0 + Math.pow(Math.max(0, (p - 0.52) / 0.45), 1.3)); // it wells up from a puff, holds, and passes away by thinning, slowly
+      flJob = { f, v: { s, rw, rh, t: 0, fd }, y: 0, u: [ux, uy, p * f.life * 0.42 + f.sd * 5, G, E, sst(Math.max(f.cw * 0.75, W * 0.3), f.cw * 0.2, ll)] }; // each cloud's own clock, counted from its beginning: small numbers, and it never has to start over
+    }
+    const j = flJob, f = j.f, s = j.v.s, rw = j.v.rw, rh = j.v.rh, rows = Math.max(1, Math.min(rh - j.y, Math.ceil(left / rw)));
+    x.viewport(s.x, s.y, rw, rh); x.scissor(s.x, s.y + j.y, rw, rows);
+    x.uniform2f(flU.R, rw, rh); x.uniform2f(flU.O, s.x, s.y); x.uniform2f(flU.L, j.u[0], j.u[1]); x.uniform2f(flU.SH, f.sh[0], f.sh[1]); x.uniform3f(flU.LB, f.lb[0], f.lb[1], f.lb[2]);
+    x.uniform1f(flU.tm, j.u[2]); x.uniform1f(flU.sd, f.sd); x.uniform1f(flU.G, j.u[3]); x.uniform1f(flU.E, j.u[4]); x.uniform1f(flU.SN, j.u[5]);
+    x.drawArrays(x.TRIANGLE_STRIP, 0, 4); j.y += rows; left -= rw * rows; dgPx += rw * rows;
+    if (j.y >= rh) { if (f.cur) f.nxt = j.v; else { j.v.t = t; f.cur = j.v; } flJob = null; }
+  }
+  // set into the sky by the graphics chip, far ones first; the finished sky of clouds then goes into the picture in one piece
+  x.bindFramebuffer(x.FRAMEBUFFER, null); x.disable(x.SCISSOR_TEST); x.viewport(0, 0, FLc.width, FLc.height); x.clearColor(0, 0, 0, 0); x.clear(x.COLOR_BUFFER_BIT); x.useProgram(flP2); x.enable(x.BLEND);
+  vis.sort((a, b) => b.z - a.z); flNPic = 0;
+  for (const f of vis) { if (!f.cur) continue; flNPic++; const k = Math.min(1, (t - f.cur.t) / f.cur.fd), a = flUv(f.cur), o = f.old ? flUv(f.old) : a; f.k = k;
+    x.uniform4f(flU2.rc, f.sx / W * 2 - 1, 1 - (f.top + f.ch / 2) / H * 2, f.cw / W, f.ch / H); x.uniform4f(flU2.u0, o[0], o[1], o[2], o[3]); x.uniform4f(flU2.u1, a[0], a[1], a[2], a[3]); x.uniform3f(flU2.kk, k, f.A, f.old ? 1 : 0); x.drawArrays(x.TRIANGLE_STRIP, 0, 4); }
+  B.globalAlpha = 1; B.drawImage(FLc, 0, 0, W, H);
   B.globalAlpha = fa; drawFlow.n = vis.length;
 }
-// how much of the sun the flowing clouds hide: the part of each finished cloud picture that lies over the sun's disc is read back and its cover averaged
-let flowBuf = null;
+// once a second: how much may be worked out per frame, from how smoothly it runs; and how long a cloud takes from one picture to the next – as long as it takes until its turn comes again
+function flowTune(fps) {
+  if (!flGl || !flows || S.cType !== 'flow') return;
+  if (window.flFix) { flBudget = window.flFix; fps = 30; } else if (fps >= 28) flBudget = Math.min(FLBMAX, flBudget * 1.2); else if (fps < 25) flBudget = Math.max(FLBMIN, flBudget * 0.6); // flFix: a fixed amount, for trying out
+  let px = 0; for (const f of flows) if (f.cur) px += f.cur.rw * f.cur.rh / flFar(f);
+  const want = Math.max(FLFMIN, Math.min(FLFMAX, px / (flBudget * Math.max(10, fps)) * 1.25)); flFade += (want - flFade) * 0.3;
+}
+// how much of the sun the flowing clouds hide: the part of each cloud picture that lies over the sun's disc is read back from the sheet and its cover averaged.
+// Reading back makes the graphics chip wait, so it is done a few times a second only and eased in between
+let flowBuf = null, flSunV = 0, flSunT = 0, flSunN = -1;
 function flowSun(sx, sy, rr) {
-  if (S.cType !== 'flow' || !flows || !flGl) return 0; let clear = 1;
+  if (S.cType !== 'flow' || !flows || !flGl || flLost) return 0;
+  if (flSunN >= 0 && t - flSunN < 0.2) return flSunV;
+  let clear = 1; const x = flGl; x.bindFramebuffer(x.FRAMEBUFFER, flFB);
+  const rd = (f, v) => { const ox = v.s.x, oy = v.s.y, rw = v.rw, rh = v.rh, k = rw / f.cw, n = Math.max(2, Math.min(24, Math.round(2 * rr * k))), px = Math.round(ox + (sx - (f.sx - f.cw / 2)) * k - n / 2), py = Math.round(oy + rh - (sy - f.top) * k - n / 2);
+    const x0 = Math.max(ox, px), y0 = Math.max(oy, py), x1 = Math.min(ox + rw, px + n), y1 = Math.min(oy + rh, py + n); if (x1 <= x0 || y1 <= y0) return 0;
+    const w = x1 - x0, h = y1 - y0; if (!flowBuf) flowBuf = new Uint8Array(24 * 24 * 4);
+    try { x.readPixels(x0, y0, w, h, x.RGBA, x.UNSIGNED_BYTE, flowBuf); } catch (e) { return 0; }
+    let a = 0; for (let i = 3; i < w * h * 4; i += 4) a += flowBuf[i]; return a / 255 / (n * n); }; // the part of the disc outside this picture counts as clear
   for (const f of flows) {
-    if (!(f.A >= 0.01) || !f.t || sx + rr < f.sx - f.cw / 2 || sx - rr > f.sx + f.cw / 2 || sy + rr < f.top || sy - rr > f.top + f.ch) continue;
-    const [ox, oy, rw, rh] = f.t, k = rw / f.cw, n = Math.max(2, Math.min(24, Math.round(2 * rr * k))), px = Math.round(ox + (sx - (f.sx - f.cw / 2)) * k - n / 2), py = Math.round(oy + rh - (sy - f.top) * k - n / 2);
-    const x0 = Math.max(ox, px), y0 = Math.max(oy, py), x1 = Math.min(ox + rw, px + n), y1 = Math.min(oy + rh, py + n); if (x1 <= x0 || y1 <= y0) continue;
-    const w = x1 - x0, h = y1 - y0; if (!flowBuf || flowBuf.length < w * h * 4) flowBuf = new Uint8Array(24 * 24 * 4);
-    try { flGl.readPixels(x0, y0, w, h, flGl.RGBA, flGl.UNSIGNED_BYTE, flowBuf); } catch (e) { continue; }
-    let a = 0; for (let i = 3; i < w * h * 4; i += 4) a += flowBuf[i]; a = a / 255 / (n * n); // the part of the disc outside this picture counts as clear
+    if (!(f.A >= 0.01) || !f.cur || sx + rr < f.sx - f.cw / 2 || sx - rr > f.sx + f.cw / 2 || sy + rr < f.top || sy - rr > f.top + f.ch) continue;
+    const k = f.k === undefined ? 1 : f.k, a = rd(f, f.cur) * k + (f.old ? rd(f, f.old) * (1 - k) : 0);
     clear *= 1 - Math.min(1, a * 1.1) * Math.min(1, f.A * 1.3);
   }
-  return 1 - clear;
+  x.bindFramebuffer(x.FRAMEBUFFER, null);
+  const now = 1 - clear; flSunV = flSunN < 0 ? now : flSunV + (now - flSunV) * 0.6; flSunN = t; return flSunV;
 }
 function makeClouds() {
   for (const l of layers) { if (l.tex && gl) gl.deleteTexture(l.tex); l.cv.width = l.cv.height = 0; } // free the old sheets
@@ -1542,10 +1630,9 @@ function frame(ts) {
   if (ts - last < 32) return; // at most about 30 frames per second
   const dt = Math.min(0.05, (ts - last) / 1000 || 0.03); last = ts; t += dt;
   const c0 = performance.now(); step(dt); draw(); dgSum += performance.now() - c0; dgF++;
-  if (ts - dgT > 1000) { dgFps = dgF * 1000 / (ts - dgT); dgMs = dgSum / Math.max(1, dgF); const el = document.getElementById('diag');
-    if (el) { let px = ''; if (flGl) { try { const b = new Uint8Array(4); flGl.readPixels(512, FLc.height - 300, 1, 1, flGl.RGBA, flGl.UNSIGNED_BYTE, b); px = ' · Probe ' + b[0] + ',' + b[1] + ',' + b[2] + ',' + b[3] + ' · GL-Fehler ' + flGl.getError(); } catch (e) { px = ' · Probe: ' + e.message; } }
-      el.textContent = 'Diagnose: ' + dgFps.toFixed(0) + ' Bilder/s · ' + dgMs.toFixed(0) + ' ms je Bild · Bildschirm ' + innerWidth + '×' + innerHeight + ' ×' + devicePixelRatio + ' · neue Technik: ' + (flGl === null ? 'noch nicht gestartet' : flGl ? 'läuft, ' + Math.round(flN / Math.max(1, dgF)) + ' Wolken je Bild' : 'FEHLER: ' + flErr) + (flLost ? ' · Grafik verloren ' + flLost + '×' : '') + (flInfo ? ' · ' + flInfo : '') + px; }
-    dgF = 0; dgSum = 0; flN = 0; dgT = ts; }
+  if (ts - dgT > 1000) { dgFps = dgF * 1000 / (ts - dgT); dgMs = dgSum / Math.max(1, dgF); flowTune(dgFps); const el = document.getElementById('diag');
+    if (el) el.textContent = 'Diagnose: ' + dgFps.toFixed(0) + ' Bilder/s · ' + dgMs.toFixed(0) + ' ms je Bild · ' + innerWidth + '×' + innerHeight + ' ×' + (devicePixelRatio || 1).toFixed(2) + (S.cType !== 'flow' ? '' : ' · neue Wolken: ' + (flGl === null ? 'noch nicht gestartet' : !flGl ? 'FEHLER: ' + flErr : flLost ? 'Grafik verloren ' + flLost + '×' : flNPic + ' von ' + flNVis + ' da · rechnet ' + Math.round(dgPx / Math.max(1, dgF) / 1000) + ' Tsd. Punkte je Bild (Grenze ' + Math.round(flBudget / 1000) + ') · nahe Wolke neu alle ' + flFade.toFixed(1) + ' s · zu spät ' + dgLate + ' · Plätze frei ' + (flFree ? flFree.reduce((q, l) => q + l.length, 0) : 0) + '/' + flSlots) + (flInfo ? ' · ' + flInfo : ''));
+    dgF = 0; dgSum = 0; dgPx = 0; dgLate = 0; dgT = ts; }
 }
 
 // remember the snow on the tiles (this browser only)
